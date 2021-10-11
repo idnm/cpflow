@@ -33,3 +33,10 @@ def ry_mat(a):
 
 def rz_mat(a):
     return jnp.cos(a / 2) * jnp.identity(2) - 1j * z_mat * jnp.sin(a / 2)
+
+
+def cp_mat(a):
+    phase_gate = jnp.array([[1,0],[0,jnp.exp(1j*a)]])
+    control0 = jnp.kron(jnp.array([[1, 0], [0, 0]]),jnp.identity(2))
+    control1 = jnp.kron(jnp.array([[0, 0], [0, 1]]), phase_gate)
+    return control0+control1

@@ -19,16 +19,22 @@ class EntanglingBlock:
         self.angles = angles
 
     def circuit(self):
+
+        angles = np.array(self.angles)  # convert from JAX array to numpy array if applicable.
+
         qc = QuantumCircuit(2)
+
+        # Apply entangling gate
         if self.gate_name == 'cx':
             qc.cx(0, 1)
         elif self.gate_name == 'cz':
             qc.cz(0, 1)
+        elif self.gate_name == 'cp':
+            qc.cp(angles[4], 0, 1)
         else:
             print("Gate '{}' not yet supported'".format(self.gate_name))
 
-        angles = np.array(self.angles)  # convert from JAX array to numpy array if applicable.
-
+        # Apply single-qubit gates.
         qc.ry(angles[0], 0)
         qc.rx(angles[1], 0)
         qc.ry(angles[2], 1)
@@ -41,6 +47,8 @@ class EntanglingBlock:
             entangling_matrix = cx_mat
         elif self.gate_name == 'cz':
             entangling_matrix = cz_mat
+        elif self.gate_name == 'cp':
+            entangling_matrix = cp_mat(self.angles[4])
         else:
             print("Gate '{}' not yet supported'".format(self.gate_name))
 
