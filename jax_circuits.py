@@ -73,9 +73,10 @@ def unitary_update(loss_and_grad, opt, opt_state, angles):
 
 
 def unitary_learn(u_func, u_target, n_angles,
-                  init_angles=None, key=random.PRNGKey(0),
+                  init_angles=None,
                   learning_rate=0.01, num_iterations=5000,
                   target_disc=1e-10):
+
     if init_angles is None:
         key = random.PRNGKey(0)
         angles = random.uniform(key, shape=(n_angles,), minval=0, maxval=2 * jnp.pi)
