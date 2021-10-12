@@ -82,7 +82,7 @@ def unitary_update(loss_and_grad, opt, opt_state, angles):
 
 def unitary_learn(u_func, u_target, n_angles,
                   init_angles=None,
-                  penalty_options=None,
+                  regularization_options=None,
                   learning_rate=0.01, num_iterations=5000,
                   target_disc=1e-10):
 
@@ -95,8 +95,8 @@ def unitary_learn(u_func, u_target, n_angles,
     def loss_func(angles):
         loss0 = disc(u_func(angles), u_target)
         reg = 0
-        if penalty_options is not None:
-            reg = penalty_func(penalty_options)(angles)
+        if regularization_options is not None:
+            reg = penalty(angles, regularization_options)
         return loss0 + reg
 
     loss_and_grad = value_and_grad(loss_func)
@@ -155,12 +155,15 @@ def split_angles(angles, num_qubits, block_type, layer_len, num_layers):
             'free block angles': free_block_angles}
 
 
-def control_angles(angles, num_qubits, block_type):
+def control_angles(num_angles, num_qubits, block_type):
     assert block_type == 'cp', 'other block types not supported'
     n_block_angles = EntanglingBlock.n_angles('cp')
+    angles = np.array(list(range(num_angles)))
     block_angles = angles[3 * num_qubits:].reshape(-1, n_block_angles)
     # Last angle in each block is the control angle
-    return [a[-1] for a in block_angles]
+    control_indices = [a[-1] for a in block_angles]
+    control_mask = [int(i in control_indices) for i in range(num_angles)]
+    return np.array(control_mask)
 
 
 def build_unitary(num_qubits, block_type, placements, angles):
@@ -254,3 +257,6 @@ class Ansatz:
         u_func = self.unitary
         return unitary_learn(u_func, u_target, self.num_angles, **kwargs)
 
+
+# a = Ansatz(2, 'cp', placements={'free':[[0,1]]})
+# reg_options = {'function': 'linear', ''}

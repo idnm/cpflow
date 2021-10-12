@@ -37,7 +37,7 @@ def cp_penalty_linear(a, height, threshold):
     return jnp.piecewise(a, segments, functions)
 
 
-def penalty_func(options):
+def penalty(angles, options):
     # array of 0 and 1 specifying which angles are angles of cp gates and must be penalized.
     penalized_angles = jnp.array(options['angles'])
     penalty_function = options['function']
@@ -45,10 +45,10 @@ def penalty_func(options):
     reg = options['regularization']  # How much weight to put on regularization term.
 
     if penalty_function == 'trig':
-        return lambda angles: reg * cp_penalty_trig(angles * penalized_angles, h).sum()
+        return reg * cp_penalty_trig(angles * penalized_angles, h).sum()
     elif penalty_function == 'linear':
         t = options['threshold']
-        return lambda angles: reg * cp_penalty_linear(angles * penalized_angles, h, t).sum()
+        return reg * cp_penalty_linear(angles * penalized_angles, h, t).sum()
 
 ### To get a feel for what a_t is doing run:
 
