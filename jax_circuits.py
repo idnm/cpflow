@@ -230,7 +230,10 @@ class Ansatz:
 
         self.unitary = lambda angles: build_unitary(self.num_qubits, self.block_type, self.placements, angles)
 
-    def circuit(self, angles):
+        if self.block_type == 'cp':
+            self.control_angles = control_angles(self.num_angles, self.num_qubits, 'cp')
+
+    def circuit(self, angles=None):
         if angles is None:
             angles = np.array([Parameter('a{}'.format(i)) for i in range(self.num_angles)])
         angles_dict = split_angles(angles, self.num_qubits, self.block_type, len(self.layer), self.num_layers)
