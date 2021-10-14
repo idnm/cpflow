@@ -72,6 +72,12 @@ def disc(u, u_target):
     return 1 - jnp.abs((u.conj() * u_target).sum()) / n
 
 
+def disc2(u, u_target):
+    """Discrepancy between two unitary matrices."""
+    n = u_target.shape[0]
+    return 1 - jnp.abs((u.conj() * u_target).sum())**2 / n**2
+
+
 def trace_product(u, v):
     return (u * v.conj().T).sum()
 
@@ -102,6 +108,46 @@ def shift_trace2_jvp(u, v, primals, tangents):
     der = (tr_shifted_vector * tr.conj()).real * tangent_angels
 
     return ans, der.sum()
+
+
+def min_angle(F):
+    """Maximum angle of a periodic function F = F_0 cos x + F_1 sin x+F_const"""
+
+    F_0 = F(0)
+    F_1 = F(jnp.pi/2)
+    F_2 = F(jnp.pi)
+
+    F_const = (F_0+F_2)/2
+    a = F_0 - F_const
+    b = F_1 - F_const
+
+    return jnp.arctan(b/a)+jnp.pi*jnp.heaviside(a, 0.5)
+
+
+def staircase_min(f, n_angles, initial_angles=None, n_iterations=100):
+    if initial_angles is None:
+        initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2*jnp.pi, shape=(n_angles, ))
+
+    def choose_angle(iteration):
+        return iteration % n_angles
+
+    @jit
+    def body(i, angles_history):
+        current_angles = angles_history[i]
+        n = choose_angle(i)
+        a_n_min = min_angle(lambda a: f(current_angles.at[n].set(a)))
+        new_angles = current_angles.at[n].set(a_n_min)
+
+        return angles_history.at[i+1].set(new_angles)
+
+    angles_history = jnp.zeros(shape=(n_iterations, n_angles))
+    angles_history = angles_history.at[0].set(initial_angles)
+
+    return lax.fori_loop(0, n_iterations, body, angles_history)
+
+
+def f(x):
+    return jnp.cos(x[0]/2)+jnp.sin(x[1]/2)
 
 
 @partial(jit, static_argnums=(0, 1,))
