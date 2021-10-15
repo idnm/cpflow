@@ -75,7 +75,7 @@ def disc(u, u_target):
 def disc2(u, u_target):
     """Discrepancy between two unitary matrices."""
     n = u_target.shape[0]
-    return 1 - jnp.abs((u.conj() * u_target).sum())**2 / n**2
+    return 1 - jnp.abs((u.conj() * u_target).sum()) ** 2 / n ** 2
 
 
 def trace_product(u, v):
@@ -83,15 +83,15 @@ def trace_product(u, v):
 
 
 def trace2(u, v, angles):
-    return jnp.abs(trace_product(u(angles), v))**2
+    return jnp.abs(trace_product(u(angles), v)) ** 2
 
 
 def all_shifts(u, angles, s):
     basis_shifts = jnp.identity(len(angles))
-    return vmap(lambda x: u(angles+x))(s*basis_shifts)
+    return vmap(lambda x: u(angles + x))(s * basis_shifts)
 
 
-@partial(custom_jvp, nondiff_argnums=(0, 1, ))
+@partial(custom_jvp, nondiff_argnums=(0, 1,))
 def shift_trace2(u, v, angles):
     return trace2(u, v, angles)
 
@@ -104,7 +104,7 @@ def shift_trace2_jvp(u, v, primals, tangents):
     tr = trace_product(u(angles), v)
     tr_shifted_vector = all_shifts(lambda a: trace_product(u(a), v), angles, jnp.pi)
 
-    ans = jnp.abs(tr)**2
+    ans = jnp.abs(tr) ** 2
     der = (tr_shifted_vector * tr.conj()).real * tangent_angels
 
     return ans, der.sum()
@@ -113,20 +113,67 @@ def shift_trace2_jvp(u, v, primals, tangents):
 def min_angle(F):
     """Maximum angle of a periodic function F = F_0 cos x + F_1 sin x+F_const"""
 
+    # Need to fix numerical instability near a =0 !
     F_0 = F(0)
-    F_1 = F(jnp.pi/2)
+    F_1 = F(jnp.pi / 2)
     F_2 = F(jnp.pi)
 
-    F_const = (F_0+F_2)/2
+    F_const = (F_0 + F_2) / 2
     a = F_0 - F_const
     b = F_1 - F_const
 
-    return jnp.arctan(b/a)+jnp.pi*jnp.heaviside(a, 0.5)
+    return jnp.arctan(b / a) + jnp.pi * jnp.heaviside(a, 0.5)
+
+
+def my_partial(F, angles, i):
+    return lambda a: F(angles.at[i].set(a))
+
+
+def min_angles(F, angles, s0, s1):
+    def one_min_angle(i):
+        return min_angle(my_partial(F, angles, i))
+
+    return vmap(one_min_angle)(jnp.arange(s0, s1))
+
+
+def splits(n_angles, n_moving_angles):
+    return [i*n_moving_angles for i in range(-(-n_angles//n_moving_angles))]
+
+
+def partial_update_angles(F, angles, s, n_moving_angles):
+    updated_angles = min_angles(F, angles, s, s+n_moving_angles)
+    angles = jnp.concatenate([angles[:s], updated_angles, angles[s+n_moving_angles:]])
+    return angles
+
+
+# @partial(jit, static_argnums=(1, 2, 3, ))
+def update_angles(angles, f, n_angles, n_moving_angles):
+    s = jnp.array(splits(n_angles, n_moving_angles))
+
+    def body(i, angles):
+        return partial_update_angles(f, angles, s[i], n_moving_angles)
+
+    for i in range(len(s)):
+        angles = body(i, angles)
+
+    return angles
+
+
+def staircase_min_batch(f, n_angles, initial_angles=None, n_iterations=100, n_moving_angles=1):
+    if initial_angles is None:
+        initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2 * jnp.pi, shape=(n_angles,))
+    angles = initial_angles
+    angles_history = [angles]
+
+    for _ in range(n_iterations):
+        angles = update_angles(angles, f, n_angles, n_moving_angles)
+        angles_history.append(angles)
+    return angles_history
 
 
 def staircase_min(f, n_angles, initial_angles=None, n_iterations=100):
     if initial_angles is None:
-        initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2*jnp.pi, shape=(n_angles, ))
+        initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2 * jnp.pi, shape=(n_angles,))
 
     def choose_angle(iteration):
         return iteration % n_angles
@@ -138,16 +185,13 @@ def staircase_min(f, n_angles, initial_angles=None, n_iterations=100):
         a_n_min = min_angle(lambda a: f(current_angles.at[n].set(a)))
         new_angles = current_angles.at[n].set(a_n_min)
 
-        return angles_history.at[i+1].set(new_angles)
+        return angles_history.at[i + 1].set(new_angles)
 
     angles_history = jnp.zeros(shape=(n_iterations, n_angles))
     angles_history = angles_history.at[0].set(initial_angles)
 
     return lax.fori_loop(0, n_iterations, body, angles_history)
 
-
-def f(x):
-    return jnp.cos(x[0]/2)+jnp.sin(x[1]/2)
 
 
 @partial(jit, static_argnums=(0, 1,))
@@ -163,7 +207,6 @@ def unitary_learn(u_func, u_target, n_angles,
                   regularization_options=None,
                   learning_rate=0.01, num_iterations=5000,
                   target_disc=1e-10):
-
     if init_angles is None:
         key = random.PRNGKey(0)
         angles = random.uniform(key, shape=(n_angles,), minval=0, maxval=2 * jnp.pi)
@@ -219,7 +262,6 @@ def apply_gate_to_tensor(gate, tensor, placement):
 
 
 def split_angles(angles, num_qubits, block_type, layer_len, num_layers):
-
     n_block_angles = EntanglingBlock.n_angles(block_type)
 
     surface_angles = angles[:3 * num_qubits].reshape(num_qubits, 3)
@@ -245,7 +287,6 @@ def control_angles(num_angles, num_qubits, block_type):
 
 
 def build_unitary(num_qubits, block_type, placements, angles):
-
     layer, num_layers = placements['layers']
     free_placements = placements['free']
 
@@ -337,7 +378,6 @@ class Ansatz:
     def learn(self, u_target, **kwargs):
         u_func = self.unitary
         return unitary_learn(u_func, u_target, self.num_angles, **kwargs)
-
 
 # a = Ansatz(2, 'cp', placements={'free':[[0,1]]})
 # reg_options = {'function': 'linear', ''}
