@@ -69,45 +69,13 @@ class EntanglingBlock:
 def disc(u, u_target):
     """Discrepancy between two unitary matrices."""
     n = u_target.shape[0]
-    return 1 - jnp.abs((u.conj() * u_target).sum()) / n
+    return 1 - jnp.abs((u * u_target.conj()).sum()) / n
 
 
 def disc2(u, u_target):
     """Discrepancy between two unitary matrices."""
     n = u_target.shape[0]
-    return 1 - jnp.abs((u.conj() * u_target).sum()) ** 2 / n ** 2
-
-
-def trace_product(u, v):
-    return (u * v.conj().T).sum()
-
-
-def trace2(u, v, angles):
-    return jnp.abs(trace_product(u(angles), v)) ** 2
-
-
-def all_shifts(u, angles, s):
-    basis_shifts = jnp.identity(len(angles))
-    return vmap(lambda x: u(angles + x))(s * basis_shifts)
-
-
-@partial(custom_jvp, nondiff_argnums=(0, 1,))
-def shift_trace2(u, v, angles):
-    return trace2(u, v, angles)
-
-
-@shift_trace2.defjvp
-def shift_trace2_jvp(u, v, primals, tangents):
-    angles, = primals
-    tangent_angels, = tangents
-
-    tr = trace_product(u(angles), v)
-    tr_shifted_vector = all_shifts(lambda a: trace_product(u(a), v), angles, jnp.pi)
-
-    ans = jnp.abs(tr) ** 2
-    der = (tr_shifted_vector * tr.conj()).real * tangent_angels
-
-    return ans, der.sum()
+    return 1 - jnp.abs((u * u_target.conj()).sum()) ** 2 / n ** 2
 
 
 def min_angle(F):
@@ -125,13 +93,9 @@ def min_angle(F):
     return jnp.arctan(b / a) + jnp.pi * jnp.heaviside(a, 0.5)
 
 
-def my_partial(F, angles, i):
-    return lambda a: F(angles.at[i].set(a))
-
-
 def min_angles(F, angles, s0, s1):
     def one_min_angle(i):
-        return min_angle(my_partial(F, angles, i))
+        return min_angle(lambda a: F(angles.at[i].set(a)))
 
     return vmap(one_min_angle)(jnp.arange(s0, s1))
 
@@ -146,98 +110,88 @@ def partial_update_angles(F, angles, s, n_moving_angles):
     return angles
 
 
-# @partial(jit, static_argnums=(1, 2, 3, ))
-def update_angles(angles, f, n_angles, n_moving_angles):
-    s = jnp.array(splits(n_angles, n_moving_angles))
+@partial(jit, static_argnums=(0, ))
+def staircase_update(f, angles):
 
-    def body(i, angles):
-        return partial_update_angles(f, angles, s[i], n_moving_angles)
+    def body(i, angs):
+        a_i_min = min_angle(lambda a: f(angs.at[i].set(a)))
+        return angs.at[i].set(a_i_min)
 
-    for i in range(len(s)):
-        angles = body(i, angles)
-
-    return angles
+    return lax.fori_loop(0, len(angles), body, angles)
 
 
-def staircase_min_batch(f, n_angles, initial_angles=None, n_iterations=100, n_moving_angles=1):
+def staircase_min(f, n_angles, initial_angles=None, n_iterations=100, keep_history=False):
     if initial_angles is None:
         initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2 * jnp.pi, shape=(n_angles,))
+
     angles = initial_angles
     angles_history = [angles]
 
     for _ in range(n_iterations):
-        angles = update_angles(angles, f, n_angles, n_moving_angles)
-        angles_history.append(angles)
-    return angles_history
+        angles = staircase_update(f, angles)
+        if keep_history:
+            angles_history.append(angles)
+
+    angles_history = jnp.array(angles_history)
+    if keep_history:
+        loss_history = vmap(jit(f))(angles_history)
+        return angles_history, loss_history
+
+    return angles
 
 
-def staircase_min(f, n_angles, initial_angles=None, n_iterations=100):
-    if initial_angles is None:
-        initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2 * jnp.pi, shape=(n_angles,))
-
-    def choose_angle(iteration):
-        return iteration % n_angles
-
-    @jit
-    def body(i, angles_history):
-        current_angles = angles_history[i]
-        n = choose_angle(i)
-        a_n_min = min_angle(lambda a: f(current_angles.at[n].set(a)))
-        new_angles = current_angles.at[n].set(a_n_min)
-
-        return angles_history.at[i + 1].set(new_angles)
-
-    angles_history = jnp.zeros(shape=(n_iterations, n_angles))
-    angles_history = angles_history.at[0].set(initial_angles)
-
-    return lax.fori_loop(0, n_iterations, body, angles_history)
-
+def staircase_learn(u_func, u_target, n_angles, **kwargs):
+    return staircase_min(lambda angles: disc2(u_func(angles), u_target), n_angles, **kwargs)
 
 
 @partial(jit, static_argnums=(0, 1,))
-def unitary_update(loss_and_grad, opt, opt_state, angles):
+def gradient_descent_update(loss_and_grad, opt, opt_state, angles):
     loss, grads = loss_and_grad(angles)
     updates, opt_state = opt.update(grads, opt_state)
     angles = optax.apply_updates(angles, updates)
     return angles, opt_state, loss
 
 
-def unitary_learn(u_func, u_target, n_angles,
-                  init_angles=None,
-                  regularization_options=None,
-                  learning_rate=0.01, num_iterations=5000,
-                  target_disc=1e-10):
-    if init_angles is None:
+def gradient_descent_learn(u_func, u_target, n_angles,
+                           initial_angles=None,
+                           learning_rate=0.01, n_iterations=5000,
+                           target_disc=1e-10):
+    if initial_angles is None:
         key = random.PRNGKey(0)
         angles = random.uniform(key, shape=(n_angles,), minval=0, maxval=2 * jnp.pi)
     else:
-        angles = init_angles
+        angles = initial_angles
 
-    def loss_func(angles):
-        loss0 = disc(u_func(angles), u_target)
-        reg = 0
-        if regularization_options is not None:
-            reg = penalty(angles, regularization_options)
-        return loss0 + reg
-
-    loss_and_grad = value_and_grad(loss_func)
+    loss_and_grad = value_and_grad(lambda angles: disc2(u_func(angles), u_target))
 
     opt = optax.adam(learning_rate)
     opt_state = opt.init(angles)
 
-    def update(angles, opt_state):
-        return unitary_update(loss_and_grad, opt, opt_state, angles)
-
     angles_history = []
     loss_history = []
-    for _ in range(num_iterations):
-        angles, opt_state, loss = update(angles, opt_state)
+    for _ in range(n_iterations):
+        angles, opt_state, loss = gradient_descent_update(loss_and_grad, opt, opt_state, angles)
         angles_history.append(angles)
         loss_history.append(loss)
         if loss < target_disc:
             break
 
-    return angles_history, loss_history
+    return jnp.array(angles_history), jnp.array(loss_history)
+
+
+def hybrid_learn(u_func, u_target, n_angles, n_stairs=10, **kwargs):
+    gd_kwargs = kwargs.copy()
+    sc_kwargs = kwargs
+    sc_kwargs.update({'n_iterations': n_stairs})
+
+    sc_angles_history, sc_loss_history = staircase_learn(u_func, u_target, n_angles, **sc_kwargs)
+
+    gd_init_angles = sc_angles_history[-1]
+    gd_kwargs.update({'initial_angles': gd_init_angles})
+    gd_kwargs.pop('keep_history', None)
+    gd_angles_history, gd_loss_history = gradient_descent_learn(u_func, u_target, n_angles, **gd_kwargs)
+
+    return jnp.concatenate([sc_angles_history, gd_angles_history]), jnp.concatenate([sc_loss_history, gd_loss_history])
 
 
 def transposition(n, placement):
@@ -261,13 +215,13 @@ def apply_gate_to_tensor(gate, tensor, placement):
     return jnp.transpose(contraction, axes=t)
 
 
-def split_angles(angles, num_qubits, block_type, layer_len, num_layers):
+def split_angles(angles, n_qubits, block_type, layer_len, n_layers):
     n_block_angles = EntanglingBlock.n_angles(block_type)
 
-    surface_angles = angles[:3 * num_qubits].reshape(num_qubits, 3)
-    block_angles = angles[3 * num_qubits:].reshape(-1, n_block_angles)
-    layers_angles = block_angles[:layer_len * num_layers].reshape(num_layers, layer_len, n_block_angles)
-    free_block_angles = block_angles[layer_len * num_layers:]
+    surface_angles = angles[:3 * n_qubits].reshape(n_qubits, 3)
+    block_angles = angles[3 * n_qubits:].reshape(-1, n_block_angles)
+    layers_angles = block_angles[:layer_len * n_layers].reshape(n_layers, layer_len, n_block_angles)
+    free_block_angles = block_angles[layer_len * n_layers:]
 
     return {'surface angles': surface_angles,
             'block angles': block_angles,
@@ -275,30 +229,19 @@ def split_angles(angles, num_qubits, block_type, layer_len, num_layers):
             'free block angles': free_block_angles}
 
 
-def control_angles(num_angles, num_qubits, block_type):
-    assert block_type == 'cp', 'other block types not supported'
-    n_block_angles = EntanglingBlock.n_angles('cp')
-    angles = np.array(list(range(num_angles)))
-    block_angles = angles[3 * num_qubits:].reshape(-1, n_block_angles)
-    # Last angle in each block is the control angle
-    control_indices = [a[-1] for a in block_angles]
-    control_mask = [int(i in control_indices) for i in range(num_angles)]
-    return np.array(control_mask)
-
-
-def build_unitary(num_qubits, block_type, placements, angles):
-    layer, num_layers = placements['layers']
+def build_unitary(n_qubits, block_type, placements, angles):
+    layer, n_layers = placements['layers']
     free_placements = placements['free']
 
     layer_depth = len(layer)
 
-    angles_dict = split_angles(angles, num_qubits, block_type, len(layer), num_layers)
+    angles_dict = split_angles(angles, n_qubits, block_type, len(layer), n_layers)
 
     surface_angles = angles_dict['surface angles']
     layers_angles = angles_dict['layers angles']
     free_block_angles = angles_dict['free block angles']
 
-    u = jnp.identity(2 ** num_qubits).reshape([2] * num_qubits * 2)
+    u = jnp.identity(2 ** n_qubits).reshape([2] * n_qubits * 2)
 
     # Initial round of single-qubit gates
     for i, a in enumerate(surface_angles):
@@ -306,7 +249,7 @@ def build_unitary(num_qubits, block_type, placements, angles):
         u = apply_gate_to_tensor(gate, u, [i])
 
     # Sequence of layers wrapped in fori_loop.
-    layers_angles = layers_angles.reshape(num_layers, layer_depth, EntanglingBlock.n_angles(block_type))
+    layers_angles = layers_angles.reshape(n_layers, layer_depth, EntanglingBlock.n_angles(block_type))
 
     def apply_layer(i, u, layer, layers_angles):
         angles = layers_angles[i]
@@ -317,50 +260,47 @@ def build_unitary(num_qubits, block_type, placements, angles):
 
         return u
 
-    if num_layers > 0:
-        u = lax.fori_loop(0, num_layers, lambda i, u: apply_layer(i, u, layer, layers_angles), u)
+    if n_layers > 0:
+        u = lax.fori_loop(0, n_layers, lambda i, u: apply_layer(i, u, layer, layers_angles), u)
 
     # Add remainder(free) blocks.
     for a, p in zip(free_block_angles, free_placements):
         gate = EntanglingBlock(block_type, a).unitary().reshape(2, 2, 2, 2)
         u = apply_gate_to_tensor(gate, u, p)
 
-    return u.reshape(2 ** num_qubits, 2 ** num_qubits)
+    return u.reshape(2 ** n_qubits, 2 ** n_qubits)
 
 
 class Ansatz:
 
-    def __init__(self, num_qubits, block_type, placements):
+    def __init__(self, n_qubits, block_type, placements):
 
-        self.num_qubits = num_qubits
+        self.n_qubits = n_qubits
         self.block_type = block_type
 
         placements.setdefault('layers', [[], 0])
         placements.setdefault('free', [])
         self.placements = placements
 
-        self.layer, self.num_layers = placements['layers']
+        self.layer, self.n_layers = placements['layers']
         self.free_placements = placements['free']
 
-        self.all_placements = self.layer * self.num_layers + self.free_placements
+        self.all_placements = self.layer * self.n_layers + self.free_placements
 
         n_block_angles = EntanglingBlock.n_angles(block_type)
-        self.num_angles = 3 * num_qubits + n_block_angles * len(self.all_placements)
+        self.n_angles = 3 * n_qubits + n_block_angles * len(self.all_placements)
 
-        self.unitary = lambda angles: build_unitary(self.num_qubits, self.block_type, self.placements, angles)
-
-        if self.block_type == 'cp':
-            self.control_angles = control_angles(self.num_angles, self.num_qubits, 'cp')
+        self.unitary = lambda angles: build_unitary(self.n_qubits, self.block_type, self.placements, angles)
 
     def circuit(self, angles=None):
         if angles is None:
-            angles = np.array([Parameter('a{}'.format(i)) for i in range(self.num_angles)])
-        angles_dict = split_angles(angles, self.num_qubits, self.block_type, len(self.layer), self.num_layers)
+            angles = np.array([Parameter('a{}'.format(i)) for i in range(self.n_angles)])
+        angles_dict = split_angles(angles, self.n_qubits, self.block_type, len(self.layer), self.n_layers)
 
         surface_angles = angles_dict['surface angles']
         block_angles = angles_dict['block angles']
 
-        qc = QuantumCircuit(self.num_qubits)
+        qc = QuantumCircuit(self.n_qubits)
 
         # Initial round of single-qubit gates
         for n, a in enumerate(surface_angles):
@@ -377,7 +317,54 @@ class Ansatz:
 
     def learn(self, u_target, **kwargs):
         u_func = self.unitary
-        return unitary_learn(u_func, u_target, self.num_angles, **kwargs)
+        return gradient_descent_learn(u_func, u_target, self.n_angles, **kwargs)
 
-# a = Ansatz(2, 'cp', placements={'free':[[0,1]]})
-# reg_options = {'function': 'linear', ''}
+
+
+# def learn_disc(u_func, u_target, n_angles, n_iterations=100, n_evaluations=10):
+#     @jit
+#     def u_disc(angles):
+#         return disc2(u_func(angles), u_target)
+#
+#     def one_estimation(k):
+#         initial_angles = random.uniform(random.PRNGKey(k), shape=(n_angles, ), minval=0, maxval=2*jnp.pi)
+#         angles = staircase_min(u_disc, n_angles, initial_angles=initial_angles, n_iterations=n_iterations)
+#         return angles
+#
+#     estimations = vmap(one_estimation)(jnp.arange(n_evaluations))
+#     discs = vmap(u_disc)(estimations)
+#
+#     min_disc = jnp.min(discs)
+#     minimizing_angles = estimations[jnp.argmin(discs)]
+#
+#     return minimizing_angles, min_disc
+#
+#
+# def unitary_fitness(u_func, u_target, n_angles, n_gates, **kwargs):
+#     _, disc = learn_disc(u_func, u_target, n_angles, **kwargs)
+#     return 1-disc + 1/(n_gates+1)
+#
+
+# @partial(jit, static_argnums=(1, 2, 3, ))
+# def update_angles(angles, f, n_angles, n_moving_angles):
+#     s = jnp.array(splits(n_angles, n_moving_angles))
+#
+#     def body(i, angles):
+#         return partial_update_angles(f, angles, s[i], n_moving_angles)
+#
+#     for i in range(len(s)):
+#         angles = body(i, angles)
+#
+#     return angles
+#
+#
+# def staircase_min_batch(f, n_angles, initial_angles=None, n_iterations=100, n_moving_angles=1):
+#     if initial_angles is None:
+#         initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2 * jnp.pi, shape=(n_angles,))
+#     angles = initial_angles
+#     angles_history = [angles]
+#
+#     for _ in range(n_iterations):
+#         angles = update_angles(angles, f, n_angles, n_moving_angles)
+#         angles_history.append(angles)
+#     return angles_history
