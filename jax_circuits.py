@@ -13,6 +13,10 @@ from gates import *
 from penalty import *
 
 
+def TLB(n):
+    return int((4**n-3*n-1)/4 + 1)
+
+
 # Class for a single building block
 class EntanglingBlock:
     def __init__(self, gate_name, angles):
@@ -66,6 +70,10 @@ class EntanglingBlock:
         return x_rotations @ y_rotations @ entangling_matrix
 
 
+def trace_prod(u, v):
+    return (u.conj().T * v).sum()
+
+
 def disc(u, u_target):
     """Discrepancy between two unitary matrices."""
     n = u_target.shape[0]
@@ -82,6 +90,7 @@ def min_angle(F):
     """Maximum angle of a periodic function F = F_0 cos x + F_1 sin x+F_const"""
 
     # Need to fix numerical instability near a =0 !
+
     F_0 = F(0)
     F_1 = F(jnp.pi / 2)
     F_2 = F(jnp.pi)
@@ -90,7 +99,12 @@ def min_angle(F):
     a = F_0 - F_const
     b = F_1 - F_const
 
-    return jnp.arctan(b / a) + jnp.pi * jnp.heaviside(a, 0.5)
+    res = lax.cond(a == 0,
+                   lambda _: -jnp.pi/2 * jnp.sign(b),
+                   lambda _: jnp.arctan(b / a) + jnp.pi * jnp.heaviside(a, 0.5),
+                   operand=None)
+
+    return res
 
 
 def min_angles(F, angles, s0, s1):
@@ -158,25 +172,36 @@ def gradient_descent_learn(u_func, u_target, n_angles,
                            target_disc=1e-10):
     if initial_angles is None:
         key = random.PRNGKey(0)
-        angles = random.uniform(key, shape=(n_angles,), minval=0, maxval=2 * jnp.pi)
+        initial_angles = random.uniform(key, shape=(n_angles,), minval=0, maxval=2 * jnp.pi)
+
+    if len(initial_angles.shape) == 1:
+        all_angles = [initial_angles]
+    elif len(initial_angles.shape) > 2:
+        print('initial angles must be a list or an array of lists, got shape {}'.format(initial_angles.shape))
+        return
     else:
-        angles = initial_angles
+        all_angles = initial_angles
 
-    loss_and_grad = value_and_grad(lambda angles: disc2(u_func(angles), u_target))
-
+    loss_and_grad = value_and_grad(lambda angs: disc2(u_func(angs), u_target))
     opt = optax.adam(learning_rate)
-    opt_state = opt.init(angles)
 
-    angles_history = []
-    loss_history = []
-    for _ in range(n_iterations):
-        angles, opt_state, loss = gradient_descent_update(loss_and_grad, opt, opt_state, angles)
-        angles_history.append(angles)
-        loss_history.append(loss)
-        if loss < target_disc:
-            break
+    all_angles_and_loss_histories = []
+    for angles in all_angles:
+        opt_state = opt.init(angles)
+        angles_history = []
+        loss_history = []
+        for _ in range(n_iterations):
+            angles, opt_state, loss = gradient_descent_update(loss_and_grad, opt, opt_state, angles)
+            angles_history.append(angles)
+            loss_history.append(loss)
+            if loss < target_disc:
+                break
+        all_angles_and_loss_histories.append([angles_history, loss_history])
 
-    return jnp.array(angles_history), jnp.array(loss_history)
+    if len(initial_angles.shape) == 1:
+        return all_angles_and_loss_histories[0]
+    else:
+        return all_angles_and_loss_histories
 
 
 def hybrid_learn(u_func, u_target, n_angles, n_stairs=10, **kwargs):
