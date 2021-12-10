@@ -71,7 +71,7 @@ class EntanglingBlock:
 
 
 def trace_prod(u, v):
-    return (u.conj().T * v).sum()
+    return (u.conj() * v).sum()
 
 
 def disc(u, u_target):

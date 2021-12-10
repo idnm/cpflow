@@ -1,17 +1,8 @@
+""""Matrix representations of some quantum gates."""
+
 import jax.numpy as jnp
 
-
-# Matrix representations of CNOT, CZ and single-qubit rotations.
-
-cx_mat = jnp.array([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 0, 1],
-                    [0, 0, 1, 0]])
-
-cz_mat = jnp.array([[1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, -1]])
+# Single-qubit pauli gates.
 
 x_mat = jnp.array([[0, 1],
                    [1, 0]])
@@ -23,20 +14,42 @@ z_mat = jnp.array([[1, 0],
                    [0, -1]])
 
 
+# Single-qubit rotation gates.
+
+def rotation_matrix(mat, a):
+    return jnp.cos(a / 2) * jnp.identity(2) - 1j * mat * jnp.sin(a / 2)
+
+
 def rx_mat(a):
-    return jnp.cos(a / 2) * jnp.identity(2) - 1j * x_mat * jnp.sin(a / 2)
+    return rotation_matrix(x_mat, a)
 
 
 def ry_mat(a):
-    return jnp.cos(a / 2) * jnp.identity(2) - 1j * y_mat * jnp.sin(a / 2)
+    return rotation_matrix(y_mat, a)
 
 
 def rz_mat(a):
-    return jnp.cos(a / 2) * jnp.identity(2) - 1j * z_mat * jnp.sin(a / 2)
+    return rotation_matrix(z_mat, a)
+
+# Two-qubit gates.
+
+
+cx_mat = jnp.array([[1, 0, 0, 0],  # cx is the same as CNOT
+                    [0, 1, 0, 0],
+                    [0, 0, 0, 1],
+                    [0, 0, 1, 0]])
+
+cz_mat = jnp.array([[1, 0, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, -1]])
 
 
 def cp_mat(a):
-    phase_gate = jnp.array([[1,0],[0,jnp.exp(1j*a)]])
-    control0 = jnp.kron(jnp.array([[1, 0], [0, 0]]),jnp.identity(2))
+    """Controlled-phase gate. For a=0, 2pi it is identity, for a=pi it is CZ."""
+
+    phase_gate = jnp.array([[1, 0], [0, jnp.exp(1j*a)]])
+    control0 = jnp.kron(jnp.array([[1, 0], [0, 0]]), jnp.identity(2))
     control1 = jnp.kron(jnp.array([[0, 0], [0, 1]]), phase_gate)
+    
     return control0+control1
