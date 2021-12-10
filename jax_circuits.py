@@ -95,7 +95,7 @@ def build_unitary(n_qubits, block_type, placements, angles):
     free_placements = placements['free']
 
     layer_depth = len(layer)
-    n_block_angles = EntanglingBlock(block_type).num_angles()
+    n_block_angles = EntanglingBlock.num_angles(block_type)
 
     angles_dict = split_angles(angles, n_qubits, n_block_angles, len(layer), n_layers)
 
@@ -157,7 +157,9 @@ class Ansatz:
     def circuit(self, angles=None):
         if angles is None:
             angles = np.array([Parameter('a{}'.format(i)) for i in range(self.n_angles)])
-        angles_dict = split_angles(angles, self.n_qubits, self.block_type, len(self.layer), self.n_layers)
+
+        num_block_angles = EntanglingBlock.num_angles(self.block_type)
+        angles_dict = split_angles(angles, self.n_qubits, num_block_angles, len(self.layer), self.n_layers)
 
         surface_angles = angles_dict['surface angles']
         block_angles = angles_dict['block angles']
@@ -180,7 +182,6 @@ class Ansatz:
     def learn(self, u_target, **kwargs):
         u_func = self.unitary
         return gradient_descent_learn(u_func, u_target, self.n_angles, **kwargs)
-
 
 
 # def learn_disc(u_func, u_target, n_angles, n_iterations=100, n_evaluations=10):

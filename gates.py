@@ -53,3 +53,5 @@ def cp_mat(a):
     control1 = jnp.kron(jnp.array([[0, 0], [0, 1]]), phase_gate)
 
     return control0+control1
+
+new_mat = 'bss'
