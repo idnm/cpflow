@@ -77,12 +77,12 @@ class EntanglingBlock:
         return x_rotations @ y_rotations @ entangling_matrix
 
 
-def split_angles(angles, n_qubits, n_block_angles, layer_len, n_layers):
+def split_angles(angles, num_qubits, num_block_angles, layer_len, num_layers):
 
-    surface_angles = angles[:3 * n_qubits].reshape(n_qubits, 3)
-    block_angles = angles[3 * n_qubits:].reshape(-1, n_block_angles)
-    layers_angles = block_angles[:layer_len * n_layers].reshape(n_layers, layer_len, n_block_angles)
-    free_block_angles = block_angles[layer_len * n_layers:]
+    surface_angles = angles[:3 * num_qubits].reshape(num_qubits, 3)
+    block_angles = angles[3 * num_qubits:].reshape(-1, num_block_angles)
+    layers_angles = block_angles[:layer_len * num_layers].reshape(num_layers, layer_len, num_block_angles)
+    free_block_angles = block_angles[layer_len * num_layers:]
 
     return {'surface angles': surface_angles,
             'block angles': block_angles,
@@ -90,20 +90,20 @@ def split_angles(angles, n_qubits, n_block_angles, layer_len, n_layers):
             'free block angles': free_block_angles}
 
 
-def build_unitary(n_qubits, block_type, placements, angles):
-    layer, n_layers = placements['layers']
+def build_unitary(num_qubits, block_type, placements, angles):
+    layer, num_layers = placements['layers']
     free_placements = placements['free']
 
     layer_depth = len(layer)
-    n_block_angles = EntanglingBlock.num_angles(block_type)
+    num_block_angles = EntanglingBlock.num_angles(block_type)
 
-    angles_dict = split_angles(angles, n_qubits, n_block_angles, len(layer), n_layers)
+    angles_dict = split_angles(angles, num_qubits, num_block_angles, len(layer), num_layers)
 
     surface_angles = angles_dict['surface angles']
     layers_angles = angles_dict['layers angles']
     free_block_angles = angles_dict['free block angles']
 
-    u = jnp.identity(2 ** n_qubits).reshape([2] * n_qubits * 2)
+    u = jnp.identity(2 ** num_qubits).reshape([2] * num_qubits * 2)
 
     # Initial round of single-qubit gates
     for i, a in enumerate(surface_angles):
@@ -111,7 +111,7 @@ def build_unitary(n_qubits, block_type, placements, angles):
         u = apply_gate_to_tensor(gate, u, [i])
 
     # Sequence of layers wrapped in fori_loop.
-    layers_angles = layers_angles.reshape(n_layers, layer_depth, n_block_angles)
+    layers_angles = layers_angles.reshape(num_layers, layer_depth, num_block_angles)
 
     def apply_layer(i, u, layer, layers_angles):
         angles = layers_angles[i]
@@ -122,49 +122,49 @@ def build_unitary(n_qubits, block_type, placements, angles):
 
         return u
 
-    if n_layers > 0:
-        u = lax.fori_loop(0, n_layers, lambda i, u: apply_layer(i, u, layer, layers_angles), u)
+    if num_layers > 0:
+        u = lax.fori_loop(0, num_layers, lambda i, u: apply_layer(i, u, layer, layers_angles), u)
 
     # Add remainder(free) blocks.
     for a, p in zip(free_block_angles, free_placements):
         gate = EntanglingBlock(block_type, a).unitary().reshape(2, 2, 2, 2)
         u = apply_gate_to_tensor(gate, u, p)
 
-    return u.reshape(2 ** n_qubits, 2 ** n_qubits)
+    return u.reshape(2 ** num_qubits, 2 ** num_qubits)
 
 
 class Ansatz:
 
-    def __init__(self, n_qubits, block_type, placements):
+    def __init__(self, num_qubits, block_type, placements):
 
-        self.n_qubits = n_qubits
+        self.num_qubits = num_qubits
         self.block_type = block_type
 
         placements.setdefault('layers', [[], 0])
         placements.setdefault('free', [])
         self.placements = placements
 
-        self.layer, self.n_layers = placements['layers']
+        self.layer, self.num_layers = placements['layers']
         self.free_placements = placements['free']
 
-        self.all_placements = self.layer * self.n_layers + self.free_placements
+        self.all_placements = self.layer * self.num_layers + self.free_placements
 
-        n_block_angles = EntanglingBlock.num_angles(block_type)
-        self.n_angles = 3 * n_qubits + n_block_angles * len(self.all_placements)
+        num_block_angles = EntanglingBlock.num_angles(block_type)
+        self.num_angles = 3 * num_qubits + num_block_angles * len(self.all_placements)
 
-        self.unitary = lambda angles: build_unitary(self.n_qubits, self.block_type, self.placements, angles)
+        self.unitary = lambda angles: build_unitary(self.num_qubits, self.block_type, self.placements, angles)
 
     def circuit(self, angles=None):
         if angles is None:
-            angles = np.array([Parameter('a{}'.format(i)) for i in range(self.n_angles)])
+            angles = np.array([Parameter('a{}'.format(i)) for i in range(self.num_angles)])
 
         num_block_angles = EntanglingBlock.num_angles(self.block_type)
-        angles_dict = split_angles(angles, self.n_qubits, num_block_angles, len(self.layer), self.n_layers)
+        angles_dict = split_angles(angles, self.num_qubits, num_block_angles, len(self.layer), self.num_layers)
 
         surface_angles = angles_dict['surface angles']
         block_angles = angles_dict['block angles']
 
-        qc = QuantumCircuit(self.n_qubits)
+        qc = QuantumCircuit(self.num_qubits)
 
         # Initial round of single-qubit gates
         for n, a in enumerate(surface_angles):
@@ -181,7 +181,8 @@ class Ansatz:
 
     def learn(self, u_target, **kwargs):
         u_func = self.unitary
-        return gradient_descent_learn(u_func, u_target, self.n_angles, **kwargs)
+        cost_func = lambda angs: disc2(u_func(angs), u_target)
+        return gradient_descent_learn(cost_func, self.num_angles, **kwargs)
 
 
 # def learn_disc(u_func, u_target, n_angles, n_iterations=100, n_evaluations=10):

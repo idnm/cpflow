@@ -15,13 +15,13 @@ def gradient_descent_update(loss_and_grad, opt, opt_state, angles):
     return angles, opt_state, loss
 
 
-def gradient_descent_learn(u_func, u_target, n_angles,
+def gradient_descent_learn(cost_func, num_angles,
                            initial_angles=None,
                            learning_rate=0.01, n_iterations=5000,
                            target_disc=1e-10):
     if initial_angles is None:
         key = random.PRNGKey(0)
-        initial_angles = random.uniform(key, shape=(n_angles,), minval=0, maxval=2 * jnp.pi)
+        initial_angles = random.uniform(key, shape=(num_angles,), minval=0, maxval=2 * jnp.pi)
 
     if len(initial_angles.shape) == 1:
         all_angles = [initial_angles]
@@ -31,7 +31,7 @@ def gradient_descent_learn(u_func, u_target, n_angles,
     else:
         all_angles = initial_angles
 
-    loss_and_grad = value_and_grad(lambda angs: disc2(u_func(angs), u_target))
+    loss_and_grad = value_and_grad(cost_func)
     opt = optax.adam(learning_rate)
 
     all_angles_and_loss_histories = []
