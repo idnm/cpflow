@@ -1,0 +1,142 @@
+[I 2021-12-16 12:05:06.895 ServerApp] jupyterlab | extension was successfully linked.
+[I 2021-12-16 12:05:07.193 ServerApp] jupyter_nbextensions_configurator | extension was found and enabled by nbclassic. Consider moving the extension to Jupyter Server's extension paths.
+[I 2021-12-16 12:05:07.193 ServerApp] jupyter_nbextensions_configurator | extension was successfully linked.
+[I 2021-12-16 12:05:07.208 ServerApp] ipyparallel.nbextension | extension was found and enabled by nbclassic. Consider moving the extension to Jupyter Server's extension paths.
+[I 2021-12-16 12:05:07.209 ServerApp] ipyparallel.nbextension | extension was successfully linked.
+[I 2021-12-16 12:05:07.209 ServerApp] nbclassic | extension was successfully linked.
+[I 2021-12-16 12:05:07.247 ServerApp] nbclassic | extension was successfully loaded.
+[I 2021-12-16 12:05:07.247 ServerApp] Loading IPython parallel extension
+[I 2021-12-16 12:05:07.248 ServerApp] ipyparallel.nbextension | extension was successfully loaded.
+[I 2021-12-16 12:05:07.248 ServerApp] [jupyter_nbextensions_configurator] enabled 0.4.1
+[I 2021-12-16 12:05:07.248 ServerApp] jupyter_nbextensions_configurator | extension was successfully loaded.
+[I 2021-12-16 12:05:07.249 LabApp] JupyterLab extension loaded from /home/idnm/.local/lib/python3.8/site-packages/jupyterlab
+[I 2021-12-16 12:05:07.249 LabApp] JupyterLab application directory is /home/idnm/.local/share/jupyter/lab
+[I 2021-12-16 12:05:07.253 ServerApp] jupyterlab | extension was successfully loaded.
+[I 2021-12-16 12:05:07.253 ServerApp] Serving notebooks from local directory: /home/idnm/Programming projects/jax_circuits
+[I 2021-12-16 12:05:07.253 ServerApp] Jupyter Server 1.8.0 is running at:
+[I 2021-12-16 12:05:07.254 ServerApp] http://localhost:8888/lab?token=eeeb913e6bb5f0ec31f0c011720dc8878bcc743aaa027a63
+[I 2021-12-16 12:05:07.254 ServerApp]     http://127.0.0.1:8888/lab?token=eeeb913e6bb5f0ec31f0c011720dc8878bcc743aaa027a63
+[I 2021-12-16 12:05:07.254 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 2021-12-16 12:05:07.308 ServerApp] 
+    
+    To access the server, open this file in a browser:
+        file:///home/idnm/.local/share/jupyter/runtime/jpserver-36476-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:8888/lab?token=eeeb913e6bb5f0ec31f0c011720dc8878bcc743aaa027a63
+        http://127.0.0.1:8888/lab?token=eeeb913e6bb5f0ec31f0c011720dc8878bcc743aaa027a63
+[W 2021-12-16 12:05:13.089 ServerApp] 404 GET /spellchecker/language_manager?1639645512248 (127.0.0.1) 227.97ms referer=http://localhost:8888/lab
+[W 2021-12-16 12:05:13.646 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.648 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.671 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.683 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.819 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.830 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[I 2021-12-16 12:05:13.854 LabApp] Build is up to date
+[W 2021-12-16 12:05:13.877 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.889 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.908 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.915 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.943 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.950 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:13.985 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.001 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.005 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.038 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.118 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.126 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.147 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.162 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.843 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.854 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.867 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:14.876 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.257 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.313 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.434 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.475 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.512 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.522 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.588 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.623 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.727 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:15.746 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[I 2021-12-16 12:05:15.910 ServerApp] Kernel started: 98ec9afe-dc4c-44ab-a2e4-e01cb1c2d496
+[W 2021-12-16 12:05:16.310 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2021-12-16 12:05:16.404 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[I 2021-12-16 12:07:15.086 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:09:15.177 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:11:15.265 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:13:15.362 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:15:15.449 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:17:15.517 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:19:15.583 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:21:15.686 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:21:56.392 ServerApp] Kernel restarted: 98ec9afe-dc4c-44ab-a2e4-e01cb1c2d496
+[I 2021-12-16 12:23:15.846 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:25:15.918 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:27:15.994 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:28:42.000 ServerApp] Kernel interrupted: 98ec9afe-dc4c-44ab-a2e4-e01cb1c2d496
+[I 2021-12-16 12:28:51.717 ServerApp] Kernel interrupted: 98ec9afe-dc4c-44ab-a2e4-e01cb1c2d496
+[I 2021-12-16 12:29:16.096 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:31:16.212 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:33:16.292 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:35:16.376 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:37:16.481 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:39:16.572 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:41:16.666 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:41:18.279 ServerApp] Kernel restarted: 98ec9afe-dc4c-44ab-a2e4-e01cb1c2d496
+[I 2021-12-16 12:43:16.761 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:45:16.835 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:47:16.927 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:48:07.831 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:54:07.911 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:56:07.982 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 12:58:08.054 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 13:00:08.138 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 13:02:08.212 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 13:02:41.677 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 13:26:41.755 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 13:36:41.862 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 13:38:15.803 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:01:19.896 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:02:03.347 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:04:03.446 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:06:03.524 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:08:03.593 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:10:03.682 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:10:19.319 ServerApp] Kernel interrupted: 98ec9afe-dc4c-44ab-a2e4-e01cb1c2d496
+[I 2021-12-16 14:12:03.750 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:14:03.857 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:16:03.942 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:18:04.032 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:19:25.387 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:23:25.477 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:25:25.571 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:31:25.673 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:31:59.911 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:33:59.997 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:36:00.098 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:38:00.170 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:40:00.463 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:42:00.577 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:44:00.678 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:46:00.759 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:48:00.841 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:50:00.921 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:52:01.014 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:56:01.126 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 14:58:01.218 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:06:01.342 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:06:19.634 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:08:19.713 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:10:19.798 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:14:13.307 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:14:15.196 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:16:15.308 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:16:20.050 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 15:36:20.159 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 17:04:20.257 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 17:30:31.434 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 17:42:31.524 ServerApp] Saving file at /special_gates.ipynb
+[I 2021-12-16 20:48:12.790 ServerApp] Creating new notebook in 
+[I 2021-12-16 20:50:13.534 ServerApp] Saving file at /Untitled.ipynb
