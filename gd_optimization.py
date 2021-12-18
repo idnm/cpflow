@@ -19,7 +19,7 @@ def gradient_descent_learn(cost_func, num_angles,
                            initial_angles=None,
                            learning_rate=0.01,
                            num_iterations=5000,
-                           target_disc=1e-10):
+                           target_disc=1e-7):
     
     if initial_angles is None:
         key = random.PRNGKey(0)

@@ -1,7 +1,7 @@
 """Module in infancy."""
 
 import jax.numpy as jnp
-from staircase_optimization import staircase_learn
+from angle_by_angle_optimization import staircase_learn
 from gd_optimization import gradient_descent_learn
 
 
