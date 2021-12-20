@@ -50,7 +50,7 @@ def angle_by_angle_learn(cost_function,
 
         if cost < target_disc:
             break
-    
+
     return angles_history, loss_history
 
 
