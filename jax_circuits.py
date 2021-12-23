@@ -11,8 +11,7 @@ from functools import partial
 
 from gates import *
 from circuit_assemebly import *
-from gd_optimization import *
-from angle_by_angle_optimization import *
+from optimization import *
 
 
 class EntanglingBlock:

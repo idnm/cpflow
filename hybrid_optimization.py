@@ -2,7 +2,7 @@
 
 import jax.numpy as jnp
 from angle_by_angle_optimization import staircase_learn
-from gd_optimization import gradient_descent_learn
+from optimization import gradient_descent_learn
 
 
 def hybrid_learn(u_func, u_target, n_angles, n_stairs=10, **kwargs):
