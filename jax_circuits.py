@@ -188,6 +188,28 @@ class Ansatz:
             return optax_minimize(cost_func, self.num_angles, opt, **kwargs)
         elif method == 'aba':
             return angle_by_angle_learn(cost_func, self.num_angles, **kwargs)
+        elif method == 'natural_gd':
+            preconditioner = plain_natural_preconditioner(u_func)
+            return gradient_descent_minimize(cost_func,
+                                             self.num_angles,
+                                             learning_rate=learning_rate,
+                                             preconditioner_func=preconditioner,
+                                             **kwargs)
+        elif method == 'hessian':
+            preconditioner = plain_hessian_preconditioner(cost_func)
+            return gradient_descent_minimize(cost_func,
+                                             self.num_angles,
+                                             learning_rate=learning_rate,
+                                             preconditioner_func=preconditioner,
+                                             **kwargs)
+        elif method == 'natural_adam':
+            preconditioner = plain_natural_preconditioner(u_func)
+            return optax_minimize(cost_func,
+                                  self.num_angles,
+                                  optax.adam(learning_rate),
+                                  preconditioner_func=preconditioner,
+                                  **kwargs)
+
         else:
             print('Method {} not supported'.format(method))
 
