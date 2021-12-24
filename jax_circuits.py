@@ -179,12 +179,13 @@ class Ansatz:
 
         return qc
 
-    def learn(self, u_target, method='gd', **kwargs):
+    def learn(self, u_target, method='adam', learning_rate=0.1,  **kwargs):
         u_func = self.unitary
         cost_func = lambda angs: disc2(u_func(angs), u_target)
 
-        if method == 'gd':
-            return gradient_descent_learn(cost_func, self.num_angles, **kwargs)
+        if method == 'adam':
+            opt = optax.adam(learning_rate)
+            return optax_minimize(cost_func, self.num_angles, opt, **kwargs)
         elif method == 'aba':
             return angle_by_angle_learn(cost_func, self.num_angles, **kwargs)
         else:

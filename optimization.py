@@ -1,59 +1,108 @@
 """Module in infancy."""
 
 from functools import partial
+
+import jax
 import optax
-from jax import jit, random, value_and_grad
+from jax import jit, random, value_and_grad, hessian, jvp, grad
 
 from matrix_utils import *
 from trigonometric_utils import *
 
 
-@partial(jit, static_argnums=(0, 1,))
-def gradient_descent_update(loss_and_grad, opt, opt_state, angles):
-    loss, grads = loss_and_grad(angles)
-    updates, opt_state = opt.update(grads, opt_state)
-    angles = optax.apply_updates(angles, updates)
-    return angles, opt_state, loss
-
-
-def gradient_descent_learn(cost_func, num_angles,
-                           initial_angles=None,
-                           learning_rate=0.01,
-                           num_iterations=5000,
-                           target_disc=1e-7):
-    
-    if initial_angles is None:
+def random_angles(num_angles, key=None):
+    if key is None:
         key = random.PRNGKey(0)
-        initial_angles = random.uniform(key, shape=(num_angles,), minval=0, maxval=2 * jnp.pi)
+    return random.uniform(key, (num_angles, ), minval=0, maxval=2*jnp.pi)
 
-    if len(initial_angles.shape) == 1:
-        all_angles = [initial_angles]
-    elif len(initial_angles.shape) > 2:
-        print('initial angles must be a list or an array of lists, got shape {}'.format(initial_angles.shape))
-        return
-    else:
-        all_angles = initial_angles
+
+@partial(jit, static_argnums=(0, 1,))
+def optax_update_step(loss_and_grad, opt, opt_state, params):
+    loss, grads = loss_and_grad(params)
+    updates, opt_state = opt.update(grads, opt_state)
+    params = optax.apply_updates(params, updates)
+    return params, opt_state, loss
+
+
+def optax_minimize(cost_func,
+                   num_params,
+                   opt,
+                   initial_params=None,
+                   num_iterations=5000,
+                   target_disc=1e-7):
+    
+    if initial_params is None:
+        initial_params = random_angles(num_params)
 
     loss_and_grad = value_and_grad(cost_func)
-    opt = optax.adam(learning_rate)
+    opt_state = opt.init(initial_params)
 
-    all_angles_and_loss_histories = []
-    for angles in all_angles:
-        opt_state = opt.init(angles)
-        angles_history = []
-        loss_history = []
-        for _ in range(num_iterations):
-            angles, opt_state, loss = gradient_descent_update(loss_and_grad, opt, opt_state, angles)
-            angles_history.append(angles)
-            loss_history.append(loss)
-            if loss < target_disc:
-                break
-        all_angles_and_loss_histories.append([angles_history, loss_history])
+    params = initial_params
+    params_history = []
+    loss_history = []
+    for _ in range(num_iterations):
+        params, opt_state, loss = optax_update_step(loss_and_grad, opt, opt_state, params)
+        params_history.append(params)
+        loss_history.append(loss)
+        if loss < target_disc:
+            break
+        params_history.append(params)
+        loss_history.append(loss)
 
-    if len(initial_angles.shape) == 1:
-        return all_angles_and_loss_histories[0]
-    else:
-        return all_angles_and_loss_histories
+    return params_history, loss_history
+
+
+@partial(jit, static_argnums=(0, 1))
+def gradient_descent_update_step(cost_func, preconditioner_func, params):
+
+    loss_and_grad = value_and_grad(cost_func)
+    loss, grads = loss_and_grad(params)
+    new_params = params - preconditioner_func(params, grads)
+    new_loss = cost_func(new_params)
+    return new_params, new_loss
+
+
+def plain_hessian_preconditioner(cost_func, tikhonov_delta=1e-4, learning_rate=0.1):
+
+    def preconditioner(params, grads):
+        reg_hess = hessian(cost_func)(params) + tikhonov_delta*jnp.identity(len(params))
+        return learning_rate * jnp.linalg.inv(reg_hess) @ grads
+
+    return preconditioner
+
+
+def sparse_hessian_preconditioner(cost_func, tikhonov_delta=1e-4, learning_rate=0.1):
+
+    def hvp(f, primals, tangents):
+        return jvp(grad(f), (primals,), (tangents,))[1]
+
+    def preconditioner(params, grads):
+        sol = jax.scipy.sparse.linalg.cg(lambda x: hvp(cost_func, params, x)+tikhonov_delta*x, grads)[0]
+        return learning_rate * sol
+
+    return preconditioner
+
+
+def gradient_descent_minimize(cost_func,
+                              num_params,
+                              preconditioner_func,
+                              initial_params=None,
+                              num_iterations=5000,
+                              target_loss=1e-7):
+    if initial_params is None:
+        initial_params = random_angles(num_params)
+
+    params = initial_params
+    params_history = []
+    loss_history = []
+    for _ in range(num_iterations):
+        params, loss = gradient_descent_update_step(cost_func, preconditioner_func, params)
+        params_history.append(params)
+        loss_history.append(loss)
+        if loss < target_loss:
+            break
+
+    return params_history, loss_history
 
 
 @partial(jit, static_argnums=(0, ))
