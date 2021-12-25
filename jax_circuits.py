@@ -77,17 +77,25 @@ class EntanglingBlock:
         return x_rotations @ y_rotations @ entangling_matrix
 
 
-def split_angles(angles, num_qubits, num_block_angles, layer_len, num_layers):
+def split_angles(angles, num_qubits, num_block_angles, layer_len=0, num_layers=0):
 
     surface_angles = angles[:3 * num_qubits].reshape(num_qubits, 3)
     block_angles = angles[3 * num_qubits:].reshape(-1, num_block_angles)
-    layers_angles = block_angles[:layer_len * num_layers].reshape(num_layers, layer_len, num_block_angles)
+    if num_layers is None:
+        layers_angles = []
+    else:
+        layers_angles = block_angles[:layer_len * num_layers].reshape(num_layers, layer_len, num_block_angles)
     free_block_angles = block_angles[layer_len * num_layers:]
+    if num_block_angles == 5:  # CP blocks
+        cp_angles = [b[-1] for b in block_angles]
+    else:
+        cp_angles = []
 
     return {'surface angles': surface_angles,
             'block angles': block_angles,
             'layers angles': layers_angles,
-            'free block angles': free_block_angles}
+            'free block angles': free_block_angles,
+            'cp angles': cp_angles}
 
 
 def build_unitary(num_qubits, block_type, placements, angles):
@@ -151,6 +159,11 @@ class Ansatz:
 
         num_block_angles = EntanglingBlock.num_angles(block_type)
         self.num_angles = 3 * num_qubits + num_block_angles * len(self.all_placements)
+
+        if self.block_type == 'cp':
+            sample_angles = jnp.arange(self.num_angles)
+            cp_angles = split_angles(sample_angles, self.num_qubits, 5)['cp angles']
+            self.cp_mask = jnp.array([1 if a in cp_angles else 0 for a in sample_angles])
 
         self.unitary = lambda angles: build_unitary(self.num_qubits, self.block_type, self.placements, angles)
 
