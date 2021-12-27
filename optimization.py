@@ -219,9 +219,9 @@ def unitary_learn(u_func,
         print('Method {} not supported'.format(method))
 
     if cp_mask is None:
-        return angles_history, loss_history
+        return jnp.array(angles_history), jnp.array(loss_history)
     else:
         angles_history = jnp.array(angles_history)
         disc_history = vmap(jit(disc_func))(angles_history)
         penalty_history = vmap(jit(penalty_func))(angles_history)
-        return list(angles_history), loss_history, list(disc_history), list(penalty_history)
+        return angles_history, jnp.array(loss_history), disc_history, penalty_history
