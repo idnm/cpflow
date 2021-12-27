@@ -12,6 +12,7 @@ from functools import partial
 from gates import *
 from circuit_assemebly import *
 from optimization import *
+from penalty import *
 
 
 class EntanglingBlock:
@@ -192,39 +193,63 @@ class Ansatz:
 
         return qc
 
-    def learn(self, u_target, method='adam', learning_rate=0.1,  **kwargs):
-        u_func = self.unitary
-        cost_func = lambda angs: disc2(u_func(angs), u_target)
+    def learn(self,
+              u_target,
+              method='adam',
+              learning_rate=0.1,
+              cp_penalty=False,
+              h=2,
+              t=1e-3,
+              r=0.01,
+              **kwargs):
 
-        if method == 'adam':
-            opt = optax.adam(learning_rate)
-            return optax_minimize(cost_func, self.num_angles, opt, **kwargs)
-        elif method == 'aba':
-            return angle_by_angle_learn(cost_func, self.num_angles, **kwargs)
-        elif method == 'natural_gd':
-            preconditioner = plain_natural_preconditioner(u_func)
-            return gradient_descent_minimize(cost_func,
-                                             self.num_angles,
-                                             learning_rate=learning_rate,
-                                             preconditioner_func=preconditioner,
-                                             **kwargs)
-        elif method == 'hessian':
-            preconditioner = plain_hessian_preconditioner(cost_func)
-            return gradient_descent_minimize(cost_func,
-                                             self.num_angles,
-                                             learning_rate=learning_rate,
-                                             preconditioner_func=preconditioner,
-                                             **kwargs)
-        elif method == 'natural_adam':
-            preconditioner = plain_natural_preconditioner(u_func)
-            return optax_minimize(cost_func,
-                                  self.num_angles,
-                                  optax.adam(learning_rate),
-                                  preconditioner_func=preconditioner,
-                                  **kwargs)
-
+        if cp_penalty:
+            cp_mask = self.cp_mask
+            cp_penalty_func = lambda angs: r * (cp_penalty_linear(angs, h, t)).sum()
         else:
-            print('Method {} not supported'.format(method))
+            cp_mask = None
+            cp_penalty_func = None
+
+        return unitary_learn(self.unitary,
+                             u_target,
+                             self.num_angles,
+                             method,
+                             learning_rate,
+                             cp_mask=cp_mask,
+                             cp_penalty_func=cp_penalty_func,
+                             **kwargs)
+
+        # cost_func = lambda angs: disc2(u_func(angs), u_target)
+
+        # if method == 'adam':
+        #     opt = optax.adam(learning_rate)
+        #     return optax_minimize(cost_func, self.num_angles, opt, **kwargs)
+        # elif method == 'aba':
+        #     return angle_by_angle_learn(cost_func, self.num_angles, **kwargs)
+        # elif method == 'natural_gd':
+        #     preconditioner = plain_natural_preconditioner(u_func)
+        #     return gradient_descent_minimize(cost_func,
+        #                                      self.num_angles,
+        #                                      learning_rate=learning_rate,
+        #                                      preconditioner_func=preconditioner,
+        #                                      **kwargs)
+        # elif method == 'hessian':
+        #     preconditioner = plain_hessian_preconditioner(cost_func)
+        #     return gradient_descent_minimize(cost_func,
+        #                                      self.num_angles,
+        #                                      learning_rate=learning_rate,
+        #                                      preconditioner_func=preconditioner,
+        #                                      **kwargs)
+        # elif method == 'natural_adam':
+        #     preconditioner = plain_natural_preconditioner(u_func)
+        #     return optax_minimize(cost_func,
+        #                           self.num_angles,
+        #                           optax.adam(learning_rate),
+        #                           preconditioner_func=preconditioner,
+        #                           **kwargs)
+        #
+        # else:
+        #     print('Method {} not supported'.format(method))
 
 # def learn_disc(u_func, u_target, n_angles, n_iterations=100, n_evaluations=10):
 #     @jit

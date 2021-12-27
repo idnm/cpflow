@@ -165,3 +165,63 @@ def angle_by_angle_learn(cost_function,
             break
 
     return angles_history, loss_history
+
+
+def unitary_learn(u_func,
+                  u_target,
+                  num_params,
+                  method,
+                  learning_rate,
+                  cp_mask=None,
+                  cp_penalty_func=None,
+                  **kwargs):
+
+    disc_func = lambda angs: disc2(u_func(angs), u_target)
+    loss_func = disc_func
+    if cp_mask is not None:
+        penalty_func = lambda angs: cp_penalty_func(angs*cp_mask)
+        loss_func = lambda angs: disc_func(angs) + penalty_func(angs)
+
+    natural_preconditioner = plain_natural_preconditioner(u_func)
+    hessian_preconditioner = plain_hessian_preconditioner(u_func)
+
+    if method == 'angle by angle':
+        if cp_mask is not None:
+            print('Warning: cp penalty data is ignored.')
+        angles_history, loss_history = angle_by_angle_learn(disc_func, num_params, **kwargs)
+
+    elif method == 'adam':
+        opt = optax.adam(learning_rate)
+        angles_history, loss_history = optax_minimize(loss_func, num_params, opt, **kwargs)
+
+    elif method == 'natural gd':
+        angles_history, loss_history = gradient_descent_minimize(loss_func,
+                                                                 num_params,
+                                                                 learning_rate=learning_rate,
+                                                                 preconditioner_func=natural_preconditioner,
+                                                                 **kwargs)
+
+    elif method == 'natural adam':
+        angles_history, loss_history = optax_minimize(loss_func,
+                                                      num_params,
+                                                      optax.adam(learning_rate),
+                                                      preconditioner_func=natural_preconditioner,
+                                                      **kwargs)
+
+    elif method == 'hessian':
+        angles_history, loss_history = gradient_descent_minimize(loss_func,
+                                                                 num_params,
+                                                                 learning_rate=learning_rate,
+                                                                 preconditioner_func=hessian_preconditioner,
+                                                                 **kwargs)
+
+    else:
+        print('Method {} not supported'.format(method))
+
+    if cp_mask is None:
+        return angles_history, loss_history
+    else:
+        angles_history = jnp.array(angles_history)
+        disc_history = vmap(jit(disc_func))(angles_history)
+        penalty_history = vmap(jit(penalty_func))(angles_history)
+        return list(angles_history), loss_history, list(disc_history), list(penalty_history)
