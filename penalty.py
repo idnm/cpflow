@@ -21,18 +21,28 @@ def line(x, x0, y0, x1, y1):
     return (y1-y0)/(x1-x0)*x+(x0*y1-x1*y0)/(x0-x1)
 
 
-@partial(vmap, in_axes=(0, None, None))
-def cp_penalty_linear(a, height, threshold):
+@partial(vmap, in_axes=(0, None, None, None))
+def cp_penalty_linear(a, ymax, xmax, plato):
     """Piecewise linear penalty function"""
-    a = a % (2*jnp.pi)
-    at = a_t(threshold)
-    segments = [a < at, (at < a) & (a < jnp.pi),
-                (jnp.pi < a) & (a < 2*jnp.pi-at),
-                (2*jnp.pi-at < a) & (a < 2*jnp.pi)]
-    functions = [line(a, 0, 0, at, height),
-                 line(a, at, height, jnp.pi, 1),
-                 line(a, jnp.pi, 1, 2*jnp.pi-at, height),
-                 line(a, 2*jnp.pi-at, height, 2*jnp.pi, 0)]
+    a = a % (2 * jnp.pi)
+
+    segments = [a <= plato,
+                (plato < a) & (a <= xmax),
+                (xmax < a) & (a <= jnp.pi - plato),
+                (jnp.pi - plato < a) & (a <= jnp.pi + plato),
+                (jnp.pi + plato < a) & (a <= 2 * jnp.pi - xmax),
+                (2 * jnp.pi - xmax < a) & (a <= 2 * jnp.pi - plato),
+                (2 * jnp.pi - plato < a) & (a <= 2 * jnp.pi)
+                ]
+
+    functions = [line(a, 0, 0, plato, 0),
+                 line(a, plato, 0, xmax, ymax),
+                 line(a, xmax, ymax, jnp.pi - plato, 1),
+                 line(a, jnp.pi - plato, 1, jnp.pi + plato, 1),
+                 line(a, jnp.pi + plato, 1, 2 * jnp.pi - xmax, ymax),
+                 line(a, 2 * jnp.pi - xmax, ymax, 2 * jnp.pi - plato, 0),
+                 line(a, 2 * jnp.pi - plato, 0, 0, 0)
+                 ]
 
     return jnp.piecewise(a, segments, functions)
 

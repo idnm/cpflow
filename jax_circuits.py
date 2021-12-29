@@ -198,14 +198,15 @@ class Ansatz:
               method='adam',
               learning_rate=0.1,
               cp_penalty=False,
-              h=2,
-              t=1e-3,
+              ymax=2,
+              xmax=1.5,
+              plato=0.1,
               r=0.01,
               **kwargs):
 
         if cp_penalty:
             cp_mask = self.cp_mask
-            cp_penalty_func = lambda angs: r * (cp_penalty_linear(angs, h, t)).sum()
+            cp_penalty_func = lambda angs: r * (cp_penalty_linear(angs, ymax, xmax, plato)).sum()
         else:
             cp_mask = None
             cp_penalty_func = None
