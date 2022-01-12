@@ -34,7 +34,7 @@ def optax_minimize(cost_func,
                    preconditioner_func=None,
                    initial_params=None,
                    num_iterations=5000,
-                   target_disc=1e-7):
+                   target_loss=1e-7):
     
     if initial_params is None:
         initial_params = random_angles(num_params)
@@ -49,7 +49,7 @@ def optax_minimize(cost_func,
         params, opt_state, loss = optax_update_step(loss_and_grad, opt, opt_state, params, preconditioner_func)
         params_history.append(params)
         loss_history.append(loss)
-        if loss < target_disc:
+        if loss < target_loss:
             break
 
     return params_history, loss_history
@@ -142,7 +142,7 @@ def angle_by_angle_learn(cost_function,
                          num_angles,
                          initial_angles=None,
                          num_iterations=5000,
-                         target_disc=1e-7
+                         target_loss=1e-7
                          ):
 
     if initial_angles is None:
@@ -161,7 +161,7 @@ def angle_by_angle_learn(cost_function,
         angles_history.append(angles)
         loss_history.append(cost)
 
-        if cost < target_disc:
+        if cost < target_loss:
             break
 
     return angles_history, loss_history
@@ -225,3 +225,43 @@ def unitary_learn(u_func,
         disc_history = vmap(jit(disc_func))(angles_history)
         penalty_history = vmap(jit(penalty_func))(angles_history)
         return angles_history, jnp.array(loss_history), disc_history, penalty_history
+
+
+def unitary_learn_repeat(u_func,
+                         u_target,
+                         num_params,
+                         method,
+                         learning_rate,
+                         initial_angles=None,
+                         num_repeats=10,
+                         cp_mask=None,
+                         cp_penalty_func=None,
+                         **kwargs):
+
+    if initial_angles is None:
+        initial_angles = [random_angles(num_params, key=random.PRNGKey(i)) for i in range(num_repeats)]
+
+    angles_histories = []
+    loss_histories = []
+    success_history = []
+
+    for ia in initial_angles:
+        angles_history, loss_history = unitary_learn(u_func,
+                                                     u_target,
+                                                     num_params,
+                                                     method,
+                                                     learning_rate,
+                                                     cp_mask=cp_mask,
+                                                     cp_penalty_func=cp_penalty_func,
+                                                     initial_params=ia,
+                                                     **kwargs)
+
+        success = min(loss_history) < kwargs['target_loss']
+
+        angles_histories.append(angles_history)
+        loss_histories.append(loss_histories)
+        success_history.append(success)
+
+    return angles_histories, loss_histories, success_history
+
+
