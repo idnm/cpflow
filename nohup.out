@@ -234,3 +234,135 @@
 [I 2022-01-13 23:19:02.210 ServerApp] Saving file at /poisson_optimization.ipynb
 [I 2022-01-13 23:20:31.479 ServerApp] Saving file at /poisson_optimization.ipynb
 [I 2022-01-13 23:20:32.270 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-14 08:48:06.557 ServerApp] Starting buffering for db93b183-9bb6-4822-94c7-e4509a66c73a:996bbbfe-7571-4c02-9d4b-3e77b5a0e3c5
+[I 2022-01-14 08:48:06.558 ServerApp] Starting buffering for acebc131-ac7e-4f05-95ed-1529d1885697:9cbaae64-de8f-43f7-8b81-a5229d2ef8eb
+[I 2022-01-14 08:48:06.559 ServerApp] Starting buffering for eeea95e0-fa84-48fc-b1d6-8da05c1deabb:d5551d6f-e401-40b3-9093-3956bc2618d6
+[I 2022-01-14 08:48:06.559 ServerApp] Starting buffering for 342499f5-58aa-49cf-b037-ec31c2626193:71ae7767-15c2-44ea-be8a-cceb2e88ceed
+[I 2022-01-15 12:53:39.709 ServerApp] jupyterlab | extension was successfully linked.
+[I 2022-01-15 12:53:39.941 ServerApp] jupyter_nbextensions_configurator | extension was found and enabled by nbclassic. Consider moving the extension to Jupyter Server's extension paths.
+[I 2022-01-15 12:53:39.941 ServerApp] jupyter_nbextensions_configurator | extension was successfully linked.
+[I 2022-01-15 12:53:39.951 ServerApp] ipyparallel.nbextension | extension was found and enabled by nbclassic. Consider moving the extension to Jupyter Server's extension paths.
+[I 2022-01-15 12:53:39.951 ServerApp] ipyparallel.nbextension | extension was successfully linked.
+[I 2022-01-15 12:53:39.951 ServerApp] nbclassic | extension was successfully linked.
+[I 2022-01-15 12:53:39.982 ServerApp] nbclassic | extension was successfully loaded.
+[I 2022-01-15 12:53:39.982 ServerApp] Loading IPython parallel extension
+[I 2022-01-15 12:53:39.983 ServerApp] ipyparallel.nbextension | extension was successfully loaded.
+[I 2022-01-15 12:53:39.984 ServerApp] [jupyter_nbextensions_configurator] enabled 0.4.1
+[I 2022-01-15 12:53:39.984 ServerApp] jupyter_nbextensions_configurator | extension was successfully loaded.
+[I 2022-01-15 12:53:39.985 LabApp] JupyterLab extension loaded from /home/idnm/.local/lib/python3.8/site-packages/jupyterlab
+[I 2022-01-15 12:53:39.985 LabApp] JupyterLab application directory is /home/idnm/.local/share/jupyter/lab
+[I 2022-01-15 12:53:39.988 ServerApp] jupyterlab | extension was successfully loaded.
+[I 2022-01-15 12:53:39.988 ServerApp] The port 8888 is already in use, trying another port.
+[I 2022-01-15 12:53:39.989 ServerApp] Serving notebooks from local directory: /home/idnm/Programming projects/jax_circuits
+[I 2022-01-15 12:53:39.989 ServerApp] Jupyter Server 1.8.0 is running at:
+[I 2022-01-15 12:53:39.989 ServerApp] http://localhost:8889/lab?token=a861693d0bcff4ba8f5381e507c585ecae645c4fa5f0a53f
+[I 2022-01-15 12:53:39.989 ServerApp]     http://127.0.0.1:8889/lab?token=a861693d0bcff4ba8f5381e507c585ecae645c4fa5f0a53f
+[I 2022-01-15 12:53:39.989 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 2022-01-15 12:53:40.047 ServerApp] 
+    
+    To access the server, open this file in a browser:
+        file:///home/idnm/.local/share/jupyter/runtime/jpserver-655575-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:8889/lab?token=a861693d0bcff4ba8f5381e507c585ecae645c4fa5f0a53f
+        http://127.0.0.1:8889/lab?token=a861693d0bcff4ba8f5381e507c585ecae645c4fa5f0a53f
+[W 2022-01-15 12:53:44.681 ServerApp] 404 GET /spellchecker/language_manager?1642240424200 (127.0.0.1) 113.96ms referer=http://localhost:8889/lab
+[I 2022-01-15 12:53:44.686 LabApp] Build is up to date
+[W 2022-01-15 12:53:45.099 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.116 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.138 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.150 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.288 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.299 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.329 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.336 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.355 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.378 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.395 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.424 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.444 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.461 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.484 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.507 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.591 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.609 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.624 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:45.647 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:46.312 ServerApp] Notebook special_gates.ipynb is not trusted
+[W 2022-01-15 12:53:46.688 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:46.703 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:46.727 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:46.739 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:46.980 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.066 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.136 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.156 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.169 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.204 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.205 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.242 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.293 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.354 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.709 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-15 12:53:47.725 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[I 2022-01-15 12:53:48.504 ServerApp] Kernel started: bb06853c-e5b3-411f-b5b8-2584cda9e622
+[I 2022-01-15 12:53:48.588 ServerApp] Kernel started: 2c044c2c-8835-42dc-82c6-eadc7efab7f1
+[I 2022-01-15 12:53:48.594 ServerApp] Kernel started: d42f4860-0e9f-4962-a299-f46f4e3b424c
+[I 2022-01-15 12:53:48.601 ServerApp] Kernel started: 835ad420-bb27-4d31-85b7-71febb7ccf7b
+[I 2022-01-15 12:55:48.079 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 12:57:48.185 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 12:59:48.286 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:01:49.081 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:03:49.204 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:05:49.303 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:07:49.405 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:09:49.507 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:11:49.607 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:13:49.711 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:15:49.797 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:17:49.897 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:19:49.992 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:21:50.092 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:23:50.201 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:25:50.328 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:27:50.430 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:29:10.225 ServerApp] Kernel interrupted: 835ad420-bb27-4d31-85b7-71febb7ccf7b
+[I 2022-01-15 13:29:50.518 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:31:50.613 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:32:27.639 ServerApp] Kernel interrupted: 835ad420-bb27-4d31-85b7-71febb7ccf7b
+[I 2022-01-15 13:33:50.714 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:39:51.097 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:41:51.210 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:43:51.319 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:45:51.407 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:47:51.511 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:49:51.578 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:49:52.369 ServerApp] Kernel interrupted: 835ad420-bb27-4d31-85b7-71febb7ccf7b
+[I 2022-01-15 13:49:54.271 ServerApp] Kernel interrupted: 835ad420-bb27-4d31-85b7-71febb7ccf7b
+[I 2022-01-15 13:50:29.906 ServerApp] Kernel interrupted: 835ad420-bb27-4d31-85b7-71febb7ccf7b
+[I 2022-01-15 13:51:18.409 ServerApp] Kernel restarted: 835ad420-bb27-4d31-85b7-71febb7ccf7b
+[I 2022-01-15 13:51:51.877 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:53:51.981 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:55:23.056 ServerApp] Starting buffering for bb06853c-e5b3-411f-b5b8-2584cda9e622:9351a5ea-a8fe-48c1-8bca-d83edb2bb7a9
+[I 2022-01-15 13:55:52.085 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:57:52.158 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 13:59:53.109 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:01:53.189 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:03:53.287 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:05:53.382 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:07:53.486 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:09:53.591 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:11:53.687 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:13:53.775 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:15:53.886 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:17:54.014 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:19:54.114 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:21:54.212 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:23:54.307 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:25:54.418 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:27:54.519 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:29:55.108 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:31:55.201 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 14:33:56.107 ServerApp] Saving file at /poisson_optimization.ipynb
+[I 2022-01-15 18:35:56.551 ServerApp] Starting buffering for 835ad420-bb27-4d31-85b7-71febb7ccf7b:50bd9ca3-26f3-4d09-bd99-147acdde0121
+[I 2022-01-15 18:35:56.551 ServerApp] Starting buffering for 2c044c2c-8835-42dc-82c6-eadc7efab7f1:cec65d98-1f25-4743-841b-ea28e7658b14
+[I 2022-01-15 18:35:56.552 ServerApp] Starting buffering for d42f4860-0e9f-4962-a299-f46f4e3b424c:10f539cf-e4ff-4d19-99cc-1c6f770a023d
