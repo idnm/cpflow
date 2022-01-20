@@ -259,7 +259,7 @@ def unitary_learn_repeat(u_func,
         success = min(loss_history) < kwargs['target_loss']
 
         angles_histories.append(angles_history)
-        loss_histories.append(loss_histories)
+        loss_histories.append(loss_history)
         success_history.append(success)
 
     return angles_histories, loss_histories, success_history
