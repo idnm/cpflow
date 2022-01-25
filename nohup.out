@@ -719,3 +719,45 @@
 [I 2022-01-25 08:32:09.099 ServerApp] Kernel restarted: 059746cc-bf0c-4db7-976f-6d1387cfe971
 [I 2022-01-25 08:32:09.121 ServerApp] Starting buffering for 059746cc-bf0c-4db7-976f-6d1387cfe971:7674ae9c-568a-4ab6-8222-5e6a7fcc453b
 [I 2022-01-25 08:32:09.131 ServerApp] Restoring connection for 059746cc-bf0c-4db7-976f-6d1387cfe971:7674ae9c-568a-4ab6-8222-5e6a7fcc453b
+[I 2022-01-25 08:33:26.014 ServerApp] Starting buffering for 16612de9-e274-4aa7-893b-34acb3138b0f:73c88acf-40b0-4b73-9a6b-7931f8a09e75
+[I 2022-01-25 08:33:27.832 ServerApp] Starting buffering for 048aba0e-294c-4bdc-8a81-9563b437270a:17d846e7-8a28-43e2-b259-d7fc9cb74d60
+[I 2022-01-25 08:33:31.585 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:35:33.083 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:37:33.244 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:39:33.411 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:41:33.584 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:43:33.787 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:45:33.984 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:47:34.143 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:48:23.830 ServerApp] Starting buffering for 059746cc-bf0c-4db7-976f-6d1387cfe971:7674ae9c-568a-4ab6-8222-5e6a7fcc453b
+[W 2022-01-25 08:48:49.781 ServerApp] Notebook special_gates.ipynb is not trusted
+[I 2022-01-25 08:49:34.314 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:51:34.497 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:53:34.671 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:55:34.847 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:57:35.017 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 08:59:35.169 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:01:35.394 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:03:35.549 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:04:10.575 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:10:10.762 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:12:11.668 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:14:11.825 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:14:51.676 ServerApp] Saving file at /special_gates.ipynb
+[W 2022-01-25 09:14:51.678 ServerApp] Notebook special_gates.ipynb is not trusted
+[I 2022-01-25 09:16:12.030 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:18:12.670 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:26:15.703 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:32:17.699 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:34:17.844 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:36:18.011 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:38:18.158 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:39:21.689 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:41:21.831 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:43:22.033 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:45:22.672 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:49:24.209 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:51:25.202 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 09:59:27.211 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 11:38:53.824 ServerApp] Saving file at /CP.ipynb
+[I 2022-01-25 11:38:54.955 ServerApp] Saving file at /CP.ipynb
