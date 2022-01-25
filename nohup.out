@@ -598,3 +598,124 @@
 [I 2022-01-20 15:40:26.453 ServerApp] Starting buffering for d77c1d29-15e4-48b4-85c1-97dc227b993e:ec1560d4-8624-47ca-b8f1-4156424941a5
 [I 2022-01-20 15:40:26.454 ServerApp] Starting buffering for 7535864e-8bc0-40ba-9325-e238b3c91699:af6bbde7-4106-4894-8cbe-db0db464b4a1
 [I 2022-01-20 15:40:26.454 ServerApp] Starting buffering for 77bf924a-6e1e-4a93-b670-f7d774828bad:97dacbc2-ae88-4acc-8d5e-84f5e9403919
+[I 2022-01-25 07:02:21.932 ServerApp] jupyterlab | extension was successfully linked.
+[I 2022-01-25 07:02:22.777 ServerApp] jupyter_nbextensions_configurator | extension was found and enabled by nbclassic. Consider moving the extension to Jupyter Server's extension paths.
+[I 2022-01-25 07:02:22.789 ServerApp] jupyter_nbextensions_configurator | extension was successfully linked.
+[I 2022-01-25 07:02:22.828 ServerApp] ipyparallel.nbextension | extension was found and enabled by nbclassic. Consider moving the extension to Jupyter Server's extension paths.
+[I 2022-01-25 07:02:22.828 ServerApp] ipyparallel.nbextension | extension was successfully linked.
+[I 2022-01-25 07:02:22.828 ServerApp] nbclassic | extension was successfully linked.
+[I 2022-01-25 07:02:22.921 ServerApp] nbclassic | extension was successfully loaded.
+[I 2022-01-25 07:02:22.921 ServerApp] Loading IPython parallel extension
+[I 2022-01-25 07:02:22.942 ServerApp] ipyparallel.nbextension | extension was successfully loaded.
+[I 2022-01-25 07:02:22.943 ServerApp] [jupyter_nbextensions_configurator] enabled 0.4.1
+[I 2022-01-25 07:02:22.943 ServerApp] jupyter_nbextensions_configurator | extension was successfully loaded.
+[I 2022-01-25 07:02:22.945 LabApp] JupyterLab extension loaded from /home/idnm/.local/lib/python3.8/site-packages/jupyterlab
+[I 2022-01-25 07:02:22.945 LabApp] JupyterLab application directory is /home/idnm/.local/share/jupyter/lab
+[I 2022-01-25 07:02:22.951 ServerApp] jupyterlab | extension was successfully loaded.
+[I 2022-01-25 07:02:22.952 ServerApp] Serving notebooks from local directory: /home/idnm/Programming projects/jax_circuits
+[I 2022-01-25 07:02:22.952 ServerApp] Jupyter Server 1.8.0 is running at:
+[I 2022-01-25 07:02:22.952 ServerApp] http://localhost:8888/lab?token=cbd03bd7fa15d062ec57a84a78b8365fc8d53fe9f22c84d4
+[I 2022-01-25 07:02:22.952 ServerApp]     http://127.0.0.1:8888/lab?token=cbd03bd7fa15d062ec57a84a78b8365fc8d53fe9f22c84d4
+[I 2022-01-25 07:02:22.952 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 2022-01-25 07:02:23.212 ServerApp] 
+    
+    To access the server, open this file in a browser:
+        file:///home/idnm/.local/share/jupyter/runtime/jpserver-71225-open.html
+    Or copy and paste one of these URLs:
+        http://localhost:8888/lab?token=cbd03bd7fa15d062ec57a84a78b8365fc8d53fe9f22c84d4
+        http://127.0.0.1:8888/lab?token=cbd03bd7fa15d062ec57a84a78b8365fc8d53fe9f22c84d4
+[I 2022-01-25 07:02:34.953 LabApp] Build is up to date
+[W 2022-01-25 07:02:35.261 ServerApp] 404 GET /spellchecker/language_manager?1643083354248 (127.0.0.1) 289.25ms referer=http://localhost:8888/lab
+[W 2022-01-25 07:02:35.934 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:35.936 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:35.978 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:35.988 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.150 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.153 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.173 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.177 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.227 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.238 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.268 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.280 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.342 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.364 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.407 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.436 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.634 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.642 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.654 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:36.663 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.422 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.436 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.443 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.461 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.721 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.725 ServerApp] Config option `template_path` not recognized by `ExporterCollapsibleHeadings`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.835 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:37.841 ServerApp] Config option `template_path` not recognized by `TocExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:38.489 ServerApp] Notebook special_gates.ipynb is not trusted
+[W 2022-01-25 07:02:38.566 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:38.574 ServerApp] Config option `template_path` not recognized by `LenvsHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:38.778 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:38.780 ServerApp] Config option `template_path` not recognized by `LenvsTocHTMLExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:38.917 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:38.921 ServerApp] Config option `template_path` not recognized by `LenvsLatexExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:39.488 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[W 2022-01-25 07:02:39.509 ServerApp] Config option `template_path` not recognized by `LenvsSlidesExporter`.  Did you mean one of: `extra_template_paths, template_name, template_paths`?
+[I 2022-01-25 07:02:45.836 ServerApp] Kernel started: 4da7225e-1fcc-48f3-939a-713a30070322
+[I 2022-01-25 07:02:45.935 ServerApp] Kernel started: 048aba0e-294c-4bdc-8a81-9563b437270a
+[I 2022-01-25 07:02:45.946 ServerApp] Kernel started: 16612de9-e274-4aa7-893b-34acb3138b0f
+[I 2022-01-25 07:02:45.995 ServerApp] Kernel started: 14dfc317-4958-456f-b94f-962bc256314b
+[I 2022-01-25 07:02:58.549 ServerApp] Creating new notebook in 
+[I 2022-01-25 07:02:59.244 ServerApp] Kernel started: 059746cc-bf0c-4db7-976f-6d1387cfe971
+[I 2022-01-25 07:04:59.115 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:06:59.194 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:08:59.274 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:10:59.333 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:12:59.410 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:14:59.470 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:16:59.558 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:18:59.609 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:20:59.670 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:22:59.725 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:24:59.772 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:26:59.815 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:29:07.535 ServerApp] Kernel interrupted: 059746cc-bf0c-4db7-976f-6d1387cfe971
+[I 2022-01-25 07:29:08.768 ServerApp] Kernel interrupted: 059746cc-bf0c-4db7-976f-6d1387cfe971
+[I 2022-01-25 07:29:18.660 ServerApp] Kernel interrupted: 059746cc-bf0c-4db7-976f-6d1387cfe971
+[I 2022-01-25 07:29:20.014 ServerApp] Kernel interrupted: 059746cc-bf0c-4db7-976f-6d1387cfe971
+[I 2022-01-25 07:29:26.500 ServerApp] Kernel restarted: 059746cc-bf0c-4db7-976f-6d1387cfe971
+[I 2022-01-25 07:29:26.509 ServerApp] Starting buffering for 059746cc-bf0c-4db7-976f-6d1387cfe971:7674ae9c-568a-4ab6-8222-5e6a7fcc453b
+[I 2022-01-25 07:29:26.518 ServerApp] Restoring connection for 059746cc-bf0c-4db7-976f-6d1387cfe971:7674ae9c-568a-4ab6-8222-5e6a7fcc453b
+[I 2022-01-25 07:30:59.877 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:33:01.868 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:35:01.944 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:36:46.845 ServerApp] Saving file at /special_gates.ipynb
+[W 2022-01-25 07:36:46.849 ServerApp] Notebook special_gates.ipynb is not trusted
+[I 2022-01-25 07:37:01.999 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:39:02.095 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:41:02.165 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:43:02.242 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:45:02.297 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:47:02.370 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:49:02.451 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:53:02.935 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:55:03.008 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:57:03.069 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 07:58:47.390 ServerApp] Saving file at /special_gates.ipynb
+[W 2022-01-25 07:58:47.391 ServerApp] Notebook special_gates.ipynb is not trusted
+[I 2022-01-25 07:59:03.146 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:01:03.224 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:17:33.069 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:19:33.120 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:21:33.204 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:22:00.568 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:24:00.639 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:26:00.765 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:28:00.867 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:29:30.703 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:29:31.513 ServerApp] Saving file at /test_circuits.ipynb
+[I 2022-01-25 08:32:09.099 ServerApp] Kernel restarted: 059746cc-bf0c-4db7-976f-6d1387cfe971
+[I 2022-01-25 08:32:09.121 ServerApp] Starting buffering for 059746cc-bf0c-4db7-976f-6d1387cfe971:7674ae9c-568a-4ab6-8222-5e6a7fcc453b
+[I 2022-01-25 08:32:09.131 ServerApp] Restoring connection for 059746cc-bf0c-4db7-976f-6d1387cfe971:7674ae9c-568a-4ab6-8222-5e6a7fcc453b

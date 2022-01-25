@@ -157,6 +157,7 @@ class Ansatz:
         self.free_placements = placements['free']
 
         self.all_placements = self.layer * self.num_layers + self.free_placements
+        self.num_blocks = len(self.all_placements)
 
         num_block_angles = EntanglingBlock.num_angles(block_type)
         self.num_angles = 3 * num_qubits + num_block_angles * len(self.all_placements)
