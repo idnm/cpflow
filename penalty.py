@@ -78,7 +78,7 @@ def construct_penalty_function(penalty_options):
 
         penalty_func = lambda angs: r * cp_penalty_linear(angs*cp_mask, ymax, xmax, plato).sum()
 
-    elif penalty_options['func'] == 'L1':
+    elif penalty_options['function'] == 'L1':
         penalty_func = lambda angs: r * cp_penalty_L1(angs*cp_mask).sum()
 
     else:

@@ -229,7 +229,7 @@ def mynimize_regularized(cost_func,
                                             **kwargs)
 
     params_history = jnp.array(params_history)
-    cost_history = vmap(jit(loss_func))(params_history)
+    cost_history = vmap(jit(cost_func))(params_history)
     reg_history = vmap(jit(regularization_func))(params_history)
 
     return params_history, jnp.array(loss_history), cost_history, reg_history
