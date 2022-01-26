@@ -8,6 +8,7 @@ from jax import jit, random, value_and_grad, hessian, jvp, grad
 
 from matrix_utils import *
 from trigonometric_utils import *
+from penalty import *
 
 
 def random_angles(num_angles, key=None):
@@ -55,16 +56,6 @@ def optax_minimize(cost_func,
     return params_history, loss_history
 
 
-@partial(jit, static_argnums=(0, 1))
-def gradient_descent_update_step(cost_func, preconditioner_func, params, learning_rate):
-
-    loss_and_grad = value_and_grad(cost_func)
-    loss, grads = loss_and_grad(params)
-    new_params = params - learning_rate*preconditioner_func(params, grads)
-    new_loss = cost_func(new_params)
-    return new_params, new_loss
-
-
 def plain_hessian_preconditioner(cost_func, tikhonov_delta=1e-4):
 
     def preconditioner(params, grads):
@@ -92,6 +83,16 @@ def plain_natural_preconditioner(u_func, tikhonov_delta=1e-4):
         return jnp.linalg.inv(g) @ grads
 
     return preconditioner
+
+
+@partial(jit, static_argnums=(0, 1))
+def gradient_descent_update_step(cost_func, preconditioner_func, params, learning_rate):
+
+    loss_and_grad = value_and_grad(cost_func)
+    loss, grads = loss_and_grad(params)
+    new_params = params - learning_rate*preconditioner_func(params, grads)
+    new_loss = cost_func(new_params)
+    return new_params, new_loss
 
 
 def gradient_descent_minimize(cost_func,
@@ -138,12 +139,12 @@ def angle_by_angle_update(f, angles):
     return lax.fori_loop(0, len(angles), body, angles)
 
 
-def angle_by_angle_learn(cost_function,
-                         num_angles,
-                         initial_angles=None,
-                         num_iterations=5000,
-                         target_loss=1e-7
-                         ):
+def angle_by_angle_minimize(cost_function,
+                            num_angles,
+                            initial_angles=None,
+                            num_iterations=5000,
+                            target_loss=1e-7
+                            ):
 
     if initial_angles is None:
         initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2 * jnp.pi, shape=(num_angles,))
@@ -167,28 +168,20 @@ def angle_by_angle_learn(cost_function,
     return angles_history, loss_history
 
 
-def unitary_learn(u_func,
-                  u_target,
-                  num_params,
-                  method,
-                  learning_rate,
-                  cp_mask=None,
-                  cp_penalty_func=None,
-                  **kwargs):
-
-    disc_func = lambda angs: disc2(u_func(angs), u_target)
-    loss_func = disc_func
-    if cp_mask is not None:
-        penalty_func = lambda angs: cp_penalty_func(angs*cp_mask)
-        loss_func = lambda angs: disc_func(angs) + penalty_func(angs)
+def mynimize(loss_func,
+             num_params,
+             method,
+             learning_rate,
+             u_func=None,
+             **kwargs):
 
     natural_preconditioner = plain_natural_preconditioner(u_func)
     hessian_preconditioner = plain_hessian_preconditioner(u_func)
 
     if method == 'angle by angle':
-        if cp_mask is not None:
-            print('Warning: cp penalty data is ignored.')
-        angles_history, loss_history = angle_by_angle_learn(disc_func, num_params, **kwargs)
+        if u_func is not None:
+            print('Warning, method aba does not use preconditioner, why u_func is provided?')
+        angles_history, loss_history = angle_by_angle_minimize(loss_func, num_params, **kwargs)
 
     elif method == 'adam':
         opt = optax.adam(learning_rate)
@@ -214,17 +207,57 @@ def unitary_learn(u_func,
                                                                  learning_rate=learning_rate,
                                                                  preconditioner_func=hessian_preconditioner,
                                                                  **kwargs)
-
     else:
         print('Method {} not supported'.format(method))
 
-    if cp_mask is None:
-        return jnp.array(angles_history), jnp.array(loss_history)
-    else:
-        angles_history = jnp.array(angles_history)
-        disc_history = vmap(jit(disc_func))(angles_history)
-        penalty_history = vmap(jit(penalty_func))(angles_history)
-        return angles_history, jnp.array(loss_history), disc_history, penalty_history
+    return angles_history, loss_history
+
+
+def mynimize_regularized(cost_func,
+                         regularization_func,
+                         num_params,
+                         method,
+                         learning_rate,
+                         u_func=None,
+                         **kwargs):
+    loss_func = lambda params: cost_func(params) + regularization_func(params)
+    params_history, loss_history = mynimize(loss_func,
+                                            num_params,
+                                            method,
+                                            learning_rate,
+                                            u_func,
+                                            **kwargs)
+
+    params_history = jnp.array(params_history)
+    cost_history = vmap(jit(loss_func))(params_history)
+    reg_history = vmap(jit(regularization_func))(params_history)
+
+    return params_history, jnp.array(loss_history), cost_history, reg_history
+
+
+def unitary_learn(u_func,
+                  u_target,
+                  num_params,
+                  method='adam',
+                  learning_rate=0.1,
+                  disc_func=None,
+                  regularization_options=None,
+                  **kwargs):
+
+    if disc_func is None:
+        disc_func = lambda angs: disc2(u_func(angs), u_target)
+
+    if regularization_options is not None:
+        penalty_func = construct_penalty_function(regularization_options)
+        return mynimize_regularized(disc_func,
+                                    penalty_func,
+                                    num_params,
+                                    method,
+                                    learning_rate,
+                                    u_func,
+                                    **kwargs)
+
+    return mynimize(disc_func, num_params, method, learning_rate, u_func, **kwargs)
 
 
 def unitary_learn_repeat(u_func,

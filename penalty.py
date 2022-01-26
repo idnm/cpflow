@@ -47,6 +47,12 @@ def cp_penalty_linear(a, ymax, xmax, plato):
     return jnp.piecewise(a, segments, functions)
 
 
+@vmap
+def cp_penalty_L1(a):
+    """L1 penalty"""
+    return jnp.abs(a)
+
+
 def penalty(angles, options):
     # array of 0 and 1 specifying which angles are angles of cp gates and must be penalized.
     penalized_angles = jnp.array(options['angles'])
@@ -59,6 +65,27 @@ def penalty(angles, options):
     elif penalty_function == 'linear':
         t = options['threshold']
         return reg * cp_penalty_linear(angles * penalized_angles, h, t).sum()
+
+
+def construct_penalty_function(penalty_options):
+    cp_mask = penalty_options['cp_mask']
+    r = penalty_options['r']
+
+    if penalty_options['function'] == 'linear':
+        ymax = penalty_options['ymax']
+        xmax = penalty_options['xmax']
+        plato = penalty_options['plato']
+
+        penalty_func = lambda angs: r * cp_penalty_linear(angs*cp_mask, ymax, xmax, plato).sum()
+
+    elif penalty_options['func'] == 'L1':
+        penalty_func = lambda angs: r * cp_penalty_L1(angs*cp_mask).sum()
+
+    else:
+        print('penalty function not supported')
+        print(penalty_options['func'])
+
+    return penalty_func
 
 ### To get a feel for what a_t is doing run:
 

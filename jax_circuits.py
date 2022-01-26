@@ -198,105 +198,11 @@ class Ansatz:
               u_target,
               method='adam',
               learning_rate=0.1,
-              cp_penalty=False,
-              ymax=2,
-              xmax=1.5,
-              plato=0.1,
-              r=0.01,
               **kwargs):
-
-        if cp_penalty:
-            cp_mask = self.cp_mask
-            cp_penalty_func = lambda angs: r * (cp_penalty_linear(angs, ymax, xmax, plato)).sum()
-        else:
-            cp_mask = None
-            cp_penalty_func = None
 
         return unitary_learn(self.unitary,
                              u_target,
                              self.num_angles,
                              method,
                              learning_rate,
-                             cp_mask=cp_mask,
-                             cp_penalty_func=cp_penalty_func,
                              **kwargs)
-
-        # cost_func = lambda angs: disc2(u_func(angs), u_target)
-
-        # if method == 'adam':
-        #     opt = optax.adam(learning_rate)
-        #     return optax_minimize(cost_func, self.num_angles, opt, **kwargs)
-        # elif method == 'aba':
-        #     return angle_by_angle_learn(cost_func, self.num_angles, **kwargs)
-        # elif method == 'natural_gd':
-        #     preconditioner = plain_natural_preconditioner(u_func)
-        #     return gradient_descent_minimize(cost_func,
-        #                                      self.num_angles,
-        #                                      learning_rate=learning_rate,
-        #                                      preconditioner_func=preconditioner,
-        #                                      **kwargs)
-        # elif method == 'hessian':
-        #     preconditioner = plain_hessian_preconditioner(cost_func)
-        #     return gradient_descent_minimize(cost_func,
-        #                                      self.num_angles,
-        #                                      learning_rate=learning_rate,
-        #                                      preconditioner_func=preconditioner,
-        #                                      **kwargs)
-        # elif method == 'natural_adam':
-        #     preconditioner = plain_natural_preconditioner(u_func)
-        #     return optax_minimize(cost_func,
-        #                           self.num_angles,
-        #                           optax.adam(learning_rate),
-        #                           preconditioner_func=preconditioner,
-        #                           **kwargs)
-        #
-        # else:
-        #     print('Method {} not supported'.format(method))
-
-# def learn_disc(u_func, u_target, n_angles, n_iterations=100, n_evaluations=10):
-#     @jit
-#     def u_disc(angles):
-#         return disc2(u_func(angles), u_target)
-#
-#     def one_estimation(k):
-#         initial_angles = random.uniform(random.PRNGKey(k), shape=(n_angles, ), minval=0, maxval=2*jnp.pi)
-#         angles = staircase_min(u_disc, n_angles, initial_angles=initial_angles, n_iterations=n_iterations)
-#         return angles
-#
-#     estimations = vmap(one_estimation)(jnp.arange(n_evaluations))
-#     discs = vmap(u_disc)(estimations)
-#
-#     min_disc = jnp.min(discs)
-#     minimizing_angles = estimations[jnp.argmin(discs)]
-#
-#     return minimizing_angles, min_disc
-#
-#
-# def unitary_fitness(u_func, u_target, n_angles, n_gates, **kwargs):
-#     _, disc = learn_disc(u_func, u_target, n_angles, **kwargs)
-#     return 1-disc + 1/(n_gates+1)
-#
-
-# @partial(jit, static_argnums=(1, 2, 3, ))
-# def update_angles(angles, f, n_angles, n_moving_angles):
-#     s = jnp.array(splits(n_angles, n_moving_angles))
-#
-#     def body(i, angles):
-#         return partial_update_angles(f, angles, s[i], n_moving_angles)
-#
-#     for i in range(len(s)):
-#         angles = body(i, angles)
-#
-#     return angles
-#
-#
-# def staircase_min_batch(f, n_angles, initial_angles=None, n_iterations=100, n_moving_angles=1):
-#     if initial_angles is None:
-#         initial_angles = random.uniform(random.PRNGKey(0), minval=0, maxval=2 * jnp.pi, shape=(n_angles,))
-#     angles = initial_angles
-#     angles_history = [angles]
-#
-#     for _ in range(n_iterations):
-#         angles = update_angles(angles, f, n_angles, n_moving_angles)
-#         angles_history.append(angles)
-#     return angles_history
