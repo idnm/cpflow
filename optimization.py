@@ -170,10 +170,13 @@ def angle_by_angle_minimize(cost_function,
 
 def mynimize(loss_func,
              num_params,
-             method,
-             learning_rate,
+             method='adam',
+             learning_rate=0.1,
              u_func=None,
+             target_loss=1e-7,
              **kwargs):
+
+    kwargs['target_loss'] = target_loss
 
     natural_preconditioner = plain_natural_preconditioner(u_func)
     hessian_preconditioner = plain_hessian_preconditioner(u_func)
@@ -210,29 +213,76 @@ def mynimize(loss_func,
     else:
         print('Method {} not supported'.format(method))
 
-    return {'angles': angles_history, 'loss': loss_history}
+    return {'params': angles_history, 'loss': loss_history}
 
 
-def mynimize_regularized(cost_func,
-                         regularization_func,
+def mynimize_regularized(regularization_func,
+                         loss_func,
                          num_params,
-                         method,
-                         learning_rate,
+                         method='adam',
+                         learning_rate=0.1,
+                         target_loss=1e-7,
                          u_func=None,
                          **kwargs):
-    loss_func = lambda params: cost_func(params) + regularization_func(params)
-    params_history, loss_history = mynimize(loss_func,
-                                            num_params,
-                                            method,
-                                            learning_rate,
-                                            u_func,
-                                            **kwargs)
+    regloss_func = lambda params: loss_func(params) + regularization_func(params)
+    learning_res = mynimize(regloss_func,
+                            num_params,
+                            method=method,
+                            learning_rate=learning_rate,
+                            u_func=u_func,
+                            target_loss=target_loss,
+                            **kwargs)
+
+    params_history, regloss_history = learning_res['params'], learning_res['loss']
 
     params_history = jnp.array(params_history)
-    cost_history = vmap(jit(cost_func))(params_history)
+    loss_history = vmap(jit(loss_func))(params_history)
     reg_history = vmap(jit(regularization_func))(params_history)
 
-    return {'angles': params_history, 'loss': jnp.array(loss_history), 'cost': cost_history, 'reg': reg_history}
+    return {'params': params_history, 'regloss': jnp.array(regloss_history), 'loss': loss_history, 'reg': reg_history}
+
+
+def mynimize_repeated(loss_func,
+                      num_params,
+                      method='adam',
+                      learning_rate=0.1,
+                      target_loss=1e-7,
+                      u_func=None,
+                      initial_params_batch=None,
+                      num_repeats=10,
+                      regularization_func=None,
+                      **kwargs):
+
+    if initial_params_batch is None:
+        key = random.PRNGKey(0)
+        initial_params_batch = []
+        for _ in range(num_repeats):
+            key, subkey = random.split(key)
+            initial_params_batch.append(random_angles(num_params, key=subkey))
+
+    if regularization_func is None:
+        minimize_procedure = mynimize
+    else:
+        minimize_procedure = partial(mynimize_regularized, regularization_func)
+
+    result_history = []
+    success_history = []
+
+    for initial_params in initial_params_batch:
+        learn_result = minimize_procedure(loss_func,
+                                         num_params,
+                                         method=method,
+                                         learning_rate=learning_rate,
+                                         target_loss=target_loss,
+                                         initial_params=initial_params,
+                                         u_func=u_func,
+                                         **kwargs)
+
+        success = min(learn_result['regloss']) < target_loss
+        result_history.append(learn_result)
+        success_history.append(success)
+
+    return result_history, success_history
 
 
 def unitary_learn(u_func,
@@ -240,8 +290,11 @@ def unitary_learn(u_func,
                   num_params,
                   method='adam',
                   learning_rate=0.1,
+                  target_loss=1e-7,
                   disc_func=None,
                   regularization_options=None,
+                  initial_angles=None,
+                  num_repeats=1,
                   **kwargs):
 
     if disc_func is None:
@@ -249,55 +302,21 @@ def unitary_learn(u_func,
 
     if regularization_options is not None:
         penalty_func = construct_penalty_function(regularization_options)
-        return mynimize_regularized(disc_func,
-                                    penalty_func,
-                                    num_params,
-                                    method,
-                                    learning_rate,
-                                    u_func,
-                                    **kwargs)
+    else:
+        penalty_func = lambda x: 0
 
-    return mynimize(disc_func, num_params, method, learning_rate, u_func, **kwargs)
+    res_hist, success_hist = mynimize_repeated(disc_func,
+                             num_params,
+                             method=method,
+                             learning_rate=learning_rate,
+                             u_func=u_func,
+                             num_repeats=num_repeats,
+                             initial_params_batch=initial_angles,
+                             regularization_func=penalty_func,
+                             target_loss=target_loss,
+                             **kwargs)
 
-
-def unitary_learn_repeated(u_func,
-                           u_target,
-                           num_params,
-                           method='adam',
-                           learning_rate=0.1,
-                           initial_angles=None,
-                           num_repeats=10,
-                           regularization_options=None,
-                           disc_func=None,
-                           stop_if_successful=False,
-                           **kwargs):
-
-    if initial_angles is None:
-        key = random.PRNGKey(0)
-        initial_angles = []
-        for _ in range(num_repeats):
-            key, subkey = random.split(key)
-            initial_angles.append(random_angles(num_params, key=subkey))
-
-    result_history = []
-    success_history = []
-
-    print('Warning, initial angles not supported')
-    for ia in initial_angles:
-        learn_result = unitary_learn(u_func,
-                                 u_target,
-                                 num_params,
-                                 method=method,
-                                 learning_rate=learning_rate,
-                                 disc_func=disc_func,
-                                 regularization_options=regularization_options,
-                                 **kwargs)
-
-        success = min(learn_result['loss_history']) < kwargs['target_loss']
-
-        result_history.append(learn_result)
-        success_history.append(success)
-
-    return result_history, success_history
-
-
+    if num_repeats == 1:
+        return res_hist[0], success_hist[0]
+    else:
+        return res_hist, success_hist

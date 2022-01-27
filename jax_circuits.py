@@ -198,11 +198,13 @@ class Ansatz:
               u_target,
               method='adam',
               learning_rate=0.1,
+              target_loss=1e-7,
               **kwargs):
 
         return unitary_learn(self.unitary,
                              u_target,
                              self.num_angles,
-                             method,
-                             learning_rate,
+                             method=method,
+                             learning_rate=learning_rate,
+                             target_loss=target_loss,
                              **kwargs)
