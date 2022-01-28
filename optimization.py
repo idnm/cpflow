@@ -249,7 +249,7 @@ def mynimize_repeated(loss_func,
                       target_loss=1e-7,
                       u_func=None,
                       initial_params_batch=None,
-                      num_repeats=10,
+                      num_repeats=1,
                       regularization_func=None,
                       **kwargs):
 
@@ -259,6 +259,23 @@ def mynimize_repeated(loss_func,
         for _ in range(num_repeats):
             key, subkey = random.split(key)
             initial_params_batch.append(random_angles(num_params, key=subkey))
+        if num_repeats == 1:
+            input_is_vector = False
+        else:
+            input_is_vector = True
+
+    else:
+        if num_repeats != 1:
+            print('Warning, initial conditions provided and number of repeats will be ignored.')
+
+        initial_params_shape = jnp.array(initial_params_batch).shape
+        if len(initial_params_shape) == 1:
+            initial_params_batch = [initial_params_batch]
+            input_is_vector = False
+        elif len(initial_params_shape) == 2:
+            input_is_vector = True
+        else:
+            print('Warning: initial parameters must be either 1d or 2d array (multiple initial conditions)')
 
     if regularization_func is None:
         minimize_procedure = mynimize
@@ -282,7 +299,10 @@ def mynimize_repeated(loss_func,
         result_history.append(learn_result)
         success_history.append(success)
 
-    return result_history, success_history
+    if input_is_vector:
+        return result_history, success_history
+    else:
+        return result_history[0], success_history[0]
 
 
 def unitary_learn(u_func,
@@ -316,7 +336,4 @@ def unitary_learn(u_func,
                              target_loss=target_loss,
                              **kwargs)
 
-    if num_repeats == 1:
-        return res_hist[0], success_hist[0]
-    else:
-        return res_hist, success_hist
+    return res_hist, success_hist
