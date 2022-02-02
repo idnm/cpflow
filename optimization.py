@@ -247,6 +247,7 @@ def mynimize_repeated(loss_func,
                       method='adam',
                       learning_rate=0.1,
                       target_loss=1e-7,
+                      target_reg=None,
                       u_func=None,
                       initial_params_batch=None,
                       num_repeats=1,
@@ -283,6 +284,7 @@ def mynimize_repeated(loss_func,
         minimize_procedure = partial(mynimize_regularized, regularization_func)
 
     result_history = []
+    best_params_history = []
     success_history = []
 
     for initial_params in initial_params_batch:
@@ -295,14 +297,21 @@ def mynimize_repeated(loss_func,
                                          u_func=u_func,
                                          **kwargs)
 
-        success = min(learn_result['regloss']) < target_loss
+        best_state = jnp.argmin(learn_result['regloss'])
+        success = learn_result['loss'][best_state] < target_loss
+
+        if target_reg is not None:
+            reg_success = learn_result['reg'][best_state] < target_reg
+            success = success and reg_success
+
         result_history.append(learn_result)
+        best_params_history.append(learn_result['params'][best_state])
         success_history.append(success)
 
     if input_is_vector:
-        return result_history, success_history
+        return result_history, best_params_history, success_history
     else:
-        return result_history[0], success_history[0]
+        return result_history[0], best_params_history[0], success_history[0]
 
 
 def unitary_learn(u_func,
@@ -321,19 +330,20 @@ def unitary_learn(u_func,
         disc_func = lambda angs: disc2(u_func(angs), u_target)
 
     if regularization_options is not None:
-        penalty_func = construct_penalty_function(regularization_options)
+        regularization_func, target_reg = construct_penalty_function(regularization_options)
     else:
-        penalty_func = lambda x: 0
+        regularization_func = lambda x: 0
+        target_reg = None
 
-    res_hist, success_hist = mynimize_repeated(disc_func,
+    return mynimize_repeated(disc_func,
                              num_params,
                              method=method,
                              learning_rate=learning_rate,
                              u_func=u_func,
                              num_repeats=num_repeats,
                              initial_params_batch=initial_angles,
-                             regularization_func=penalty_func,
+                             regularization_func=regularization_func,
                              target_loss=target_loss,
+                             target_reg=target_reg,
                              **kwargs)
 
-    return res_hist, success_hist
