@@ -1,5 +1,8 @@
 import jax.numpy as jnp
 from jax import grad, jacfwd
+from itertools import permutations
+from qiskit.circuit.library import Permutation
+from qiskit.quantum_info import Operator
 
 
 def theoretical_lower_bound(n):
@@ -34,6 +37,18 @@ def disc2(u, u_target):
 
     n = u_target.shape[0]
     return 1 - jnp.abs((u * u_target.conj()).sum()) ** 2 / n ** 2
+
+
+def disc2_swap(u, u_target):
+
+    n = int(jnp.log2(u_target.shape[0]))
+    p_matrices = permutation_matrices(n)
+
+    return jnp.product(jnp.array([disc2(m@u, u_target) for m in p_matrices]))
+
+
+def permutation_matrices(n):
+    return [Operator(Permutation(n, p)).data for p in permutations(list(range(n)))]
 
 
 def fubini_study(u_func, x, relative_coeff=1):
