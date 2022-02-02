@@ -21,6 +21,7 @@ def random_angles(num_angles, key=None):
 
 @partial(jit, static_argnums=(0, 1, 4))
 def optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func):
+
     if preconditioner_func is None:
         preconditioner_func = lambda x, y: y
 
@@ -319,7 +320,7 @@ def mynimize_repeated(loss_func,
 
     result_history = []
 
-    for initial_params in tqdm(initial_params_batch):
+    for initial_params in tqdm(initial_params_batch, disable=(not input_is_vector)):
         learn_result = mynimize(regloss_func,
                                 num_params,
                                 method=method,
