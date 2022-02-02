@@ -10,6 +10,8 @@ from matrix_utils import *
 from trigonometric_utils import *
 from penalty import *
 
+from tqdm import tqdm
+
 
 def random_angles(num_angles, key=None):
     if key is None:
@@ -19,7 +21,6 @@ def random_angles(num_angles, key=None):
 
 @partial(jit, static_argnums=(0, 1, 4))
 def optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func):
-    print('compiling...')
     if preconditioner_func is None:
         preconditioner_func = lambda x, y: y
 
@@ -317,10 +318,8 @@ def mynimize_repeated(loss_func,
         opt = None
 
     result_history = []
-    best_params_history = []
-    success_history = []
 
-    for initial_params in initial_params_batch:
+    for initial_params in tqdm(initial_params_batch):
         learn_result = mynimize(regloss_func,
                                 num_params,
                                 method=method,
@@ -332,21 +331,22 @@ def mynimize_repeated(loss_func,
                                 loss_is_loss_and_grad=loss_is_loss_and_grad,
                                 **kwargs)
 
-        best_state = jnp.argmin(learn_result['loss'])
-        success = learn_result['loss'][best_state] < target_loss
+        params_history = learn_result['params']
 
-        # if target_reg is not None:
-        #     reg_success = learn_result['reg'][best_state] < target_reg
-        #     success = success and reg_success
+        full_result = {'params': params_history}
+        if regularization_func is None:
+            full_result['loss'] = learn_result['loss']
+        else:
+            full_result['regloss'] = learn_result['loss']
+            full_result['loss'] = vmap(jit(loss_func))(params_history)
+            full_result['reg'] = vmap(jit(regularization_func))(params_history)
 
-        result_history.append(learn_result)
-        best_params_history.append(learn_result['params'][best_state])
-        success_history.append(success)
+        result_history.append(full_result)
 
     if input_is_vector:
-        return result_history, best_params_history, success_history
+        return result_history
     else:
-        return result_history[0], best_params_history[0], success_history[0]
+        return result_history[0]
 
 
 def unitary_learn(u_func,
