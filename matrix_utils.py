@@ -39,10 +39,9 @@ def disc2(u, u_target):
     return 1 - jnp.abs((u * u_target.conj()).sum()) ** 2 / n ** 2
 
 
-def disc2_swap(u, u_target):
+def disc2_swap(u, u_target, num_qubits):
 
-    n = int(jnp.log2(u_target.shape[0]))
-    p_matrices = permutation_matrices(n)
+    p_matrices = permutation_matrices(num_qubits)
 
     return jnp.product(jnp.array([disc2(m@u, u_target) for m in p_matrices]))
 

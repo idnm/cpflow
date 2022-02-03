@@ -362,8 +362,13 @@ def unitary_learn(u_func,
                   num_repeats=1,
                   **kwargs):
 
-    if disc_func is None:
-        disc_func = lambda angs: disc2(u_func(angs), u_target)
+    if disc_func == 'swap':
+        num_qubits = int(jnp.log2(u_target.shape[0]))
+        loss_func = lambda angs: disc2_swap(u_func(angs), u_target, num_qubits)
+    else:
+        loss_func = lambda angs: disc2(u_func(angs), u_target)
+
+
 
     if regularization_options is not None:
         regularization_func, target_reg = construct_penalty_function(regularization_options)
@@ -371,7 +376,7 @@ def unitary_learn(u_func,
         regularization_func = lambda x: 0
         target_reg = None
 
-    return mynimize_repeated(disc_func,
+    return mynimize_repeated(loss_func,
                              num_params,
                              method=method,
                              learning_rate=learning_rate,

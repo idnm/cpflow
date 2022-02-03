@@ -1635,3 +1635,64 @@ kernel d1c9f01b-d513-4ac0-a7bb-7854baa43aef restarted
 [I 2022-02-02 22:58:04.435 ServerApp] Restoring connection for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
 [I 2022-02-02 22:58:48.204 ServerApp] Saving file at /CP.ipynb
 [I 2022-02-02 23:00:28.896 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:01:15.326 ServerApp] Kernel restarted: d1c9f01b-d513-4ac0-a7bb-7854baa43aef
+[I 2022-02-02 23:01:15.340 ServerApp] Starting buffering for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:01:15.353 ServerApp] Restoring connection for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:02:29.081 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:04:29.245 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:04:32.614 ServerApp] Kernel restarted: d1c9f01b-d513-4ac0-a7bb-7854baa43aef
+[I 2022-02-02 23:04:32.632 ServerApp] Starting buffering for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:04:32.650 ServerApp] Restoring connection for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:06:15.484 ServerApp] Kernel restarted: d1c9f01b-d513-4ac0-a7bb-7854baa43aef
+[I 2022-02-02 23:06:15.504 ServerApp] Starting buffering for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:06:15.521 ServerApp] Restoring connection for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:06:29.398 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:08:29.563 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:10:29.752 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:12:51.132 ServerApp] Kernel restarted: d1c9f01b-d513-4ac0-a7bb-7854baa43aef
+[I 2022-02-02 23:12:51.145 ServerApp] Starting buffering for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:12:51.153 ServerApp] Restoring connection for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:14:29.935 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:16:12.862 ServerApp] Kernel restarted: d1c9f01b-d513-4ac0-a7bb-7854baa43aef
+[I 2022-02-02 23:16:12.873 ServerApp] Starting buffering for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:16:12.881 ServerApp] Restoring connection for d1c9f01b-d513-4ac0-a7bb-7854baa43aef:bb817915-f342-45b8-9dae-2adf0f006328
+[I 2022-02-02 23:16:30.081 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:18:30.239 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:20:30.411 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:21:22.562 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:21:23.174 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:21:23.656 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:21:24.824 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:21:25.416 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:23:25.571 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:25:25.752 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:26:32.121 ServerApp] Kernel interrupted: d1c9f01b-d513-4ac0-a7bb-7854baa43aef
+[I 2022-02-02 23:27:25.991 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:29:26.141 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:31:26.313 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:33:26.528 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:37:27.003 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:39:27.158 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:40:12.338 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:40:13.764 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:42:13.933 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:44:14.159 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:46:14.300 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:48:14.521 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:50:14.766 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:52:14.937 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:54:15.124 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:56:15.431 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-02 23:58:15.586 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:00:15.778 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:02:15.956 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:04:16.112 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:06:16.317 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:08:16.546 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:10:16.722 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:12:16.871 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:14:17.036 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 00:16:17.240 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 07:29:48.941 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 07:31:49.141 ServerApp] Saving file at /CP.ipynb
+[I 2022-02-03 07:32:03.140 ServerApp] Saving file at /CP.ipynb
