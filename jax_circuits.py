@@ -208,18 +208,3 @@ class Ansatz:
                              learning_rate=learning_rate,
                              target_loss=target_loss,
                              **kwargs)
-
-
-def insert_params(params, insertion_params, indices):
-    """Replaces angles at positions specified by indices by insertion angles."""
-    if not indices:
-        return params
-
-    new_params = jnp.concatenate([params[:indices[0]], jnp.array([insertion_params[0], ]), params[indices[0]:]])
-    return insert_params(new_params, insertion_params[1:], indices[1:])
-
-
-def constrained_function(f, fixed_params, indices):
-    """Function with part of parameters specified by `mask` fixed to values `fixed_params`."""
-
-    return lambda free_params: f(insert_params(free_params, fixed_params, indices))

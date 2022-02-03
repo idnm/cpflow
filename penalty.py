@@ -89,22 +89,22 @@ def construct_penalty_function(penalty_options):
         ymax = penalty_options['ymax']
         xmax = penalty_options['xmax']
         plato = penalty_options['plato']
-        target_num_gates = penalty_options['num_gates']
-        angle_tolerance = penalty_options['angle_tolerance']
+        # target_num_gates = penalty_options['num_gates']
+        # angle_tolerance = penalty_options['angle_tolerance']
 
         penalty_func = lambda angs: r * cp_penalty_linear(angs*cp_mask, ymax, xmax, plato).sum()
 
-        tolerated_identity_penalty = penalty_func(angle_tolerance * cp_mask)/sum(cp_mask)
-        tolerated_cz_penalty = penalty_func((jnp.pi+angle_tolerance) * cp_mask)/sum(cp_mask)
-
-        target_reg = target_num_gates*tolerated_cz_penalty+(sum(cp_mask)-target_num_gates)*tolerated_identity_penalty
+        # tolerated_identity_penalty = penalty_func(angle_tolerance * cp_mask)/sum(cp_mask)
+        # tolerated_cz_penalty = penalty_func((jnp.pi+angle_tolerance) * cp_mask)/sum(cp_mask)
+        #
+        # target_reg = target_num_gates*tolerated_cz_penalty+(sum(cp_mask)-target_num_gates)*tolerated_identity_penalty
 
     elif penalty_options['function'] == 'L1':
         penalty_func = lambda angs: r * cp_penalty_L1(angs*cp_mask).sum()
-        target_reg = None
+        # target_reg = None
 
     else:
         print('penalty function not supported')
         print(penalty_options['func'])
 
-    return penalty_func, target_reg
+    return penalty_func

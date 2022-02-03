@@ -1,6 +1,6 @@
 """Module in infancy state."""
 
-from jax import lax, vmap
+from jax import lax, vmap, random
 import jax.numpy as jnp
 
 
@@ -30,3 +30,9 @@ def min_angles(F, angles, s0, s1):
         return min_angle(lambda a: F(angles.at[i].set(a)))
 
     return vmap(one_min_angle)(jnp.arange(s0, s1))
+
+
+def random_angles(num_angles, key=None):
+    if key is None:
+        key = random.PRNGKey(0)
+    return random.uniform(key, (num_angles, ), minval=0, maxval=2*jnp.pi)

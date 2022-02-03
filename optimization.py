@@ -13,12 +13,6 @@ from penalty import *
 from tqdm import tqdm
 
 
-def random_angles(num_angles, key=None):
-    if key is None:
-        key = random.PRNGKey(0)
-    return random.uniform(key, (num_angles, ), minval=0, maxval=2*jnp.pi)
-
-
 @partial(jit, static_argnums=(0, 1, 4))
 def optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func):
 
@@ -273,7 +267,6 @@ def mynimize_repeated(loss_func,
                       method='adam',
                       learning_rate=0.1,
                       target_loss=1e-7,
-                      target_reg=None,
                       u_func=None,
                       initial_params_batch=None,
                       num_repeats=1,
@@ -371,10 +364,9 @@ def unitary_learn(u_func,
 
 
     if regularization_options is not None:
-        regularization_func, target_reg = construct_penalty_function(regularization_options)
+        regularization_func = construct_penalty_function(regularization_options)
     else:
         regularization_func = lambda x: 0
-        target_reg = None
 
     return mynimize_repeated(loss_func,
                              num_params,
@@ -385,6 +377,5 @@ def unitary_learn(u_func,
                              initial_params_batch=initial_angles,
                              regularization_func=regularization_func,
                              target_loss=target_loss,
-                             target_reg=target_reg,
                              **kwargs)
 
