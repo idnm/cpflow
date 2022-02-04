@@ -47,20 +47,6 @@ def cp_penalty_linear(a, ymax, xmax, plato):
     return jnp.piecewise(a, segments, functions)
 
 
-def cz_value(a, threshold=1e-1):
-    """Return 0 if CP-angle is near zero, 1 if it is near pi and 2 else."""
-    t = threshold
-    a = a % (2*jnp.pi)
-    return jnp.piecewise(a,
-                         [a < t, jnp.abs(a-2*jnp.pi) < t, jnp.abs(a-jnp.pi) < t],
-                         [0, 0, 1, 2])
-
-
-def count_cz(angles, threshold=1e-1):
-    """Count the number of CZ gate in the circuit, omitting CP gates with angles below the threshold."""
-    return sum([cz_value(a, threshold=threshold) for a in angles])
-
-
 @vmap
 def cp_penalty_L1(a):
     """L1 penalty"""
@@ -89,19 +75,11 @@ def construct_penalty_function(penalty_options):
         ymax = penalty_options['ymax']
         xmax = penalty_options['xmax']
         plato = penalty_options['plato']
-        # target_num_gates = penalty_options['num_gates']
-        # angle_tolerance = penalty_options['angle_tolerance']
 
         penalty_func = lambda angs: r * cp_penalty_linear(angs*cp_mask, ymax, xmax, plato).sum()
 
-        # tolerated_identity_penalty = penalty_func(angle_tolerance * cp_mask)/sum(cp_mask)
-        # tolerated_cz_penalty = penalty_func((jnp.pi+angle_tolerance) * cp_mask)/sum(cp_mask)
-        #
-        # target_reg = target_num_gates*tolerated_cz_penalty+(sum(cp_mask)-target_num_gates)*tolerated_identity_penalty
-
     elif penalty_options['function'] == 'L1':
         penalty_func = lambda angs: r * cp_penalty_L1(angs*cp_mask).sum()
-        # target_reg = None
 
     else:
         print('penalty function not supported')

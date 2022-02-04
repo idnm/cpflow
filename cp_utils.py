@@ -87,7 +87,6 @@ def count_cz(angles, threshold=0.2):
     return sum([cz_value(a, threshold=threshold) for a in angles])
 
 
-
 def project_cp_angle(a, threshold=0.2):
     a = a % (2 * jnp.pi)
     if jnp.abs(a - jnp.pi) < threshold:
@@ -171,7 +170,7 @@ def evaluate_cp_result(res, cp_mask, threshold=0.2):
     return cz, loss, angles
 
 
-def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, threshold_cp=0.2):
+def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, threshold_cp=0.2, report_successes=False):
     """ Select learning histories that have cz count and discrepancy below threshold values.
 
     Args:
@@ -188,12 +187,22 @@ def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, thr
     """
 
     selected_results = []
+    cz_success_list = []
+    loss_success_list = []
     for i, res in tqdm(enumerate(res_list)):
         cz, loss, angles = evaluate_cp_result(res, cp_mask, threshold=threshold_cp)
-        if cz <= threshold_cz_count and loss <= threshold_loss:
+        cz_success = cz <= threshold_cz_count
+        loss_success = loss <= threshold_loss
+        if  cz_success and loss_success:
             selected_results.append([cz, loss, i])
 
-    return selected_results
+        cz_success_list.append(cz_success)
+        loss_success_list.append(loss_success)
+
+    if report_successes:
+        return selected_results, cz_success_list, loss_success_list
+    else:
+        return selected_results
 
 
 def refine_cp_result(res, u_target, anz, disc_func=None, target_loss=1e-8, threshold=0.2):
@@ -244,7 +253,8 @@ def cp_decompose(u_target,
                  cp_dist='uniform',
                  save_successful_results=True,
                  save_raw_results=False,
-                 save_to=None):
+                 save_to=None,
+                 report_successes=False):
 
     """Use cp learning pipeline to suggest decompositions of a given target unitary.
 
@@ -298,8 +308,12 @@ def cp_decompose(u_target,
                                          anz.cp_mask,
                                          regularization_options['num_gates'],
                                          entry_loss,
-                                         threshold_cp=threshold_cp
+                                         threshold_cp=threshold_cp,
+                                         report_successes=report_successes
                                          )
+    if report_successes:
+        selected_results, cz_successes, disc_successes = selected_results
+
     print(f'{len(selected_results)} found.')
 
     print('\nVerifying prospective results:')
@@ -332,7 +346,10 @@ def cp_decompose(u_target,
         with open(file, 'wb') as f:
             pickle.dump(results_to_save, f)
 
-    return successful_results, failed_results
+    if report_successes:
+        return successful_results, failed_results, cz_successes, disc_successes
+    else:
+        return successful_results, failed_results
 
 
 def report_cp_learning(res, cp_mask=None):
