@@ -187,20 +187,20 @@ def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, thr
     """
 
     selected_results = []
-    cz_success_list = []
-    loss_success_list = []
+    cz_counts_list = []
+    loss_list = []
     for i, res in tqdm(enumerate(res_list)):
         cz, loss, angles = evaluate_cp_result(res, cp_mask, threshold=threshold_cp)
         cz_success = cz <= threshold_cz_count
         loss_success = loss <= threshold_loss
-        if  cz_success and loss_success:
+        if cz_success and loss_success:
             selected_results.append([cz, loss, i])
 
-        cz_success_list.append(cz_success)
-        loss_success_list.append(loss_success)
+        cz_counts_list.append(cz)
+        loss_list.append(loss)
 
     if report_successes:
-        return selected_results, cz_success_list, loss_success_list
+        return selected_results, cz_counts_list, loss_list
     else:
         return selected_results
 
