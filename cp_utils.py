@@ -231,7 +231,6 @@ def refine_cp_result(res, u_target, anz, disc_func=None, target_loss=1e-8, thres
                                    u_target,
                                    len(free_angles),
                                    initial_angles=free_angles,
-                                   target_loss=target_loss,
                                    disc_func=disc_func)
 
     best_i = jnp.argmin(refined_result['loss'])
