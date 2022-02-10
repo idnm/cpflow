@@ -250,6 +250,7 @@ def cp_decompose(u_target,
                  threshold_loss=1e-6,
                  threshold_cp=0.2,
                  cp_dist='uniform',
+                 keep_history=False,
                  save_successful_results=True,
                  save_raw_results=False,
                  save_to=None,
@@ -296,7 +297,8 @@ def cp_decompose(u_target,
                             regularization_options=regularization_options,
                             initial_angles=initial_angles_array,
                             num_iterations=2000,
-                            disc_func=disc_func)
+                            disc_func=disc_func,
+                            keep_history=keep_history)
 
     if save_raw_results:
         with open('data/'+save_to+'_raw_results.pickle', 'wb') as f:

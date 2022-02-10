@@ -31,6 +31,7 @@ def optax_minimize(loss_func,
                    loss_is_loss_and_grad=False,
                    initial_params=None,
                    num_iterations=5000,
+                   keep_history=True,
                    target_loss=1e-7):
 
     if target_loss != 1e-7:
@@ -42,30 +43,34 @@ def optax_minimize(loss_func,
     opt_state = opt.init(initial_params)
     loss_and_grad_func = value_and_grad(loss_func)
 
-    def iteration(i, params_history_and_opt_state):
-        params_history, opt_state = params_history_and_opt_state
+    def iteration(i, params_loss_and_opt_state):
+        params_history, loss_history, opt_state = params_loss_and_opt_state
         params = params_history[i]
         if loss_is_loss_and_grad:
             params, opt_state, loss = optax_update_step(loss_func, opt, opt_state, params, preconditioner_func)
         else:
             params, opt_state, loss = optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func)
-        return [params_history.at[i+1].set(params), opt_state]
+        return [params_history.at[i+1].set(params), loss_history.at[i+1].set(loss), opt_state]
 
     inititial_params_history = jnp.zeros((num_iterations, len(initial_params)))
     inititial_params_history = inititial_params_history.at[0].set(initial_params)
-    params_history, opt_state = lax.fori_loop(0, num_iterations, iteration, [inititial_params_history, opt_state])
 
-    # for _ in range(num_iterations):
-    #     if loss_is_loss_and_grad:
-    #         params, opt_state, loss = optax_update_step(loss_func, opt, opt_state, params, preconditioner_func)
-    #     else:
-    #         params, opt_state, loss = optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func)
-    #     params_history.append(params)
-    #     loss_history.append(loss)
-    #     if loss < target_loss:
-    #         break
+    if loss_is_loss_and_grad:
+        initial_loss, _ = loss_func(initial_params)
+    else:
+        initial_loss = loss_func(initial_params)
 
-    return params_history
+    initial_loss_history = jnp.zeros((num_iterations, )).at[0].set(initial_loss)
+
+    params_history, loss_history, opt_state = lax.fori_loop(0, num_iterations, iteration,
+                                              [inititial_params_history, initial_loss_history, opt_state])
+
+    if keep_history:
+        return [params_history, loss_history]
+
+    else:
+        best_i = jnp.argmin(loss_history)
+        return jnp.array([params_history[best_i]]), jnp.array([loss_history[best_i]])
 
 
 def plain_hessian_preconditioner(cost_func, tikhonov_delta=1e-4):
@@ -188,6 +193,7 @@ def mynimize(loss_func,
              u_func=None,
              loss_is_loss_and_grad=False,
              target_loss=1e-7,
+             keep_history=True,
              **kwargs):
 
     kwargs['target_loss'] = target_loss
@@ -203,10 +209,11 @@ def mynimize(loss_func,
     elif method == 'adam':
         if opt_instance is None:
             opt_instance = optax.adam(learning_rate)
-        angles_history = optax_minimize(loss_func,
+        angles_history, loss_history = optax_minimize(loss_func,
                                         num_params,
                                         opt_instance,
                                         loss_is_loss_and_grad=loss_is_loss_and_grad,
+                                        keep_history=keep_history,
                                         **kwargs)
 
     elif method == 'natural adam':
@@ -235,7 +242,7 @@ def mynimize(loss_func,
     else:
         print('Method {} not supported'.format(method))
 
-    return angles_history
+    return angles_history, loss_history
 
 
 def mynimize_repeated(loss_func,
@@ -247,6 +254,7 @@ def mynimize_repeated(loss_func,
                       initial_params_batch=None,
                       num_repeats=1,
                       regularization_func=None,
+                      keep_history=True,
                       compute_losses=True,
                       **kwargs):
 
@@ -316,7 +324,7 @@ def mynimize_repeated(loss_func,
 
     def mynimize_particular(initial_params):
 
-        params_history = mynimize(regloss_func,
+        res = mynimize(regloss_func,
                                 num_params,
                                 method=method,
                                 learning_rate=learning_rate,
@@ -325,17 +333,25 @@ def mynimize_repeated(loss_func,
                                 initial_params=initial_params,
                                 u_func=u_func,
                                 loss_is_loss_and_grad=loss_is_loss_and_grad,
+                                keep_history=keep_history,
                                 **kwargs)
+
+        params_history, loss_history = res
 
         return params_history
 
-    batch_params_history = vmap(jit(mynimize_particular))(jnp.array(initial_params_batch))
+    if len(initial_params_batch) > 1:
+        mynimize_particular = jit(mynimize_particular)
+        loss_func = jit(loss_func)
+        regularization_func = jit(regularization_func)
+
+    batch_params_history = vmap(mynimize_particular)(jnp.array(initial_params_batch))
     results = [{'params': p} for p in batch_params_history]
 
     if compute_losses:
-        batch_loss_history = vmap(vmap(jit(loss_func)))(batch_params_history)
+        batch_loss_history = vmap(vmap(loss_func))(batch_params_history)
         if regularization_func is not None:
-            batch_reg_history = vmap(vmap(jit(regularization_func)))(batch_params_history)
+            batch_reg_history = vmap(vmap(regularization_func))(batch_params_history)
             batch_regloss_history = batch_loss_history+batch_reg_history
 
             results = [{'params': p, 'loss': l, 'reg': r, 'regloss': rl} for p, l, r, rl in
@@ -359,6 +375,7 @@ def unitary_learn(u_func,
                   regularization_options=None,
                   initial_angles=None,
                   num_repeats=1,
+                  keep_history=True,
                   **kwargs):
 
     if disc_func == 'swap':
@@ -366,8 +383,6 @@ def unitary_learn(u_func,
         loss_func = lambda angs: disc2_swap(u_func(angs), u_target, num_qubits)
     else:
         loss_func = lambda angs: disc2(u_func(angs), u_target)
-
-
 
     if regularization_options is not None:
         regularization_func = construct_penalty_function(regularization_options)
@@ -383,5 +398,6 @@ def unitary_learn(u_func,
                              initial_params_batch=initial_angles,
                              regularization_func=regularization_func,
                              target_loss=target_loss,
+                             keep_history=keep_history,
                              **kwargs)
 

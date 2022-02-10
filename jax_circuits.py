@@ -199,6 +199,7 @@ class Ansatz:
               method='adam',
               learning_rate=0.1,
               target_loss=1e-7,
+              keep_history=True,
               **kwargs):
 
         return unitary_learn(self.unitary,
@@ -207,4 +208,5 @@ class Ansatz:
                              method=method,
                              learning_rate=learning_rate,
                              target_loss=target_loss,
+                             keep_history=keep_history,
                              **kwargs)
