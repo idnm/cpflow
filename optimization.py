@@ -312,7 +312,8 @@ def mynimize_repeated(loss_func,
     else:
         regloss_func = lambda params: loss_func(params) + regularization_func(params)
 
-    # This is a workaround to avoid repeated compilations minimize function.
+    # This is a workaround to avoid repeated compilations of a single update step.
+    # Maybe no longer needed with vmap. Need to check.
     if method in ['adam', 'natural adam']:
         loss_is_loss_and_grad = True
         regloss_func = value_and_grad(regloss_func)
@@ -324,45 +325,40 @@ def mynimize_repeated(loss_func,
 
     def mynimize_particular(initial_params):
 
-        res = mynimize(regloss_func,
-                                num_params,
-                                method=method,
-                                learning_rate=learning_rate,
-                                opt_instance=opt,
-                                target_loss=target_loss,
-                                initial_params=initial_params,
-                                u_func=u_func,
-                                loss_is_loss_and_grad=loss_is_loss_and_grad,
-                                keep_history=keep_history,
-                                **kwargs)
-
-        params_history, loss_history = res
-
-        return params_history
-
-    if len(initial_params_batch) > 1:
-        mynimize_particular = jit(mynimize_particular)
-        loss_func = jit(loss_func)
-        regularization_func = jit(regularization_func)
-
-    batch_params_history = vmap(mynimize_particular)(jnp.array(initial_params_batch))
-    results = [{'params': p} for p in batch_params_history]
-
-    if compute_losses:
-        batch_loss_history = vmap(vmap(loss_func))(batch_params_history)
-        if regularization_func is not None:
-            batch_reg_history = vmap(vmap(regularization_func))(batch_params_history)
-            batch_regloss_history = batch_loss_history+batch_reg_history
-
-            results = [{'params': p, 'loss': l, 'reg': r, 'regloss': rl} for p, l, r, rl in
-                       zip(batch_params_history, batch_loss_history, batch_reg_history, batch_regloss_history)]
-        else:
-            results = [{'params': p, 'loss': l} for p, l in zip(batch_params_history, batch_loss_history)]
+        return mynimize(regloss_func,
+                        num_params,
+                        method=method,
+                        learning_rate=learning_rate,
+                        opt_instance=opt,
+                        target_loss=target_loss,
+                        initial_params=initial_params,
+                        u_func=u_func,
+                        loss_is_loss_and_grad=loss_is_loss_and_grad,
+                        keep_history=keep_history,
+                        **kwargs)
 
     if input_is_vector:
+        batch_params_history, batch_regloss_history = vmap(jit(mynimize_particular))(jnp.array(initial_params_batch))
+        results = [{'params': p, 'loss': l} for p, l in zip(batch_params_history, batch_regloss_history)]
+
+        if compute_losses:
+            if regularization_func is not None:
+                batch_reg_history = vmap(vmap(jit(regularization_func)))(batch_params_history)
+                batch_loss_history = batch_regloss_history-batch_reg_history
+                results = [{'params': p, 'loss': l, 'reg': r, 'regloss': rl} for p, l, r, rl in
+                           zip(batch_params_history, batch_loss_history, batch_reg_history, batch_regloss_history)]
         return results
+
     else:
-        return results[0]
+        params_history, regloss_history = mynimize_particular(initial_params_batch[0])
+        result = {'params': params_history, 'loss': regloss_history}
+        if compute_losses:
+            if regularization_func is not None:
+                reg_history = vmap(jit(regularization_func))(params_history)
+                loss_history = regloss_history - reg_history
+                result = {'params': params_history, 'loss': loss_history, 'reg': reg_history, 'regloss': regloss_history}
+
+        return result
 
 
 def unitary_learn(u_func,
