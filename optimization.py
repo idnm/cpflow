@@ -35,7 +35,7 @@ def optax_minimize(loss_func,
                    target_loss=1e-7):
 
     if target_loss != 1e-7:
-        print('Warning: target loss not yet supported.')
+        print('Warning: target loss not yet supported.')  # Probably need to switch to lax.while_loop ?
 
     if initial_params is None:
         initial_params = random_angles(num_params)
@@ -43,7 +43,7 @@ def optax_minimize(loss_func,
     opt_state = opt.init(initial_params)
     loss_and_grad_func = value_and_grad(loss_func)
 
-    def iteration(i, params_loss_and_opt_state):
+    def iteration_with_history(i, params_loss_and_opt_state):
         params_history, loss_history, opt_state = params_loss_and_opt_state
         params = params_history[i]
         if loss_is_loss_and_grad:
@@ -52,25 +52,39 @@ def optax_minimize(loss_func,
             params, opt_state, loss = optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func)
         return [params_history.at[i+1].set(params), loss_history.at[i+1].set(loss), opt_state]
 
-    inititial_params_history = jnp.zeros((num_iterations, len(initial_params)))
-    inititial_params_history = inititial_params_history.at[0].set(initial_params)
+    def iteration_without_history(i, params_loss_and_opt_state):
+        params, best_params, loss, best_loss, opt_state = params_loss_and_opt_state
+        if loss_is_loss_and_grad:
+            params, opt_state, loss = optax_update_step(loss_func, opt, opt_state, params, preconditioner_func)
+        else:
+            params, opt_state, loss = optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func)
+
+        # If new loss is lower than best loss, update the latter.
+        best_loss = lax.cond(loss < best_loss, lambda x: loss, lambda x: best_loss, None)
+        best_params = lax.cond(loss < best_loss, lambda x: params, lambda x: best_params, None)
+
+        return [params, best_params, loss, best_loss, opt_state]
 
     if loss_is_loss_and_grad:
         initial_loss, _ = loss_func(initial_params)
     else:
         initial_loss = loss_func(initial_params)
 
-    initial_loss_history = jnp.zeros((num_iterations, )).at[0].set(initial_loss)
-
-    params_history, loss_history, opt_state = lax.fori_loop(0, num_iterations, iteration,
-                                              [inititial_params_history, initial_loss_history, opt_state])
-
     if keep_history:
-        return [params_history, loss_history]
+        inititial_params_history = jnp.zeros((num_iterations, len(initial_params)))
+        inititial_params_history = inititial_params_history.at[0].set(initial_params)
+
+        initial_loss_history = jnp.zeros((num_iterations, )).at[0].set(initial_loss)
+
+        params_history, loss_history, opt_state = lax.fori_loop(0, num_iterations, iteration_with_history,
+                                                  [inititial_params_history, initial_loss_history, opt_state])
+
+        return params_history, loss_history
 
     else:
-        best_i = jnp.argmin(loss_history)
-        return jnp.array([params_history[best_i]]), jnp.array([loss_history[best_i]])
+        params, best_params, loss, best_loss, opt_state = lax.fori_loop(0, num_iterations, iteration_without_history,
+                                                                        [initial_params, initial_params, initial_loss, initial_loss, opt_state])
+        return jnp.array([best_params]), jnp.array([best_loss])
 
 
 def plain_hessian_preconditioner(cost_func, tikhonov_delta=1e-4):
