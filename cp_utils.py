@@ -396,7 +396,7 @@ def cp_ansatz_score(u_target,
                                          report_successes=report_successes
                                          )
 
-    cz_counts = jnp.array([cz for cz, *_ in selected_results])
+    cz_counts = jnp.array([cz for cz, *_ in selected_results], dtype=jnp.float32)
     score = (2**(-(cz_counts-regularization_options['target_num_gates']))).sum()
 
     if save_prospective_results:
@@ -409,7 +409,7 @@ def cp_ansatz_score(u_target,
         with open(file, 'wb') as f:
             pickle.dump(results_to_save, f)
 
-    return score
+    return score, cz_counts
 
 
 def report_cp_learning(res, cp_mask=None):
