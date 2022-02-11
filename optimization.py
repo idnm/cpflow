@@ -56,20 +56,23 @@ def optax_minimize(loss_func,
             params, opt_state, loss = optax_update_step(loss_func, opt, opt_state, params, preconditioner_func)
         else:
             params, opt_state, loss = optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func)
-        return [params_history.at[i+1].set(params), loss_history.at[i+1].set(loss), opt_state]
+        return [params_history.at[i+1].set(params), loss_history.at[i].set(loss), opt_state]
 
     def iteration_without_history(i, params_loss_and_opt_state):
-        params, best_params, loss, best_loss, opt_state = params_loss_and_opt_state
+        params, best_params, previous_loss, best_loss, opt_state = params_loss_and_opt_state
+
         if loss_is_loss_and_grad:
-            params, opt_state, loss = optax_update_step(loss_func, opt, opt_state, params, preconditioner_func)
+            new_params, opt_state, loss = optax_update_step(loss_func, opt, opt_state, params, preconditioner_func)
         else:
-            params, opt_state, loss = optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func)
+            new_params, opt_state, loss = optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner_func)
 
         # If new loss is lower than best loss, update the latter.
-        best_loss = lax.cond(loss < best_loss, lambda x: loss, lambda x: best_loss, None)
-        best_params = lax.cond(loss < best_loss, lambda x: params, lambda x: best_params, None)
+        best_loss, best_params = lax.cond(loss < best_loss,
+                                          lambda x: [loss, params],
+                                          lambda x: [best_loss, best_params],
+                                          None)
 
-        return [params, best_params, loss, best_loss, opt_state]
+        return new_params, best_params, loss, best_loss, opt_state
 
     if keep_history:
         inititial_params_history = jnp.zeros((num_iterations, len(initial_params)))
@@ -83,8 +86,11 @@ def optax_minimize(loss_func,
         return params_history, loss_history
 
     else:
-        params, best_params, loss, best_loss, opt_state = lax.fori_loop(0, num_iterations-1, iteration_without_history,
-                                                                        [initial_params, initial_params, initial_loss, initial_loss, opt_state])
+        initial_best_params = initial_params
+        initial_best_loss = initial_loss
+        params, best_params, loss, best_loss, opt_state = lax.fori_loop(0, num_iterations, iteration_without_history,
+                                                                        (initial_params, initial_best_params, initial_loss, initial_best_loss, opt_state))
+
         return jnp.array([best_params]), jnp.array([best_loss])
 
 
