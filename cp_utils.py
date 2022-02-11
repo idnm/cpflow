@@ -170,7 +170,9 @@ def evaluate_cp_result(res, cp_mask, threshold=0.2):
     return cz, loss, angles
 
 
-def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, threshold_cp=0.2, report_successes=False):
+def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, threshold_cp=0.2,
+                      report_successes=False,
+                      disable_tqdm=False):
     """ Select learning histories that have cz count and discrepancy below threshold values.
 
     Args:
@@ -189,7 +191,7 @@ def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, thr
     selected_results = []
     cz_counts_list = []
     loss_list = []
-    for i, res in tqdm(enumerate(res_list)):
+    for i, res in tqdm(enumerate(res_list), disable=disable_tqdm):
         cz, loss, angles = evaluate_cp_result(res, cp_mask, threshold=threshold_cp)
         cz_success = cz <= threshold_cz_count
         loss_success = loss <= threshold_loss
@@ -375,7 +377,7 @@ def cp_ansatz_score(u_target,
     key, *subkeys = random.split(key, num=num_samples + 1)
     initial_angles_array = [random_cp_angles(anz.num_angles, anz.cp_mask, cp_dist=cp_dist, key=k) for k in subkeys]
 
-    print('\nComputing raw results.')
+    # print('\nComputing raw results.')
     raw_results = anz.learn(u_target,
                             regularization_options=regularization_options,
                             initial_angles=initial_angles_array,
@@ -387,13 +389,14 @@ def cp_ansatz_score(u_target,
         with open(save_to+'_raw_results.pickle', 'wb') as f:
             pickle.dump(raw_results, f)
 
-    print('\nSelecting prospective results:')
+    # print('\nSelecting prospective results:')
     selected_results = filter_cp_results(raw_results,
                                          anz.cp_mask,
                                          regularization_options['accepted_num_gates'],
                                          entry_loss,
                                          threshold_cp=threshold_cp,
-                                         report_successes=report_successes
+                                         report_successes=report_successes,
+                                         disable_tqdm=True,
                                          )
 
     cz_counts = jnp.array([cz for cz, *_ in selected_results], dtype=jnp.float32)
