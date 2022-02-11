@@ -301,13 +301,13 @@ def cp_decompose(u_target,
                             keep_history=keep_history)
 
     if save_raw_results:
-        with open('data/'+save_to+'_raw_results.pickle', 'wb') as f:
+        with open(save_to+'_raw_results.pickle', 'wb') as f:
             pickle.dump(raw_results, f)
 
     print('\nSelecting prospective results:')
     selected_results = filter_cp_results(raw_results,
                                          anz.cp_mask,
-                                         regularization_options['num_gates'],
+                                         regularization_options['accepted_num_gates'],
                                          entry_loss,
                                          threshold_cp=threshold_cp,
                                          report_successes=report_successes
@@ -338,7 +338,7 @@ def cp_decompose(u_target,
     print([r[0] for r in successful_results])
 
     if save_successful_results:
-        file = 'data/' + save_to + '_successful_results.pickle'
+        file = save_to + '_successful_results.pickle'
         results_to_save = [[cz, circ(angs)] for cz, circ, u, angs in successful_results]
         if os.path.exists(file):
             with open(file, 'rb') as f:
@@ -351,6 +351,65 @@ def cp_decompose(u_target,
         return successful_results, failed_results, cz_successes, disc_successes
     else:
         return successful_results, failed_results
+
+
+def cp_ansatz_score(u_target,
+                    anz,
+                    regularization_options,
+                    disc_func=None,
+                    num_samples=100,
+                    key=random.PRNGKey(0),
+                    entry_loss=1e-3,
+                    threshold_cp=0.2,
+                    cp_dist='uniform',
+                    keep_history=False,
+                    save_prospective_results=True,
+                    save_raw_results=False,
+                    save_to=None,
+                    report_successes=False):
+
+    if save_raw_results or save_prospective_results:
+        if save_to is None:
+            raise Exception("save_to is not provided.")
+
+    key, *subkeys = random.split(key, num=num_samples + 1)
+    initial_angles_array = [random_cp_angles(anz.num_angles, anz.cp_mask, cp_dist=cp_dist, key=k) for k in subkeys]
+
+    print('\nComputing raw results.')
+    raw_results = anz.learn(u_target,
+                            regularization_options=regularization_options,
+                            initial_angles=initial_angles_array,
+                            num_iterations=2000,
+                            disc_func=disc_func,
+                            keep_history=keep_history)
+
+    if save_raw_results:
+        with open(save_to+'_raw_results.pickle', 'wb') as f:
+            pickle.dump(raw_results, f)
+
+    print('\nSelecting prospective results:')
+    selected_results = filter_cp_results(raw_results,
+                                         anz.cp_mask,
+                                         regularization_options['accepted_num_gates'],
+                                         entry_loss,
+                                         threshold_cp=threshold_cp,
+                                         report_successes=report_successes
+                                         )
+
+    cz_counts = jnp.array([cz for cz, *_ in selected_results])
+    score = (2**(-(cz_counts-regularization_options['target_num_gates']))).sum()
+
+    if save_prospective_results:
+        file = save_to + '_prospective_results.pickle'
+        results_to_save = [raw_results[i] for *_,i in selected_results]
+        if os.path.exists(file):
+            with open(file, 'rb') as f:
+                existing_successful_results = pickle.load(f)
+                results_to_save = existing_successful_results+results_to_save
+        with open(file, 'wb') as f:
+            pickle.dump(results_to_save, f)
+
+    return score
 
 
 def report_cp_learning(res, cp_mask=None):

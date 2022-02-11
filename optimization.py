@@ -21,6 +21,7 @@ def optax_update_step(loss_and_grad_func, opt, opt_state, params, preconditioner
     grads = preconditioner_func(params, grads)
     updates, opt_state = opt.update(grads, opt_state)
     params = optax.apply_updates(params, updates)
+
     return params, opt_state, loss
 
 
@@ -39,6 +40,11 @@ def optax_minimize(loss_func,
 
     if initial_params is None:
         initial_params = random_angles(num_params)
+
+    if loss_is_loss_and_grad:
+        initial_loss, _ = loss_func(initial_params)
+    else:
+        initial_loss = loss_func(initial_params)
 
     opt_state = opt.init(initial_params)
     loss_and_grad_func = value_and_grad(loss_func)
@@ -65,11 +71,6 @@ def optax_minimize(loss_func,
 
         return [params, best_params, loss, best_loss, opt_state]
 
-    if loss_is_loss_and_grad:
-        initial_loss, _ = loss_func(initial_params)
-    else:
-        initial_loss = loss_func(initial_params)
-
     if keep_history:
         inititial_params_history = jnp.zeros((num_iterations, len(initial_params)))
         inititial_params_history = inititial_params_history.at[0].set(initial_params)
@@ -82,7 +83,7 @@ def optax_minimize(loss_func,
         return params_history, loss_history
 
     else:
-        params, best_params, loss, best_loss, opt_state = lax.fori_loop(0, num_iterations, iteration_without_history,
+        params, best_params, loss, best_loss, opt_state = lax.fori_loop(0, num_iterations-1, iteration_without_history,
                                                                         [initial_params, initial_params, initial_loss, initial_loss, opt_state])
         return jnp.array([best_params]), jnp.array([best_loss])
 
