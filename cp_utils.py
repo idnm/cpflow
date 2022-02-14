@@ -1,6 +1,6 @@
 import os.path
 
-from jax import random
+from jax import random, jit, vmap
 from penalty import *
 from matplotlib import pyplot as plt
 from trigonometric_utils import random_angles
@@ -41,40 +41,18 @@ def random_cp_angles(num_angles, cp_mask, cp_dist='uniform', key=random.PRNGKey(
         print('cp_dist', cp_dist, 'not supported')
 
 
-# def cp_loss_linear(loss_func, angles, cp_mask, reg=1, ymax=2, xmax=jnp.pi / 2, plato=0.05):
-#     """Loss functions combined with linear CP penalty."""
-#     cp_angles = angles * cp_mask
-#     penalty_loss = cp_penalty_linear(cp_angles, ymax, xmax, plato).sum()
-#     return loss_func(angles) + reg * penalty_loss
-
-
-# def cp_loss_L1(loss_func, angles, cp_mask, reg=1):
-#     """Loss functions combined with L1 CP penalty."""
-#     cp_angles = angles * cp_mask
-#     penalty_loss = jnp.abs(cp_angles).sum()
-#     return loss_func(angles) + reg * penalty_loss
-
-
-# def plot_cp_angles(angles, h=2, t=1e-2):
-#     """Plot all CP angles in the circuit placing them on the cost function profile."""
-#     a_sweep = jnp.linspace(0, 2 * jnp.pi, 200)
-#     angles = angles % (2 * jnp.pi)
-#     plt.plot(a_sweep, cp_penalty_linear(a_sweep, h, t))
-#     plt.scatter(angles,
-#                 cp_penalty_linear(angles, h, t) + 0.1 * random.normal(random.PRNGKey(0), (len(angles),)),
-#                 alpha=0.5)
-
-
+@partial(jit, static_argnums=(1,))
 def cz_value(a, threshold=1e-2):
     """Returns 0 if CP-angle is near zero, 1 if it is near pi and 2 else."""
     t = threshold
     a = a % (2 * jnp.pi)
-    if a < t or jnp.abs(a - 2 * jnp.pi) < t:
-        return 0
-    elif jnp.abs(a - jnp.pi) < t:
-        return 1
-    else:
-        return 2
+    return jnp.piecewise(a, [a < t, jnp.abs(a - 2 * jnp.pi) < t, jnp.abs(a - jnp.pi) < t], [0, 0, 1, 2])
+    # if a < t or jnp.abs(a - 2 * jnp.pi) < t:
+    #     return 0
+    # elif jnp.abs(a - jnp.pi) < t:
+    #     return 1
+    # else:
+    #     return 2
 
 
 def count_cz(angles, threshold=0.2):
@@ -84,7 +62,7 @@ def count_cz(angles, threshold=0.2):
         threshold: to judge if angle is close to 0 or pi or not.
     returns:
         The number of CZ gates in the circuit, omitting CP gates with angles below the threshold."""
-    return sum([cz_value(a, threshold=threshold) for a in angles])
+    return vmap(lambda a: cz_value(a, threshold=threshold))(angles).sum()
 
 
 def project_cp_angle(a, threshold=0.2):
