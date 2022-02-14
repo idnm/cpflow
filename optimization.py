@@ -359,12 +359,12 @@ def mynimize_repeated(loss_func,
                         **kwargs)
 
     if input_is_vector:
-        batch_params_history, batch_regloss_history = vmap(jit(mynimize_particular))(jnp.array(initial_params_batch))
+        batch_params_history, batch_regloss_history = jit(vmap(mynimize_particular))(jnp.array(initial_params_batch))
         results = [{'params': p, 'loss': l} for p, l in zip(batch_params_history, batch_regloss_history)]
 
         if compute_losses:
             if regularization_func is not None:
-                batch_reg_history = vmap(vmap(jit(regularization_func)))(batch_params_history)
+                batch_reg_history = jit(vmap(vmap(regularization_func)))(batch_params_history)
                 batch_loss_history = batch_regloss_history-batch_reg_history
                 results = [{'params': p, 'loss': l, 'reg': r, 'regloss': rl} for p, l, r, rl in
                            zip(batch_params_history, batch_loss_history, batch_reg_history, batch_regloss_history)]
@@ -375,7 +375,7 @@ def mynimize_repeated(loss_func,
         result = {'params': params_history, 'loss': regloss_history}
         if compute_losses:
             if regularization_func is not None:
-                reg_history = vmap(jit(regularization_func))(params_history)
+                reg_history = jit(vmap(regularization_func))(params_history)
                 loss_history = regloss_history - reg_history
                 result = {'params': params_history, 'loss': loss_history, 'reg': reg_history, 'regloss': regloss_history}
 
@@ -418,3 +418,13 @@ def unitary_learn(u_func,
                              keep_history=keep_history,
                              **kwargs)
 
+
+# def adaptive_decompose(u_target,
+#                        layer,
+#                        target_num_gates,
+#                        accepted_num_gates,
+#                        regularization_options=None,
+#                        disc_func=None):
+#
+#     reg_options = {'r': 0.005,
+#                    ''}

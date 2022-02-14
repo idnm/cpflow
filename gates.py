@@ -1,6 +1,8 @@
 """"Matrix representations of some quantum gates."""
 
 import jax.numpy as jnp
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator
 
 # Single-qubit pauli gates.
 
@@ -54,4 +56,16 @@ def cp_mat(a):
 
     return control0+control1
 
-new_mat = 'bss'
+
+# Toffoli gates from qiskit
+qc = QuantumCircuit(3)
+qc.ccx(0, 1, 2)
+u_toff3 = Operator(qc.reverse_bits()).data
+
+qc = QuantumCircuit(4)
+qc.mct([0, 1, 2], 3)
+u_toff4 = Operator(qc.reverse_bits()).data
+
+qc = QuantumCircuit(5)
+qc.mct([0, 1, 2, 3], 4)
+u_toff5 = Operator(qc.reverse_bits()).data
