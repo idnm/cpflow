@@ -403,7 +403,7 @@ def adaptive_decompose(u_target,
                                                                disc_func=disc_func)
 
             if success:
-                print(f'Found new decomposition with {cz} gates.')
+                print(f'Found new decomposition with {cz} gates.\n')
 
                 decompositions.append([cz, circ, u, best_angs])
                 scoreboard.update({cz: 1})
