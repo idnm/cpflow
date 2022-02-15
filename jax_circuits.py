@@ -403,7 +403,7 @@ def adaptive_decompose(u_target,
                                                                disc_func=disc_func)
 
             if success:
-                print(f'Found new decomposition with {cz} gates.\n')
+                print(f'\nFound new decomposition with {cz} gates.\n')
 
                 decompositions.append([cz, circ, u, best_angs])
                 scoreboard.update({cz: 1})
@@ -414,7 +414,7 @@ def adaptive_decompose(u_target,
 
                 break
         else:
-            print('No decomposition passed.\n')
+            print('\nNo decomposition passed.\n')
 
         if hyperopt_options['stop_if_target_reached'] and min(scoreboard.keys()) <= hyperopt_options['target_num_gates']:
             print('\nTarget number of gates reached.')
