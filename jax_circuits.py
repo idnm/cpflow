@@ -1,3 +1,7 @@
+import pickle
+import time
+
+import dill
 import numpy as np
 import jax.numpy as jnp
 
@@ -9,10 +13,17 @@ from qiskit.circuit import Parameter
 
 from functools import partial
 
+from tqdm import tqdm
+
+from cp_utils import random_cp_angles, filter_cp_results, refine_cp_result
 from gates import *
 from circuit_assemebly import *
 from optimization import *
 from penalty import *
+from topology import fill_layers
+
+from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
+from hyperopt.pyll import scope
 
 
 class EntanglingBlock:
@@ -210,3 +221,197 @@ class Ansatz:
                              target_loss=target_loss,
                              keep_history=keep_history,
                              **kwargs)
+
+
+def adaptive_decompose(u_target,
+                       layer,
+                       hyperopt_options,
+                       disc_func=disc2,
+                       regularization_options=None,
+                       save_to=None,
+                       overwrite_existing=False):
+    if save_to is None:
+        print("Warning: results will not be saved because save_to not provided.")
+    else:
+        trials_path = save_to + 'trials.pickle'
+        decompositions_path = save_to + 'decompositions.pickle'
+
+    # Number of qubits is the maximum index in the coupling map, plus 1.
+    num_qubits = max([item for sublist in layer for item in sublist]) + 1
+
+    default_regularizatoin_options = {
+        'r': 0.00055,
+        'function': 'linear',
+        'ymax': 2,
+        'xmax': jnp.pi / 2,
+        'plato': 0.05
+    }
+
+    default_hyperopt_options = {
+        'r_initial': 0.00055,
+        'r_variance': 0.5,
+        'cp_dist': 'uniform',
+        'entry_loss': 1e-3,
+        'target_loss': 1e-6,
+        'threshold_cp': 0.2,
+        'batch_size': 1000,
+        'num_gd_iterations': 2000,
+        'threshold_num_gates': theoretical_lower_bound(num_qubits),
+        'accepted_num_gates': None,
+        'max_num_cp_gates': None,
+        'max_evals': 100,
+        'stop_if_target_reached': True
+    }
+
+    # Update default options with those provided with the function call.
+    if regularization_options:
+        regularization_options = dict(default_regularizatoin_options, **regularization_options)
+    else:
+        regularization_options = default_regularizatoin_options
+
+    hyperopt_options = dict(default_hyperopt_options, **hyperopt_options)
+    if hyperopt_options['accepted_num_gates'] is None:
+        raise Exception('Accepted number of gates must be provided.')
+    if hyperopt_options['max_num_cp_gates'] is None:
+        print(
+            'Warning: max_num_cp_gates not provided. Defaulting to the theoretical lower bound. This is likely to significantly slow down the search.')
+        hyperopt_options.update({'max_num_cp_gates': theoretical_lower_bound(num_qubits)})
+
+    def objective(search_params):
+
+        r, num_cp_gates = search_params
+
+        anz = Ansatz(num_qubits, 'cp', placements=fill_layers(layer, num_cp_gates))
+
+        regularization_options.update({'r': r, 'cp_mask': anz.cp_mask})
+
+        # My attepmt to generate random seed from time stamp.
+        angles_random_seed = int(float(str(time.time())[::-1]))
+        key = random.PRNGKey(angles_random_seed)
+
+        key, *subkeys = random.split(key, num=hyperopt_options['batch_size'] + 1)
+        initial_angles_array = jnp.array(
+            [random_cp_angles(anz.num_angles, anz.cp_mask, cp_dist=hyperopt_options['cp_dist'], key=k)
+             for k in subkeys])
+
+        raw_results = anz.learn(
+            u_target,
+            regularization_options=regularization_options,
+            initial_angles=initial_angles_array,
+            num_iterations=hyperopt_options['num_gd_iterations'],
+            disc_func=disc_func,
+            keep_history=False)
+
+        successful_results = filter_cp_results(
+            raw_results,
+            anz.cp_mask,
+            hyperopt_options['threshold_num_gates'],
+            hyperopt_options['entry_loss'],
+            threshold_cp=hyperopt_options['threshold_cp'],
+            disable_tqdm=True,
+        )
+
+        cz_counts = [cz for cz, *_ in successful_results]
+        score = (2 ** (-(jnp.array(cz_counts) - hyperopt_options['target_num_gates']))).sum() / hyperopt_options[
+            'batch_size']
+
+        #         current_best_cz = min(scoreboard.keys())
+        #         better_than_existing_results = [raw_results[i] for cz, loss, i in successful_results if cz<current_best_cz]
+
+        return {
+            'loss': -score,
+            'status': STATUS_OK,
+            'angles_random_seed': angles_random_seed,
+            'cz_counts': cz_counts,
+            'num_gd_iterations': hyperopt_options['num_gd_iterations'],
+            'entry_loss': hyperopt_options['entry_loss'],
+            'threshold_cp': hyperopt_options['threshold_cp'],
+            'attachments': {'decompositions': pickle.dumps(successful_results)}
+        }
+
+    space = [
+        hp.lognormal('r', jnp.log(hyperopt_options['r_initial']), hyperopt_options['r_variance']),
+        scope.int(
+            hp.quniform('num_cp_gates', hyperopt_options['target_num_gates'], hyperopt_options['max_num_cp_gates'], 1))
+    ]
+
+    trials = Trials()
+    decompositions = []
+    if save_to and not overwrite_existing:
+        try:
+            with open(trials_path, 'rb') as f:
+                trials = pickle.load(f)
+            print('Found existing trials, resuming from here.')
+        except FileNotFoundError:
+            pass
+
+        try:
+            with open(decompositions_path, 'rb') as f:
+                decompositions = dill.load(f)
+        except FileNotFoundError:
+            pass
+
+    if decompositions:
+        cz_list = [cz for cz, *_ in decompositions]
+        best_cz = min(cz_list)
+        scoreboard = {cz: cz_list.count(cz) for cz in set(cz_list)}
+    else:
+        scoreboard = {hyperopt_options['accepted_num_gates'] + 1: 0}
+
+    for n in tqdm(range(hyperopt_options['max_evals'] // hyperopt_options['evals_between_verification']),
+                  desc='Epochs'):
+
+        best = fmin(
+            objective,
+            space=space,
+            algo=tpe.suggest,
+            max_evals=hyperopt_options['evals_between_verification'] + len(trials.trials),
+            trials=trials)
+
+        if save_to:
+            with open(trials_path, 'wb') as f:
+                pickle.dump(trials, f)
+
+        current_best_cz = min(scoreboard.keys())
+        results_to_verify = []
+        for trial in trials.trials[-hyperopt_options['evals_between_verification']:]:
+            msg = trials.trial_attachments(trial)['decompositions']
+            successful_results = pickle.loads(msg)
+            num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+            prospective_results = [[num_cp_gates, r] for cz, r in successful_results if cz < current_best_cz]
+            num_equivalent_results = sum([cz == current_best_cz for cz, r in successful_results])
+            results_to_verify.extend(prospective_results)
+
+        if len(results_to_verify):
+            print(
+                f'\nFound {len(results_to_verify)} decompositions potentially better than current best count {current_best_cz}, verifying...')
+        else:
+            print(
+                f'\nFound no better decompositions. Found {num_equivalent_results} decompositions with the current best count {current_best_cz}.')
+
+        for num_cp_gates, res in prospective_results:
+            anz = Ansatz(num_qubits, 'cp', placements=fill_layers(layer, num_cp_gates))
+
+            success, cz, circ, u, best_angs = refine_cp_result(res,
+                                                               u_target,
+                                                               anz,
+                                                               target_loss=hyperopt_options['target_loss'],
+                                                               disc_func=disc_func)
+
+            if success:
+                print(f'Found new decomposition with {cz} gates.')
+
+                decompositions.append([cz, circ, u, best_angs])
+                scoreboard.update({cz: 1})
+
+                if save_to:
+                    with open(decompositions_path, 'wb') as f:
+                        dill.dump(decompositions, f)
+
+                break
+
+        if hyperopt_options['stop_if_target_reached'] and min(scoreboard.keys()) <= hyperopt_options['target_num_gates']:
+            print('\nTarget number of gates reached.')
+            break
+
+    return trials, decompositions
