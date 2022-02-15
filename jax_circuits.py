@@ -316,8 +316,8 @@ def adaptive_decompose(u_target,
         )
 
         cz_counts = [cz for cz, *_ in successful_results]
-        score = (2 ** (-(jnp.array(cz_counts) - hyperopt_options['target_num_gates']))).sum() / hyperopt_options[
-            'batch_size']
+
+        score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - hyperopt_options['target_num_gates']))).sum() / hyperopt_options['batch_size']
 
         #         current_best_cz = min(scoreboard.keys())
         #         better_than_existing_results = [raw_results[i] for cz, loss, i in successful_results if cz<current_best_cz]
