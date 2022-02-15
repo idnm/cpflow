@@ -365,6 +365,8 @@ def adaptive_decompose(u_target,
     for n in tqdm(range(hyperopt_options['max_evals'] // hyperopt_options['evals_between_verification']),
                   desc='Epochs'):
 
+        print('\n')
+        
         best = fmin(
             objective,
             space=space,
