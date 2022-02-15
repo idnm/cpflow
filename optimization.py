@@ -91,7 +91,7 @@ def optax_minimize(loss_func,
         params, best_params, loss, best_loss, opt_state = lax.fori_loop(0, num_iterations, iteration_without_history,
                                                                         (initial_params, initial_best_params, initial_loss, initial_best_loss, opt_state))
 
-        return jnp.array([best_params]), jnp.array([best_loss])
+        return jnp.array([initial_params, best_params]), jnp.array([initial_loss, best_loss])
 
 
 def plain_hessian_preconditioner(cost_func, tikhonov_delta=1e-4):
