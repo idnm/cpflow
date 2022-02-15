@@ -416,7 +416,8 @@ def adaptive_decompose(u_target,
 
                 break
         else:
-            print('\nNo decomposition passed.\n')
+            if prospective_results:
+                print('\nNo decomposition passed.\n')
 
         if hyperopt_options['stop_if_target_reached'] and min(scoreboard.keys()) <= hyperopt_options['target_num_gates']:
             print('\nTarget number of gates reached.')
