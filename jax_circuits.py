@@ -366,7 +366,7 @@ def adaptive_decompose(u_target,
                   desc='Epochs'):
 
         print('\n')
-        
+
         best = fmin(
             objective,
             space=space,
