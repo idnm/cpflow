@@ -62,7 +62,8 @@ def count_cz(angles, threshold=0.2):
         threshold: to judge if angle is close to 0 or pi or not.
     returns:
         The number of CZ gates in the circuit, omitting CP gates with angles below the threshold."""
-    return vmap(lambda a: cz_value(a, threshold=threshold))(angles).sum()
+    cz = vmap(lambda a: cz_value(a, threshold=threshold))(angles).sum()
+    return int(cz)
 
 
 def project_cp_angle(a, threshold=0.2):
@@ -91,7 +92,12 @@ def constrained_function(f, fixed_params, indices):
 
     Example f=f(x,y,z), fixed_params=[1,10], indices=[0,2] gives g(y)=f(1,y,10) """
 
-    return lambda free_params: f(insert_params(free_params, fixed_params, indices))
+    def cf(free_params):
+        return f(insert_params(free_params, fixed_params, indices))
+
+    return cf
+
+    # return lambda free_params: f(insert_params(free_params, fixed_params, indices))
 
 
 def convert_cp_to_cz(anz, angles, threshold=0.2):
@@ -111,7 +117,9 @@ def convert_cp_to_cz(anz, angles, threshold=0.2):
 
     mask = anz.cp_mask
     cp_indices = jnp.where(mask == 1)[0]
-    cp_angles = angles[mask == 1]
+
+    # print('old version', angles[mask == 1])
+    cp_angles = angles[jnp.where(mask == 1)]
 
     projected_cp_angles = jnp.array([project_cp_angle(a, threshold) for a in cp_angles])
     projected_mask = (projected_cp_angles == 0) + (projected_cp_angles == jnp.pi)
@@ -148,9 +156,14 @@ def evaluate_cp_result(res, cp_mask, threshold=0.2):
     return cz, loss, angles
 
 
-def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, threshold_cp=0.2,
-                      report_successes=False,
-                      disable_tqdm=False):
+def filter_cp_results(
+        res_list,
+        cp_mask,
+        threshold_cz_count,
+        threshold_loss,
+        threshold_cp=0.2,
+        disable_tqdm=False):
+
     """ Select learning histories that have cz count and discrepancy below threshold values.
 
     Args:
@@ -159,30 +172,25 @@ def filter_cp_results(res_list, cp_mask, threshold_cz_count, threshold_loss, thr
         threshold_cz_count: max number of cz gates to accept.
         threshold_loss: max discrepancy with the target unitary to accept.
         threshold_cp: threshold value for projecting cp angles.
-
-    Returns: list of tuples with data for selected results (cz, loss, i):
+        disable_tqdm: whether display progress bar or not.
+    Returns: OUTDATED
+        list of tuples with data for selected results (cz, loss, i):
         cz: number of cz gates in the result.
         loss: discrepancy of the result.
         i: index of the result. res_list[i] is the result for which cz and loss are computed.
     """
 
     selected_results = []
-    cz_counts_list = []
-    loss_list = []
     for i, res in tqdm(enumerate(res_list), disable=disable_tqdm):
         cz, loss, angles = evaluate_cp_result(res, cp_mask, threshold=threshold_cp)
         cz_success = cz <= threshold_cz_count
         loss_success = loss <= threshold_loss
         if cz_success and loss_success:
-            selected_results.append([cz, loss, i])
+            selected_results.append([cz, res])
 
-        cz_counts_list.append(cz)
-        loss_list.append(loss)
+    selected_results.sort(key=lambda x: x[0])
 
-    if report_successes:
-        return selected_results, cz_counts_list, loss_list
-    else:
-        return selected_results
+    return selected_results
 
 
 def refine_cp_result(res, u_target, anz, disc_func=None, target_loss=1e-8, threshold=0.2):
@@ -217,7 +225,7 @@ def refine_cp_result(res, u_target, anz, disc_func=None, target_loss=1e-8, thres
     best_angs = refined_result['params'][best_i]
     best_loss = refined_result['loss'][best_i]
 
-    return best_loss <= target_loss, circ, u, best_angs
+    return best_loss <= target_loss, cz, circ, u, best_angs
 
 
 def cp_decompose(u_target,
@@ -289,8 +297,7 @@ def cp_decompose(u_target,
                                          anz.cp_mask,
                                          regularization_options['accepted_num_gates'],
                                          entry_loss,
-                                         threshold_cp=threshold_cp,
-                                         report_successes=report_successes
+                                         threshold_cp=threshold_cp
                                          )
     if report_successes:
         selected_results, cz_successes, disc_successes = selected_results
