@@ -1,5 +1,6 @@
 import pickle
 import time
+import os
 
 import dill
 import numpy as np
@@ -233,6 +234,9 @@ def adaptive_decompose(u_target,
     if save_to is None:
         print("Warning: results will not be saved because save_to not provided.")
     else:
+        if not os.path.exists(save_to):
+            os.makedirs(save_to)
+
         trials_path = save_to + 'trials.pickle'
         decompositions_path = save_to + 'decompositions.pickle'
 
