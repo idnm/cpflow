@@ -21,7 +21,7 @@ from gates import *
 from circuit_assemebly import *
 from optimization import *
 from penalty import *
-from topology import fill_layers
+from topology import *
 
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll import scope
@@ -224,6 +224,179 @@ class Ansatz:
                              **kwargs)
 
 
+class Decompose:
+
+    default_regularization_options = {
+        'function': 'linear',
+        'ymax': 2,
+        'xmax': jnp.pi / 2,
+        'plato_0': 0.05,
+        'plato_1': 0.05,
+        'plato_2': 0.05
+    }
+
+    default_options = {
+        'r_mean': 0.00055,
+        'r_variance': 0.5,
+        'cp_dist': 'uniform',
+        'entry_loss': 1e-3,
+        'target_loss': 1e-6,
+        'threshold_cp': 0.2,
+        'num_samples': 1000,
+        'num_gd_iterations': 2000,
+        'method': 'adam',
+        'learning_rate': 0.1,
+        'threshold_num_gates': None,
+        'accepted_num_gates': None,
+        'max_num_cp_gates': None,
+        'min_num_cp_gates': None,
+        'max_evals': 100,
+        'stop_if_target_reached': True,
+        'hyper_random_seed': 0
+    }
+
+    def __init__(self, layer, unitary_loss_func=None, cp_regularization_func=None, u_target=None):
+        self.u_target = u_target
+        if unitary_loss_func is not None:
+            self.unitary_loss_func = unitary_loss_func
+        else:
+            assert self.u_target is not None, 'Neither unitary loss function nor target unitary is provided.'
+            self.unitary_loss_func = lambda u: disc2(u, self.u_target)
+
+        if cp_regularization_func:
+            self.cp_regularization_func = cp_regularization_func
+        else:
+            self.cp_regularization_func = make_regularization_function(Decompose.default_regularization_options)
+        self.layer = layer
+        self.num_qubits = num_qubits_from_layer(self.layer)
+
+    def raw_decompositions(self, num_cp_gates, r, initial_angles_array, options, keep_history=False):
+        options = dict(Decompose.default_options, **options)
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
+        loss_func = lambda angles: self.unitary_loss_func(anz.unitary(angles))
+
+        def regularization_func(angs):
+            return r*vmap(self.cp_regularization_func)(angs*anz.cp_mask).sum()
+
+        raw_results = mynimize_repeated(
+            loss_func, anz.num_angles,
+            method=options['method'],
+            learning_rate=options['learning_rate'],
+            initial_params_batch=initial_angles_array,
+            num_repeats=options['num_samples'],
+            regularization_func=regularization_func,
+            u_func=anz.unitary,  # For 'adam' this won't be used, but it will e.g. for 'natural adam'.
+            keep_history=keep_history
+        )
+
+        return raw_results
+
+
+
+
+
+
+def raw_decompositions(
+        u_target,
+        layer,
+        regularization_options,
+        hyperopt_options,
+        disc_func,
+        search_params,
+        angles_random_seed):
+
+    r, num_cp_gates = search_params
+    # print(f'Current r: {r}, number of cp gates: {num_cp_gates}')
+
+    anz = Ansatz(num_qubits_from_layer(layer), 'cp', placements=fill_layers(layer, num_cp_gates))
+
+    regularization_options.update({'r': r, 'cp_mask': anz.cp_mask})
+
+    # My attepmt to generate random seed from time stamp.
+    key = random.PRNGKey(angles_random_seed)
+
+    key, *subkeys = random.split(key, num=hyperopt_options['batch_size'] + 1)
+    initial_angles_array = jnp.array(
+        [random_cp_angles(anz.num_angles, anz.cp_mask, cp_dist=hyperopt_options['cp_dist'], key=k)
+         for k in subkeys])
+
+    raw_results = anz.learn(
+        u_target,
+        regularization_options=regularization_options,
+        initial_angles=initial_angles_array,
+        num_iterations=hyperopt_options['num_gd_iterations'],
+        disc_func=disc_func,
+        keep_history=False)
+
+    return raw_results
+
+
+def prospective_decompositions(
+        u_target,
+        layer,
+        regularization_options,
+        hyperopt_options,
+        disc_func,
+        search_params,
+        angles_random_seed):
+
+    raw_results = raw_decompositions(
+        u_target,
+        layer,
+        regularization_options,
+        hyperopt_options,
+        disc_func,
+        search_params,
+        angles_random_seed
+    )
+
+    prospective_results = filter_cp_results(
+        raw_results,
+        regularization_options['cp_mask'],
+        hyperopt_options['threshold_num_gates'],
+        hyperopt_options['entry_loss'],
+        threshold_cp=hyperopt_options['threshold_cp'],
+        disable_tqdm=True,
+    )
+
+    return prospective_results
+
+
+def objective_from_cz_distribution(
+        u_target,
+        layer,
+        regularization_options,
+        hyperopt_options,
+        disc_func,
+        search_params):
+
+    angles_random_seed = int(float(str(time.time())[::-1]))
+
+    prospective_results = prospective_decompositions(
+        u_target,
+        layer,
+        regularization_options,
+        hyperopt_options,
+        disc_func,
+        search_params,
+        angles_random_seed
+    )
+
+    cz_counts = [cz for cz, *_ in prospective_results]
+    score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - hyperopt_options['target_num_gates']))).sum() / hyperopt_options['batch_size']
+
+    return {
+        'loss': -score,
+        'status': STATUS_OK,
+        'angles_random_seed': angles_random_seed,
+        'cz_counts': cz_counts,
+        'num_gd_iterations': hyperopt_options['num_gd_iterations'],
+        'entry_loss': hyperopt_options['entry_loss'],
+        'threshold_cp': hyperopt_options['threshold_cp'],
+        'attachments': {'decompositions': pickle.dumps(prospective_results)}
+    }
+
+
 def adaptive_decompose(u_target,
                        layer,
                        hyperopt_options,
@@ -240,8 +413,7 @@ def adaptive_decompose(u_target,
         trials_path = save_to + 'trials.pickle'
         decompositions_path = save_to + 'decompositions.pickle'
 
-    # Number of qubits is the maximum index in the coupling map, plus 1.
-    num_qubits = max([item for sublist in layer for item in sublist]) + 1
+    num_qubits = num_qubits_from_layer(layer)
 
     default_regularizatoin_options = {
         'r': 0.00055,
@@ -264,7 +436,8 @@ def adaptive_decompose(u_target,
         'accepted_num_gates': None,
         'max_num_cp_gates': None,
         'max_evals': 100,
-        'stop_if_target_reached': True
+        'stop_if_target_reached': True,
+        'hyper_seed': 0
     }
 
     # Update default options with those provided with the function call.
@@ -275,63 +448,11 @@ def adaptive_decompose(u_target,
 
     hyperopt_options = dict(default_hyperopt_options, **hyperopt_options)
     if hyperopt_options['accepted_num_gates'] is None:
-        raise Exception('Accepted number of gates must be provided.')
+        raise Exception('Accepted number of gates must be provided in options dictionary.')
     if hyperopt_options['max_num_cp_gates'] is None:
         print(
             'Warning: max_num_cp_gates not provided. Defaulting to the theoretical lower bound. This is likely to significantly slow down the search.')
         hyperopt_options.update({'max_num_cp_gates': theoretical_lower_bound(num_qubits)})
-
-    def objective(search_params):
-
-        r, num_cp_gates = search_params
-
-        anz = Ansatz(num_qubits, 'cp', placements=fill_layers(layer, num_cp_gates))
-
-        regularization_options.update({'r': r, 'cp_mask': anz.cp_mask})
-
-        # My attepmt to generate random seed from time stamp.
-        angles_random_seed = int(float(str(time.time())[::-1]))
-        key = random.PRNGKey(angles_random_seed)
-
-        key, *subkeys = random.split(key, num=hyperopt_options['batch_size'] + 1)
-        initial_angles_array = jnp.array(
-            [random_cp_angles(anz.num_angles, anz.cp_mask, cp_dist=hyperopt_options['cp_dist'], key=k)
-             for k in subkeys])
-
-        raw_results = anz.learn(
-            u_target,
-            regularization_options=regularization_options,
-            initial_angles=initial_angles_array,
-            num_iterations=hyperopt_options['num_gd_iterations'],
-            disc_func=disc_func,
-            keep_history=False)
-
-        successful_results = filter_cp_results(
-            raw_results,
-            anz.cp_mask,
-            hyperopt_options['threshold_num_gates'],
-            hyperopt_options['entry_loss'],
-            threshold_cp=hyperopt_options['threshold_cp'],
-            disable_tqdm=True,
-        )
-
-        cz_counts = [cz for cz, *_ in successful_results]
-
-        score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - hyperopt_options['target_num_gates']))).sum() / hyperopt_options['batch_size']
-
-        #         current_best_cz = min(scoreboard.keys())
-        #         better_than_existing_results = [raw_results[i] for cz, loss, i in successful_results if cz<current_best_cz]
-
-        return {
-            'loss': -score,
-            'status': STATUS_OK,
-            'angles_random_seed': angles_random_seed,
-            'cz_counts': cz_counts,
-            'num_gd_iterations': hyperopt_options['num_gd_iterations'],
-            'entry_loss': hyperopt_options['entry_loss'],
-            'threshold_cp': hyperopt_options['threshold_cp'],
-            'attachments': {'decompositions': pickle.dumps(successful_results)}
-        }
 
     space = [
         hp.lognormal('r', jnp.log(hyperopt_options['r_initial']), hyperopt_options['r_variance']),
@@ -357,22 +478,31 @@ def adaptive_decompose(u_target,
 
     if decompositions:
         cz_list = [cz for cz, *_ in decompositions]
-        best_cz = min(cz_list)
         scoreboard = {cz: cz_list.count(cz) for cz in set(cz_list)}
     else:
         scoreboard = {hyperopt_options['accepted_num_gates'] + 1: 0}
 
-    for n in tqdm(range(hyperopt_options['max_evals'] // hyperopt_options['evals_between_verification']),
+    print('\nRunning optimization with the following options:\n')
+    print('hyperopt options')
+    print(hyperopt_options)
+    print('\nregularization options')
+    print(regularization_options)
+    print('\n')
+
+    for _ in tqdm(range(hyperopt_options['max_evals'] // hyperopt_options['evals_between_verification']),
                   desc='Epochs'):
 
         print('\n')
+
+        objective = partial(objective_from_cz_distribution, u_target, layer, regularization_options, hyperopt_options, disc_func)
 
         best = fmin(
             objective,
             space=space,
             algo=tpe.suggest,
             max_evals=hyperopt_options['evals_between_verification'] + len(trials.trials),
-            trials=trials)
+            trials=trials,
+            rstate=np.random.default_rng(hyperopt_options['hyper_seed']))
 
         if save_to:
             with open(trials_path, 'wb') as f:
@@ -384,8 +514,8 @@ def adaptive_decompose(u_target,
             msg = trials.trial_attachments(trial)['decompositions']
             successful_results = pickle.loads(msg)
             num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
-            prospective_results = [[num_cp_gates, r] for cz, r in successful_results if cz < current_best_cz]
-            num_equivalent_results = sum([cz == current_best_cz for cz, r in successful_results])
+            prospective_results = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
+            num_equivalent_results = sum([cz == current_best_cz for cz, res in successful_results])
             results_to_verify.extend(prospective_results)
 
         if len(results_to_verify):

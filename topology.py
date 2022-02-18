@@ -31,3 +31,8 @@ def random_placement(num_qubits, coupling_map=None, key=random.PRNGKey(0)):
     return [i, j]
 
 
+def num_qubits_from_layer(layer):
+    # Number of qubits is the maximum index in the coupling map, plus 1.
+    return max([item for sublist in layer for item in sublist]) + 1
+
+
