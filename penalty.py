@@ -14,8 +14,6 @@ def cp_penalty_trig(a, height):
 def line(x, x0, y0, x1, y1):
     return (y1-y0)/(x1-x0)*x+(x0*y1-x1*y0)/(x0-x1)
 
-
-@partial(vmap, in_axes=(0, None, None, None, None, None))
 def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
     a = a % (2 * jnp.pi)
 
@@ -26,40 +24,51 @@ def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
                     (plato_0 < a) & (a <= xmax - plato_2),
                     (xmax - plato_2 < a) & (a <= xmax + plato_2),
                     (xmax + plato_2 < a) & (a <= jnp.pi - plato_1),
-                    (jnp.pi - plato_1 < a) & (a <= jnp.pi)
+                    (jnp.pi - plato_1 < a) & (a <= jnp.pi),
+                    jnp.pi < a  # Workaround for bug with vmap
                     ]
 
         functions = [line(a, 0, 0, plato_0, 0),
                      line(a, plato_0, 0, xmax - plato_2, ymax),
                      line(a, xmax - plato_2, ymax, xmax + plato_2, ymax),
                      line(a, xmax + plato_2, ymax, jnp.pi - plato_1, 1),
-                     line(a, jnp.pi - plato_1, 1, jnp.pi, 1)]
+                     line(a, jnp.pi - plato_1, 1, jnp.pi, 1),
+                     1]
 
         return jnp.piecewise(a, segments, functions)
 
-    return jnp.piecewise(a,
-                         [a <= jnp.pi, a > jnp.pi],
-                         [left(a),
-                          left(2*jnp.pi-a)])
-
-def f(x, xmax, ymax, plato):
-    x = x % (2 * jnp.pi)
+    return left(a)
 
 
-    segments = [x <= plato
-                (plato < x) & (x <= xmax - plato),
-                (xmax - plato < x) & (x <= xmax + plato),
-                (xmax + plato < x) & (x <= jnp.pi - plato),
-                (jnp.pi - plato < x) & (x <= jnp.pi)
+def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
+    print('Warning linear penalty is not implemented correctly.')
+    a = a % (2 * jnp.pi)
+
+    segments = [a <= plato_0,
+                (plato_0 < a) & (a <= (xmax - plato_2)),
+                ((xmax - plato_2) < a) & (a <= (xmax + plato_2)),
+                ((xmax + plato_2) < a) & (a <= (jnp.pi - plato_1)),
+                ((jnp.pi - plato_1) < a) & (a <= (jnp.pi+plato_1)),
+                ((jnp.pi+plato_1) < a) & (a <= (jnp.pi+xmax-plato_2)),
+                ((jnp.pi+xmax-plato_2) < a) & (a <= (jnp.pi + xmax + plato_2)),
+                ((jnp.pi + xmax + plato_2) < a) & (a <= (2 * jnp.pi - plato_0)),
+                ((2*jnp.pi-plato_0) < a) & (a <= 2*jnp.pi),
+                (2*jnp.pi < a) & (a <= 3*jnp.pi)  # Workaround for bug with vmap
                 ]
 
-    functions = [line(x, 0, 0, plato, 0),
-                 line(x, plato, 0, xmax - plato, ymax),
-                 line(x, xmax - plato, ymax, xmax + plato, ymax),
-                 line(x, xmax + plato, ymax, jnp.pi - plato, 1),
-                 line(x, jnp.pi - plato, 1, jnp.pi, 1)]
+    functions = [line(a, 0, 0, plato_0, 0),
+                 line(a, plato_0, 0, xmax - plato_2, ymax),
+                 line(a, xmax - plato_2, ymax, xmax + plato_2, ymax),
+                 line(a, xmax + plato_2, ymax, jnp.pi - plato_1, 1),
+                 line(a, jnp.pi - plato_1, 1, jnp.pi+plato_1, 1),
+                 line(a, jnp.pi+plato_1, 1, jnp.pi+xmax-plato_2, ymax),
+                 line(a, jnp.pi + xmax - plato_2, ymax, jnp.pi + xmax + plato_2, ymax),
+                 line(a, jnp.pi + xmax + plato_2, ymax, 2*jnp.pi - plato_0, 0),
+                 line(a, 2 * jnp.pi - plato_0, 0, 2*jnp.pi, 0),
+                 1,
+                 ]
 
-    return jnp.piecewise(x, segments, functions)
+    return jnp.piecewise(a, segments, functions)
 
 
 def cp_penalty_L1(a):
