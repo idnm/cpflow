@@ -41,7 +41,6 @@ def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
 
 
 def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
-    print('Warning linear penalty is not implemented correctly.')
     a = a % (2 * jnp.pi)
 
     segments = [a <= plato_0,
