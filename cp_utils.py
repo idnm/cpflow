@@ -5,7 +5,7 @@ from penalty import *
 from matplotlib import pyplot as plt
 from trigonometric_utils import random_angles
 from tqdm import tqdm
-from optimization import unitary_learn
+from optimization import mynimize, unitary_learn
 import pickle
 
 
@@ -191,6 +191,48 @@ def filter_cp_results(
     selected_results.sort(key=lambda x: x[0])
 
     return selected_results
+
+
+def verify_cp_result(res, anz, unitary_loss_func, **options):
+    """ Takes a cp ansatz, projects it to cz/mixed ansatz and verifies if nearly-exact compilation is possible.
+
+    Args:
+        res: dict specifying learning history.
+        u_target: target unitary.
+        anz: cp ansatz that produced the learning history.
+        disc_func: which discrepancy function to use in learning.
+        target_loss: loss that a projected ansatz should achieve.
+        threshold: threshold for projection of cp angles.
+    Returns: (success, circ, u, best_angless):
+        success: whether threshold loss is achieved or not.
+        circ: circuit of the projected ansatz.
+        u: unitary of the projected ansatz.
+        best_angles: best angles learned by projected ansatz.
+
+    Note: it would be better to return some ansatz instead of separate circ/unitary,
+    but mixed ansatz is not yet implemented.
+    """
+
+    num_cz_gates, loss, angles = evaluate_cp_result(res, anz.cp_mask, threshold=options['threshold_cp'])
+    circ, u, free_angles = convert_cp_to_cz(anz, angles, threshold=options['threshold_cp'])
+
+    refined_result = mynimize(
+        lambda angs: unitary_loss_func(u(angs)),
+        anz.num_angles,
+        method=options['method'],
+        learning_rate=options['learning_rate'],
+        u_func=anz.unitary,
+        keep_history=False,
+        initial_params=free_angles
+    )
+
+
+    angles_history, loss_history = refined_result
+    best_i = jnp.argmin(loss_history)
+    best_angs = angles_history[best_i]
+    best_loss = loss_history[best_i]
+
+    return best_loss <= options['target_loss'], num_cz_gates, circ, u, best_angs
 
 
 def refine_cp_result(res, u_target, anz, disc_func=None, target_loss=1e-8, threshold=0.2):

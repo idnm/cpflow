@@ -1,9 +1,11 @@
 import pickle
 import time
 import os
+import pprint
 
 import dill
 import numpy as np
+import matplotlib.pyplot as plt
 import jax.numpy as jnp
 
 from jax import random, value_and_grad, jit, lax, custom_jvp
@@ -16,7 +18,7 @@ from functools import partial
 
 from tqdm import tqdm
 
-from cp_utils import random_cp_angles, filter_cp_results, refine_cp_result
+from cp_utils import random_cp_angles, filter_cp_results, refine_cp_result, verify_cp_result
 from gates import *
 from circuit_assemebly import *
 from optimization import *
@@ -235,19 +237,22 @@ class Decompose:
         'plato_2': 0.05
     }
 
-    default_options = {
-        'r_mean': 0.00055,
-        'r_variance': 0.5,
+    default_static_options = {
         'cp_dist': 'uniform',
         'entry_loss': 1e-3,
         'target_loss': 1e-6,
         'threshold_cp': 0.2,
-        'num_samples': 1000,
+        'batch_size': 1000,
         'num_gd_iterations': 2000,
         'method': 'adam',
-        'learning_rate': 0.1,
-        'threshold_num_gates': None,
+        'learning_rate': 0.01,
         'accepted_num_gates': None,
+    }
+
+    default_adaptive_options = {
+        'r_mean': 0.00055,
+        'r_variance': 0.5,
+        'threshold_num_gates': None,
         'max_num_cp_gates': None,
         'min_num_cp_gates': None,
         'max_evals': 100,
@@ -270,26 +275,141 @@ class Decompose:
         self.layer = layer
         self.num_qubits = num_qubits_from_layer(self.layer)
 
-    def raw_decompositions(self, num_cp_gates, r, initial_angles_array, options, keep_history=False):
-        options = dict(Decompose.default_options, **options)
+    @staticmethod
+    def generate_initial_angles(key, num_angles, cp_mask, cp_dist='uniform', batch_size=1):
+        key, *subkeys = random.split(key, num=batch_size + 1)
+        initial_angles_array = jnp.array(
+            [random_cp_angles(num_angles, cp_mask, cp_dist=cp_dist, key=k)
+             for k in subkeys])
+
+        return initial_angles_array
+
+    @staticmethod
+    def plot_raw(res):
+        plt.plot(res['regloss'], label='regloss')
+        plt.plot(res['loss'], label='loss')
+        plt.plot(res['reg'], label='reg')
+        plt.yscale('log')
+        plt.legend()
+
+    def raw(self, num_cp_gates, r, key=random.PRNGKey(0), initial_angles_array=None, options=None, keep_history=False):
+
+        if options is not None:
+            options = dict(Decompose.default_static_options, **options)
+        else:
+            options = Decompose.default_static_options
+
         anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
         loss_func = lambda angles: self.unitary_loss_func(anz.unitary(angles))
 
         def regularization_func(angs):
             return r*vmap(self.cp_regularization_func)(angs*anz.cp_mask).sum()
 
+        if initial_angles_array is None:
+            initial_angles_array = Decompose.generate_initial_angles(
+                key,
+                anz.num_angles,
+                anz.cp_mask,
+                cp_dist=options['cp_dist'],
+                batch_size=options['batch_size'])
+
         raw_results = mynimize_repeated(
             loss_func, anz.num_angles,
             method=options['method'],
             learning_rate=options['learning_rate'],
+            num_iterations=options['num_gd_iterations'],
             initial_params_batch=initial_angles_array,
-            num_repeats=options['num_samples'],
             regularization_func=regularization_func,
             u_func=anz.unitary,  # For 'adam' this won't be used, but it will e.g. for 'natural adam'.
             keep_history=keep_history
         )
 
         return raw_results
+
+    @staticmethod
+    def save_to_paths(save_to):
+        if not os.path.exists(save_to):
+            os.makedirs(save_to)
+
+        trials_path = save_to + 'trials.pickle'
+        decompositions_path = save_to + 'decompositions.dill'
+
+        return trials_path, decompositions_path
+
+
+    def static(self, num_cp_gates, r, key=random.PRNGKey(0), options=None, save_to=None, overwrite_existing=False):
+
+        if save_to is None:
+            print("Warning: results won't be saved since `save_to` is not provided.")
+        else:
+            _, decompositions_path = Decompose.save_to_paths(save_to)
+            with open(decompositions_path, 'wb') as f:
+                existing_decompostitions = dill.load(f)
+            if existing_decompostitions and overwrite_existing:
+                print("Warning, existing decompositions will be overwritten.")
+
+        if options is not None:
+            options = dict(Decompose.default_static_options, **options)
+        else:
+            options = Decompose.default_static_options
+
+        assert options['accepted_num_gates'] is not None, 'Accepted number of gates not provided'
+
+        print('\nStarting decomposition routine with options:')
+        pprint.pprint(options)
+
+        print('\nComputing raw results...')
+        raw_results = Decompose.raw(self,
+                                    num_cp_gates,
+                                    r,
+                                    key=key,
+                                    options=options)
+
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
+
+        print('\nSelecting prospective results...')
+        prospective_results = filter_cp_results(
+            raw_results,
+            anz.cp_mask,
+            options['accepted_num_gates'],
+            options['entry_loss'],
+            threshold_cp=options['threshold_cp']
+        )
+
+        if prospective_results:
+            print(f'\nFound {len(prospective_results)}. Verifying...')
+            successful_results = []
+            failed_results = []
+            for num_cz_gates, res in tqdm(prospective_results):
+
+                success, num_cz_gates, circ, u, best_angs = verify_cp_result(
+                    res,
+                    anz,
+                    self.unitary_loss_func,
+                    **options)
+
+                if success:
+                    successful_results.append([num_cz_gates, circ, u, best_angs])
+                else:
+                    failed_results.append([num_cz_gates, circ, u, best_angs])
+
+            print(f'{len(successful_results)} successful.')
+            print('cz counts are:')
+            print(sorted([r[0] for r in successful_results]))
+
+            if save_to:
+                if overwrite_existing:
+                    decompositions_to_save = successful_results
+                else:
+                    decompositions_to_save = existing_decompostitions.append(successful_results)
+
+                with open(decompositions_path, 'wb') as f:
+                    dill.dump(decompositions_to_save, f)
+
+        else:
+            print('No results passed.')
+
+        return prospective_results
 
 
 
