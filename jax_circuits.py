@@ -331,11 +331,10 @@ class Decompose:
         if not os.path.exists(save_to):
             os.makedirs(save_to)
 
-        trials_path = save_to + 'trials.pickle'
-        decompositions_path = save_to + 'decompositions.dill'
+        trials_path = save_to + '_trials'
+        decompositions_path = save_to + '_decompositions'
 
         return trials_path, decompositions_path
-
 
     def static(self, num_cp_gates, r, key=random.PRNGKey(0), options=None, save_to=None, overwrite_existing=False):
 
@@ -343,10 +342,14 @@ class Decompose:
             print("Warning: results won't be saved since `save_to` is not provided.")
         else:
             _, decompositions_path = Decompose.save_to_paths(save_to)
-            with open(decompositions_path, 'wb') as f:
-                existing_decompostitions = dill.load(f)
-            if existing_decompostitions and overwrite_existing:
-                print("Warning, existing decompositions will be overwritten.")
+            try:
+                with open(decompositions_path, 'rb') as f:
+                    existing_decompositions = dill.load(f)
+            except FileNotFoundError:
+                existing_decompositions = []
+
+            if existing_decompositions and overwrite_existing:
+                print("Warning: existing decompositions will be overwritten.")
 
         if options is not None:
             options = dict(Decompose.default_static_options, **options)
@@ -355,7 +358,7 @@ class Decompose:
 
         assert options['accepted_num_gates'] is not None, 'Accepted number of gates not provided'
 
-        print('\nStarting decomposition routine with options:')
+        print('\nStarting decomposition routine with the following options:\n')
         pprint.pprint(options)
 
         print('\nComputing raw results...')
@@ -393,15 +396,15 @@ class Decompose:
                 else:
                     failed_results.append([num_cz_gates, circ, u, best_angs])
 
-            print(f'{len(successful_results)} successful.')
-            print('cz counts are:')
+            print(f'\n{len(successful_results)} successful. cz counts are:')
             print(sorted([r[0] for r in successful_results]))
 
             if save_to:
                 if overwrite_existing:
                     decompositions_to_save = successful_results
                 else:
-                    decompositions_to_save = existing_decompostitions.append(successful_results)
+                    existing_decompositions.extend(successful_results)
+                    decompositions_to_save = existing_decompositions
 
                 with open(decompositions_path, 'wb') as f:
                     dill.dump(decompositions_to_save, f)
