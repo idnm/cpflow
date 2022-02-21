@@ -252,12 +252,11 @@ class Decompose:
     default_adaptive_options = {
         'r_mean': 0.00055,
         'r_variance': 0.5,
-        'threshold_num_gates': None,
         'max_num_cp_gates': None,
         'min_num_cp_gates': None,
         'max_evals': 100,
         'stop_if_target_reached': True,
-        'hyper_random_seed': 0
+        'hyperopt_random_seed': 0
     }
 
     def __init__(self, layer, unitary_loss_func=None, cp_regularization_func=None, u_target=None):
@@ -274,6 +273,13 @@ class Decompose:
             self.cp_regularization_func = make_regularization_function(Decompose.default_regularization_options)
         self.layer = layer
         self.num_qubits = num_qubits_from_layer(self.layer)
+
+    @staticmethod
+    def updated_options(default_options, new_options):
+        if new_options is None:
+            return default_options
+        else:
+            return dict(default_options, **new_options)
 
     @staticmethod
     def generate_initial_angles(key, num_angles, cp_mask, cp_dist='uniform', batch_size=1):
@@ -295,21 +301,13 @@ class Decompose:
         return trials_path, decompositions_path
 
     @staticmethod
-    def save_trials(save_to, overwrite_existing, trials):
-        if not save_to or trials is None:
+    def save_trials(save_to, trials):
+        if not save_to:
             return
-
         trials_path, decompositions_path = Decompose.save_to_paths(save_to)
-        existing_decompositions, existing_trials = Decompose.load_trials_and_decompositions(save_to)
-
-        if overwrite_existing:
-            trials_to_save = trials
-        else:
-            trials_to_save = existing_trials
-            trials_to_save.extend(trials)
 
         with open(trials_path, 'wb') as f:
-            dill.dump(trials_to_save, f)
+            dill.dump(trials, f)
 
     @staticmethod
     def save_decompositions(save_to, overwrite_existing, decompositions):
@@ -339,7 +337,7 @@ class Decompose:
                 with open(trials_path, 'rb') as f:
                     trials = dill.load(f)
             except FileNotFoundError:
-                trials = []
+                trials = Trials()
 
             try:
                 with open(decompositions_path, 'rb') as f:
@@ -359,11 +357,7 @@ class Decompose:
 
     def generate_raw(self, num_cp_gates, r, key=random.PRNGKey(0), initial_angles_array=None, options=None, keep_history=False):
 
-        if options is not None:
-            options = dict(Decompose.default_static_options, **options)
-        else:
-            options = Decompose.default_static_options
-
+        options = Decompose.updated_options(Decompose.default_static_options, options)
         anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
         loss_func = lambda angles: self.unitary_loss_func(anz.unitary(angles))
 
@@ -391,21 +385,18 @@ class Decompose:
 
         return raw_results
 
-    def evaluate_raw(self, raw_results, num_cp_gates, options=None):
-        if options is not None:
-            options = dict(Decompose.default_static_options, **options)
-        else:
-            options = Decompose.default_static_options
+    def evaluate_raw(self, raw_results, num_cp_gates, options=None, disable_tqdm=False):
 
+        options = Decompose.updated_options(Decompose.default_static_options, options)
         anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
 
-        print('\nSelecting prospective results...')
         below_entry_loss_results = filter_cp_results(
             raw_results,
             anz.cp_mask,
             float('inf'),  # At this stage we only filter by convergence, not by the number of gates.
             options['entry_loss'],
-            threshold_cp=options['threshold_cp']
+            threshold_cp=options['threshold_cp'],
+            disable_tqdm=disable_tqdm
         )
 
         return below_entry_loss_results
@@ -418,11 +409,7 @@ class Decompose:
         if existing_decompositions and overwrite_existing:
             print("Warning: existing decompositions will be overwritten.")
 
-        if options is not None:
-            options = dict(Decompose.default_static_options, **options)
-        else:
-            options = Decompose.default_static_options
-
+        options = Decompose.updated_options(Decompose.default_static_options, options)
         assert options['accepted_num_gates'] is not None, 'Accepted number of gates not provided'
 
         print('\nStarting decomposition routine with the following options:\n')
@@ -440,13 +427,6 @@ class Decompose:
         print('\nSelecting prospective results...')
         prospective_results = Decompose.evaluate_raw(self, raw_results, num_cp_gates, options)
         prospective_results = [res for res in prospective_results if res[0] <= options['accepted_num_gates']]
-        # prospective_results = filter_cp_results(
-        #     raw_results,
-        #     anz.cp_mask,
-        #     options['accepted_num_gates'],
-        #     options['entry_loss'],
-        #     threshold_cp=options['threshold_cp']
-        # )
 
         if prospective_results:
             print(f'\nFound {len(prospective_results)}. Verifying...')
@@ -484,16 +464,143 @@ class Decompose:
 
         return prospective_results
 
-    def adaptive(self, key=random.PRNGKey(0), options=None, save_to=None, overwrite_existing=False):
-        options = dict(Decompose.default_adaptive_options, **options)
-        print('\nStarting decomposition routine with the following options:\n')
-        pprint(options)
+    def adaptive(self,
+                 static_options=None,
+                 adaptive_options=None,
+                 save_to=None,
+                 overwrite_existing_trials=False,
+                 overwrite_existing_decompositions=False):
 
-        # def objective(params, )
+        static_options = Decompose.updated_options(Decompose.default_static_options, static_options)
+        adaptive_options = Decompose.updated_options(Decompose.default_adaptive_options, adaptive_options)
 
-        # trials, decompositions = Decompose.load_trials_and_decompositions(save_to)
+        def objective_from_cz_distribution(search_params):
+
+            angles_random_seed = int(float(str(time.time())[::-1]))
+            num_cp_gates, r = search_params
+
+            raw_results = Decompose.generate_raw(
+                self,
+                num_cp_gates,
+                r,
+                key=random.PRNGKey(angles_random_seed),
+                options=static_options)
+
+            evaluated_results = Decompose.evaluate_raw(
+                self,
+                raw_results,
+                num_cp_gates,
+                options=static_options,
+                disable_tqdm=True,
+            )
+
+            cz_counts = [res[0] for res in evaluated_results]
+            score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - adaptive_options['target_num_gates']))).sum() / \
+                    static_options['batch_size']
 
 
+            return {
+                'loss': -score,
+                'status': STATUS_OK,
+                'angles_random_seed': angles_random_seed,
+                'cz_counts': cz_counts,
+                'num_gd_iterations': static_options['num_gd_iterations'],
+                'entry_loss': static_options['entry_loss'],
+                'threshold_cp': static_options['threshold_cp'],
+                'attachments': {'prospective_decompositions': pickle.dumps(evaluated_results)}
+            }
+
+        print('\nStarting decomposition routine with the following options:')
+        print('\nStatic:')
+        pprint(static_options)
+        print('\nAdaptive:')
+        pprint(adaptive_options)
+        print('\n')
+
+        assert adaptive_options['min_num_cp_gates'] is not None, 'min_num_cp_gates must be provided.'
+        assert adaptive_options['max_num_cp_gates'] is not None, 'max_num_cp_gates must be provided.'
+        assert adaptive_options['target_num_gates'] is not None, 'target_num_gates must be provided.'
+
+        # Defining the hyperparameter search space.
+        space = [
+            scope.int(
+                hp.quniform('num_cp_gates', adaptive_options['min_num_cp_gates'], adaptive_options['max_num_cp_gates'],
+                            1)),
+            hp.lognormal('r', jnp.log(adaptive_options['r_mean']), adaptive_options['r_variance'])
+        ]
+
+        # Loading existing trials and decompositions.
+        existing_trials, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
+        if existing_trials and not overwrite_existing_trials:
+            print('\nFound existing trials, resuming from here.')
+            trials = existing_trials
+        else:
+            trials = Trials()
+
+        if existing_decompositions:
+            scoreboard = set([cz for cz, *_ in existing_decompositions])
+            scoreboard = sorted(list(scoreboard))
+        else:
+            scoreboard = [theoretical_lower_bound(self.num_qubits)]
+
+        decompositions = []
+        for _ in tqdm(range(adaptive_options['max_evals'] // adaptive_options['evals_between_verification']),
+                      desc='Epochs'):
+
+            best = fmin(
+                objective_from_cz_distribution,
+                space=space,
+                algo=tpe.suggest,
+                max_evals=adaptive_options['evals_between_verification'] + len(trials.trials),
+                trials=trials,
+                rstate=np.random.default_rng(adaptive_options['hyperopt_random_seed']))
+
+            Decompose.save_trials(save_to, trials)
+
+            current_best_cz = scoreboard[0]
+            results_to_verify = []
+            for trial in trials.trials[-adaptive_options['evals_between_verification']:]:
+                msg = trials.trial_attachments(trial)['prospective_decompositions']
+                successful_results = pickle.loads(msg)
+                num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+                prospective_results = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
+                num_equivalent_results = sum([cz == current_best_cz for cz, res in successful_results])
+                results_to_verify.extend(prospective_results)
+
+            if len(results_to_verify):
+                print(
+                    f'\nFound {len(results_to_verify)} decompositions potentially better than current best count {current_best_cz}, verifying...')
+            else:
+                print(
+                    f'\nFound no better decompositions. Found {num_equivalent_results} decompositions with the current best count {current_best_cz}.')
+
+            for num_cp_gates, res in prospective_results:
+                anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
+
+                success, num_cz_gates, circ, u, best_angs = verify_cp_result(
+                    res,
+                    anz,
+                    self.unitary_loss_func,
+                    **static_options)
+
+                if success:
+                    print(f'\nFound new decomposition with {num_cz_gates} gates.\n')
+
+                    scoreboard.insert(0, num_cz_gates)
+                    new_decomposition = [num_cz_gates, circ, u, best_angs]
+                    decompositions.append(new_decomposition)
+                    Decompose.save_decompositions(save_to, overwrite_existing_decompositions, [new_decomposition])
+
+                    break
+            else:
+                if prospective_results:
+                    print('\nNo decomposition passed.\n')
+
+            if adaptive_options['stop_if_target_reached'] and scoreboard[0] <= adaptive_options['target_num_gates']:
+                print('\nTarget number of gates reached.')
+                break
+
+        return decompositions, trials, best
 
 
 def raw_decompositions(
