@@ -535,6 +535,7 @@ class Decompose:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
 
         decompositions = []
+        hyper_random_seed = adaptive_options['hyperopt_random_seed']
         for _ in tqdm(range(adaptive_options['max_evals'] // adaptive_options['evals_between_verification']), desc='Epochs'):
 
             best = fmin(
@@ -543,7 +544,8 @@ class Decompose:
                 algo=tpe.suggest,
                 max_evals=adaptive_options['evals_between_verification'] + len(trials.trials),
                 trials=trials,
-                rstate=np.random.default_rng(adaptive_options['hyperopt_random_seed']))
+                rstate=np.random.default_rng(hyper_random_seed))
+            hyper_random_seed += 1
 
             Decompose.save_trials(save_to, trials)
 
