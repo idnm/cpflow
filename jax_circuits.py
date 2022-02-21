@@ -1,7 +1,7 @@
 import pickle
 import time
 import os
-import pprint
+from pprint import pprint
 
 import dill
 import numpy as np
@@ -285,6 +285,71 @@ class Decompose:
         return initial_angles_array
 
     @staticmethod
+    def save_to_paths(save_to):
+        if not os.path.exists(save_to):
+            os.makedirs(save_to)
+
+        trials_path = save_to + 'trials'
+        decompositions_path = save_to + 'decompositions'
+
+        return trials_path, decompositions_path
+
+    @staticmethod
+    def save_trials(save_to, overwrite_existing, trials):
+        if not save_to or trials is None:
+            return
+
+        trials_path, decompositions_path = Decompose.save_to_paths(save_to)
+        existing_decompositions, existing_trials = Decompose.load_trials_and_decompositions(save_to)
+
+        if overwrite_existing:
+            trials_to_save = trials
+        else:
+            trials_to_save = existing_trials
+            trials_to_save.extend(trials)
+
+        with open(trials_path, 'wb') as f:
+            dill.dump(trials_to_save, f)
+
+    @staticmethod
+    def save_decompositions(save_to, overwrite_existing, decompositions):
+        if not save_to or decompositions is None:
+            return
+
+        trials_path, decompositions_path = Decompose.save_to_paths(save_to)
+        existing_trials, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
+
+        if overwrite_existing:
+            decompositions_to_save = decompositions
+        else:
+            decompositions_to_save = existing_decompositions
+            decompositions_to_save.extend(decompositions)
+
+        with open(decompositions_path, 'wb') as f:
+            dill.dump(decompositions_to_save, f)
+
+    @staticmethod
+    def load_trials_and_decompositions(save_to):
+        if save_to is None:
+            print("Warning: results won't be saved since `save_to` is not provided.")
+            trials, decompositions = [], []
+        else:
+            trials_path, decompositions_path = Decompose.save_to_paths(save_to)
+            try:
+                with open(trials_path, 'rb') as f:
+                    trials = dill.load(f)
+            except FileNotFoundError:
+                trials = []
+
+            try:
+                with open(decompositions_path, 'rb') as f:
+                    decompositions = dill.load(f)
+            except FileNotFoundError:
+                decompositions = []
+
+        return trials, decompositions
+
+    @staticmethod
     def plot_raw(res):
         plt.plot(res['regloss'], label='regloss')
         plt.plot(res['loss'], label='loss')
@@ -292,7 +357,7 @@ class Decompose:
         plt.yscale('log')
         plt.legend()
 
-    def raw(self, num_cp_gates, r, key=random.PRNGKey(0), initial_angles_array=None, options=None, keep_history=False):
+    def generate_raw(self, num_cp_gates, r, key=random.PRNGKey(0), initial_angles_array=None, options=None, keep_history=False):
 
         if options is not None:
             options = dict(Decompose.default_static_options, **options)
@@ -326,30 +391,32 @@ class Decompose:
 
         return raw_results
 
-    @staticmethod
-    def save_to_paths(save_to):
-        if not os.path.exists(save_to):
-            os.makedirs(save_to)
+    def evaluate_raw(self, raw_results, num_cp_gates, options=None):
+        if options is not None:
+            options = dict(Decompose.default_static_options, **options)
+        else:
+            options = Decompose.default_static_options
 
-        trials_path = save_to + '_trials'
-        decompositions_path = save_to + '_decompositions'
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
 
-        return trials_path, decompositions_path
+        print('\nSelecting prospective results...')
+        below_entry_loss_results = filter_cp_results(
+            raw_results,
+            anz.cp_mask,
+            float('inf'),  # At this stage we only filter by convergence, not by the number of gates.
+            options['entry_loss'],
+            threshold_cp=options['threshold_cp']
+        )
+
+        return below_entry_loss_results
 
     def static(self, num_cp_gates, r, key=random.PRNGKey(0), options=None, save_to=None, overwrite_existing=False):
 
-        if save_to is None:
-            print("Warning: results won't be saved since `save_to` is not provided.")
-        else:
-            _, decompositions_path = Decompose.save_to_paths(save_to)
-            try:
-                with open(decompositions_path, 'rb') as f:
-                    existing_decompositions = dill.load(f)
-            except FileNotFoundError:
-                existing_decompositions = []
+        _, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
+        _, decompositions_path = Decompose.save_to_paths(save_to)
 
-            if existing_decompositions and overwrite_existing:
-                print("Warning: existing decompositions will be overwritten.")
+        if existing_decompositions and overwrite_existing:
+            print("Warning: existing decompositions will be overwritten.")
 
         if options is not None:
             options = dict(Decompose.default_static_options, **options)
@@ -359,25 +426,27 @@ class Decompose:
         assert options['accepted_num_gates'] is not None, 'Accepted number of gates not provided'
 
         print('\nStarting decomposition routine with the following options:\n')
-        pprint.pprint(options)
+        pprint(options)
 
         print('\nComputing raw results...')
-        raw_results = Decompose.raw(self,
-                                    num_cp_gates,
-                                    r,
-                                    key=key,
-                                    options=options)
+        raw_results = Decompose.generate_raw(self,
+                                             num_cp_gates,
+                                             r,
+                                             key=key,
+                                             options=options)
 
         anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
 
         print('\nSelecting prospective results...')
-        prospective_results = filter_cp_results(
-            raw_results,
-            anz.cp_mask,
-            options['accepted_num_gates'],
-            options['entry_loss'],
-            threshold_cp=options['threshold_cp']
-        )
+        prospective_results = Decompose.evaluate_raw(self, raw_results, num_cp_gates, options)
+        prospective_results = [res for res in prospective_results if res[0] <= options['accepted_num_gates']]
+        # prospective_results = filter_cp_results(
+        #     raw_results,
+        #     anz.cp_mask,
+        #     options['accepted_num_gates'],
+        #     options['entry_loss'],
+        #     threshold_cp=options['threshold_cp']
+        # )
 
         if prospective_results:
             print(f'\nFound {len(prospective_results)}. Verifying...')
@@ -399,22 +468,30 @@ class Decompose:
             print(f'\n{len(successful_results)} successful. cz counts are:')
             print(sorted([r[0] for r in successful_results]))
 
-            if save_to:
-                if overwrite_existing:
-                    decompositions_to_save = successful_results
-                else:
-                    existing_decompositions.extend(successful_results)
-                    decompositions_to_save = existing_decompositions
-
-                with open(decompositions_path, 'wb') as f:
-                    dill.dump(decompositions_to_save, f)
+            Decompose.save_decompositions(save_to, overwrite_existing, successful_results)
+            # if save_to:
+            #     if overwrite_existing:
+            #         decompositions_to_save = successful_results
+            #     else:
+            #         existing_decompositions.extend(successful_results)
+            #         decompositions_to_save = existing_decompositions
+            #
+            #     with open(decompositions_path, 'wb') as f:
+            #         dill.dump(decompositions_to_save, f)
 
         else:
             print('No results passed.')
 
         return prospective_results
 
+    def adaptive(self, key=random.PRNGKey(0), options=None, save_to=None, overwrite_existing=False):
+        options = dict(Decompose.default_adaptive_options, **options)
+        print('\nStarting decomposition routine with the following options:\n')
+        pprint(options)
 
+        # def objective(params, )
+
+        # trials, decompositions = Decompose.load_trials_and_decompositions(save_to)
 
 
 
