@@ -594,3 +594,38 @@ class Decompose:
 
         return decompositions, trials, best
 
+    def reconstruct_trial(self, trial, options=None):
+
+        options = Decompose.updated_options(Decompose.default_static_options, options)
+
+        angles_random_seed = trial['result']['angles_random_seed']
+        num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+        r = trial['misc']['vals']['r'][0]
+
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
+
+        initial_angles = Decompose.generate_initial_angles(
+            random.PRNGKey(angles_random_seed),
+            anz.num_angles,
+            anz.cp_mask,
+            cp_dist=options['cp_dist'],
+            batch_size=options['batch_size'])
+
+        raw_results = Decompose.generate_raw(
+            self,
+            num_cp_gates,
+            r,
+            initial_angles_array=initial_angles,
+            options=options,
+            keep_history=False)
+
+        below_entry_loss_results = Decompose.evaluate_raw(
+            self,
+            raw_results,
+            num_cp_gates,
+            options=options,
+            disable_tqdm=False)
+
+        return below_entry_loss_results
+
+        return raw_results
