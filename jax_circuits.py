@@ -488,15 +488,14 @@ class Decompose:
             score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - adaptive_options['target_num_gates']))).sum() / \
                     static_options['batch_size']
 
-
             return {
                 'loss': -score,
                 'status': STATUS_OK,
                 'angles_random_seed': angles_random_seed,
                 'cz_counts': cz_counts,
-                'num_gd_iterations': static_options['num_gd_iterations'],
-                'entry_loss': static_options['entry_loss'],
-                'threshold_cp': static_options['threshold_cp'],
+                'layer': self.layer,
+                'unitary_loss_func': self.unitary_loss_func,
+                'static_options': static_options,
                 'attachments': {'prospective_decompositions': pickle.dumps(evaluated_results)}
             }
 
@@ -594,15 +593,21 @@ class Decompose:
 
         return decompositions, trials, best
 
-    def reconstruct_trial(self, trial, options=None):
+    @staticmethod
+    def reconstruct_trial(trial):
 
+        options = trial['result']['static_options']
+        layer = trial['result']['layer']
+        unitary_loss_func = trial['result']['unitary_loss_func']
+
+        num_qubits = num_qubits_from_layer(layer)
         options = Decompose.updated_options(Decompose.default_static_options, options)
 
         angles_random_seed = trial['result']['angles_random_seed']
         num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
         r = trial['misc']['vals']['r'][0]
 
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
+        anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
 
         initial_angles = Decompose.generate_initial_angles(
             random.PRNGKey(angles_random_seed),
@@ -611,16 +616,15 @@ class Decompose:
             cp_dist=options['cp_dist'],
             batch_size=options['batch_size'])
 
-        raw_results = Decompose.generate_raw(
-            self,
+        d = Decompose(layer, unitary_loss_func=unitary_loss_func)
+        raw_results = d.generate_raw(
             num_cp_gates,
             r,
             initial_angles_array=initial_angles,
             options=options,
-            keep_history=False)
+            keep_history=True)
 
-        below_entry_loss_results = Decompose.evaluate_raw(
-            self,
+        below_entry_loss_results = d.evaluate_raw(
             raw_results,
             num_cp_gates,
             options=options,
@@ -628,4 +632,24 @@ class Decompose:
 
         return below_entry_loss_results
 
-        return raw_results
+    @staticmethod
+    def reconstruct_verification(trials, i_trial, i_sample):
+        trial = trials.trials[i_trial]
+        msg = trials.trial_attachments(trial)['prospective_decompositions']
+        prospective_results = pickle.loads(msg)
+        cz, res = prospective_results[i_sample]
+
+        options = trial['result']['static_options']
+        layer = trial['result']['layer']
+        unitary_loss_func = trial['result']['unitary_loss_func']
+
+        num_qubits = num_qubits_from_layer(layer)
+        num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+
+        anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
+
+        success, num_cz_gates, circ, u, best_angs, angles_history, loss_history = verify_cp_result(
+            res, anz, unitary_loss_func, **options, keep_history=True)
+
+        return {'success': success, 'num_cz_gates': num_cz_gates, 'circ': circ, 'unitary': u, 'best_angles': best_angs,
+                'angles_history': angles_history, 'loss_history': loss_history}

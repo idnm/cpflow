@@ -193,7 +193,7 @@ def filter_cp_results(
     return selected_results
 
 
-def verify_cp_result(res, anz, unitary_loss_func, **options):
+def verify_cp_result(res, anz, unitary_loss_func, keep_history=False, **options):
     """ Takes a cp ansatz, projects it to cz/mixed ansatz and verifies if nearly-exact compilation is possible.
 
     Args:
@@ -222,17 +222,19 @@ def verify_cp_result(res, anz, unitary_loss_func, **options):
         method=options['method'],
         learning_rate=options['learning_rate'],
         u_func=anz.unitary,
-        keep_history=False,
+        keep_history=keep_history,
         initial_params=free_angles
     )
-
 
     angles_history, loss_history = refined_result
     best_i = jnp.argmin(loss_history)
     best_angs = angles_history[best_i]
     best_loss = loss_history[best_i]
 
-    return best_loss <= options['target_loss'], num_cz_gates, circ, u, best_angs
+    if not keep_history:
+        return best_loss <= options['target_loss'], num_cz_gates, circ, u, best_angs
+    else:
+        return best_loss <= options['target_loss'], num_cz_gates, circ, u, best_angs, angles_history, loss_history
 
 
 def refine_cp_result(res, u_target, anz, disc_func=None, target_loss=1e-8, threshold=0.2):
