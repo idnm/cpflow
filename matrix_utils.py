@@ -65,12 +65,6 @@ def fubini_study(u_func, x, relative_coeff=1):
     return gij
 
 
-def pmatrix(m):
-    M = df(m)
-    M.columns = [''] * M.shape[1]
-    print(M.to_string(index=False))
-
-
 def reorder_wires(wires, num_qubits):
     """Example: wires = [1, 3], num_qubits = 5, returns [1, 3, 0, 2, 4]"""
     all_wires = list(range(num_qubits))
@@ -78,10 +72,9 @@ def reorder_wires(wires, num_qubits):
     return new_wires_order
 
 
-def move_wires_up(u, wires):
+def move_wires_up(u, num_qubits, wires):
     """Transpose wires in tensor so that those specified appear first (at the top)."""
 
-    num_qubits = int(jnp.log2(u.shape[0]))
     u = u.reshape([2] * (2 * num_qubits))
     transposition_input_legs = reorder_wires(wires, num_qubits)
     transposition_output_legs = [w + num_qubits for w in transposition_input_legs]
@@ -120,7 +113,7 @@ def shift_block_diagonal_matrix(u, m):
     return x @ u @ jnp.linalg.inv(x)
 
 
-def block_diagonal_split(u, n):
+def block_diagonal_split(u, num_qubits, n):
     """Splits matrix into block-diagonal with blocks of size n x n, shifted block diagonal and
     off-block-diagonal. To get an idea of what the function is doing run
 
@@ -129,7 +122,6 @@ def block_diagonal_split(u, n):
     block_diagonal_split(u, 2)
 
     """
-    num_qubits = int(jnp.log2(u.shape[0]))
     identity_dim = num_qubits - n
     block_diagonal_mask = jnp.kron(jnp.identity(2 ** identity_dim), jnp.ones((2 ** n, 2 ** n)))
     block_diagonal_mask_complement = 1 - block_diagonal_mask
@@ -140,14 +132,13 @@ def block_diagonal_split(u, n):
     return u_diag, shift_block_diagonal_matrix(u_diag, 2 ** n), u_off_diag
 
 
-def tensor_identity_loss_frobenius(u, wires):
+def tensor_identity_loss_frobenius(u, num_qubits, wires):
     """If the tensor corresponding to matrix u applies no gates to qubits specified by `wires` the function returns 0.
     Otherwise it's positive. """
-    u = move_wires_up(u, wires)
+    u = move_wires_up(u, num_qubits, wires)
 
-    num_qubits = int(jnp.log2(u.shape[0]))
     block_size = num_qubits - len(wires)
-    u_diag, u_diag_shifted, u_off_diag = block_diagonal_split(u, block_size)
+    u_diag, u_diag_shifted, u_off_diag = block_diagonal_split(u, num_qubits, block_size)
 
     loss_off_diag = (jnp.abs(u_off_diag) ** 2).sum()
     loss_diag = (jnp.abs(u_diag - u_diag_shifted) ** 2).sum()
@@ -155,7 +146,7 @@ def tensor_identity_loss_frobenius(u, wires):
     return loss_diag + loss_off_diag
 
 
-def tensor_identity_loss(u, wires):
+def tensor_identity_loss(u, num_qubits, wires):
     """If the tensor corresponding to matrix u applies no gates to qubits specified by `wires` the function returns 0.
     Otherwise it's positive.
 
@@ -168,11 +159,10 @@ def tensor_identity_loss(u, wires):
     maximum value only when all rows are equal to each other, implying that all diagonl blocks are also equal.
 
     """
-    u = move_wires_up(u, wires)
+    u = move_wires_up(u, num_qubits, wires)
 
-    num_qubits = int(jnp.log2(u.shape[0]))
     block_size = num_qubits - len(wires)
-    u_diag, u_diag_shifted, u_off_diag = block_diagonal_split(u, block_size)
+    u_diag, u_diag_shifted, u_off_diag = block_diagonal_split(u, num_qubits, block_size)
 
     scalar_product_matrix = u_diag * u_diag_shifted.conj()
     scalar_product_vector = scalar_product_matrix.sum(axis=1)
@@ -184,7 +174,7 @@ def tensor_identity_loss(u, wires):
     return loss_diag + loss_off_diag
 
 
-def tensor_diagonal_loss(u, wires):
+def tensor_diagonal_loss(u, num_qubits, wires):
     """If the tensor corresponding to matrix u only applies a diagonal gate qubits specified by `wires` the function returns 0.
     Otherwise it's positive.
 
@@ -192,11 +182,10 @@ def tensor_diagonal_loss(u, wires):
     all absolute values of row-wise scalar products. This accounts for possible phases introduced by the diagonal gate.
     """
 
-    u = move_wires_up(u, wires)
+    u = move_wires_up(u, num_qubits, wires)
 
-    num_qubits = int(jnp.log2(u.shape[0]))
     block_size = num_qubits - len(wires)
-    u_diag, u_diag_shifted, u_off_diag = block_diagonal_split(u, block_size)
+    u_diag, u_diag_shifted, u_off_diag = block_diagonal_split(u, num_qubits, block_size)
 
     loss_off_diag = (jnp.abs(u_off_diag) ** 2).sum()
 
