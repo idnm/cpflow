@@ -197,9 +197,9 @@ class Ansatz:
 
         # Initial round of single-qubit gates
         for n, a in enumerate(surface_angles):
-            qc.rz(a[0], n)
-            qc.rx(a[1], n)
-            qc.rz(a[2], n)
+            qc.rz(float(a[0]), n)
+            qc.rx(float(a[1]), n)
+            qc.rz(float(a[2]), n)
 
         # Entangling gates according to placements
         for a, p in zip(block_angles, self.all_placements):
