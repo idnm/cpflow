@@ -568,6 +568,8 @@ class Decompose:
             for num_cp_gates, res in prospective_results:
                 anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
 
+                print('vefigying with options')
+                print(static_options)
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
                     res,
                     anz,
@@ -648,6 +650,8 @@ class Decompose:
 
         anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
 
+        print('vefigying with options')
+        print(options)
         success, num_cz_gates, circ, u, best_angs, angles_history, loss_history = verify_cp_result(
             res, anz, unitary_loss_func, **options, keep_history=True)
 
