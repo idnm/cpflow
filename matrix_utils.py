@@ -166,7 +166,7 @@ def tensor_identity_loss(u, num_qubits, wires):
 
     scalar_product_matrix = u_diag * u_diag_shifted.conj()
     scalar_product_vector = scalar_product_matrix.sum(axis=1)
-    scalar_product_total = jnp.abs((scalar_product_vector ** 2).sum())
+    scalar_product_total = jnp.abs(scalar_product_vector.sum())
 
     loss_off_diag = (jnp.abs(u_off_diag) ** 2).sum()
     loss_diag = 1 - scalar_product_total / 2 ** num_qubits
