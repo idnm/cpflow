@@ -199,8 +199,24 @@ def tensor_diagonal_loss(u, num_qubits, wires):
     return loss_diag + loss_off_diag
 
 
-def pp_matrix(m):
+def disc_modulo_identity(u_target, u, num_qubits, wires):
+    """ Returns zero if `u` as quantum circuit is equivalent to `u_target` up to a transformation acting as identity on `wires`.
+    Otherwise returns a positive number that quantifies the deviation from the scenario."""
+
+    return tensor_identity_loss((u @ u_target).conj().T, num_qubits, wires)
+
+
+def disc_modulo_diagonal(u_target, u, num_qubits, wires):
+    """ Returns zero if `u` as quantum circuit is equivalent to `u_target` times a diagonal transofmation followed by
+    arbitrary transormations not touching `wires`. Otherwise returns a positive number that quantifies the deviation from the scenario."""
+
+    return tensor_diagonal_loss((u @ u_target).conj().T, num_qubits, wires)
+
+
+def pp_matrix(m, r=None):
     """Pretty print array using pandas dataframe."""
+    if r:
+        m = jnp.around(m, r)
     M = pandas.DataFrame(m)
     M.columns = ['']*M.shape[1]
     print(M.to_string(index=False))
