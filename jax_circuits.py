@@ -373,7 +373,8 @@ class Decompose:
                 batch_size=options['batch_size'])
 
         raw_results = mynimize_repeated(
-            loss_func, anz.num_angles,
+            loss_func,
+            anz.num_angles,
             method=options['method'],
             learning_rate=options['learning_rate'],
             num_iterations=options['num_gd_iterations'],
