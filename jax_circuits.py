@@ -186,6 +186,9 @@ class Ansatz:
     def circuit(self, angles=None):
         if angles is None:
             angles = np.array([Parameter('a{}'.format(i)) for i in range(self.num_angles)])
+            parametrized = True
+        else:
+            parametrized = False
 
         num_block_angles = EntanglingBlock.num_angles(self.block_type)
         angles_dict = split_angles(angles, self.num_qubits, num_block_angles, len(self.layer), self.num_layers)
@@ -197,9 +200,12 @@ class Ansatz:
 
         # Initial round of single-qubit gates
         for n, a in enumerate(surface_angles):
-            qc.rz(float(a[0]), n)
-            qc.rx(float(a[1]), n)
-            qc.rz(float(a[2]), n)
+            if not parametrized:
+                a = list(map(float, a))
+
+            qc.rz(a[0], n)
+            qc.rx(a[1], n)
+            qc.rz(a[2], n)
 
         # Entangling gates according to placements
         for a, p in zip(block_angles, self.all_placements):
@@ -224,6 +230,18 @@ class Ansatz:
                              target_loss=target_loss,
                              keep_history=keep_history,
                              **kwargs)
+
+
+class Decomposition:
+    def __init__(self, unitary_func, circuit_func, angles, num_cz_gates):
+        self.unitary_func = unitary_func
+        self.circuit_func = circuit_func
+        self.angles = angles
+        self.num_cz_gates = num_cz_gates
+        self.circuit = self.circuit_func(self.angles)
+
+    def draw(self):
+        self.circuit.draw(output='mpl')
 
 
 class Decompose:
