@@ -264,18 +264,6 @@ class StaticOptions:
 
 class Decompose:
 
-    # default_static_options = {
-    #     'cp_dist': 'uniform',
-    #     'entry_loss': 1e-3,
-    #     'target_loss': 1e-6,
-    #     'threshold_cp': 0.2,
-    #     'batch_size': 1000,
-    #     'num_gd_iterations': 2000,
-    #     'method': 'adam',
-    #     'learning_rate': 0.01,
-    #     'accepted_num_gates': None,
-    # }
-
     default_adaptive_options = {
         'r_mean': 0.00055,
         'r_variance': 0.5,
@@ -319,6 +307,9 @@ class Decompose:
 
     @staticmethod
     def save_to_paths(save_to):
+        if save_to is None:
+            print("Warning: results will not be saved since 'save_to' is not provided.")
+            return None, None
         if not os.path.exists(save_to):
             os.makedirs(save_to)
 
@@ -329,7 +320,7 @@ class Decompose:
 
     @staticmethod
     def save_trials(save_to, trials):
-        if not save_to:
+        if save_to is None:
             return
         trials_path, decompositions_path = Decompose.save_to_paths(save_to)
 
@@ -338,7 +329,7 @@ class Decompose:
 
     @staticmethod
     def save_decompositions(save_to, overwrite_existing, decompositions):
-        if not save_to or decompositions is None:
+        if save_to is None or decompositions is None:
             return
 
         trials_path, decompositions_path = Decompose.save_to_paths(save_to)
@@ -356,7 +347,6 @@ class Decompose:
     @staticmethod
     def load_trials_and_decompositions(save_to):
         if save_to is None:
-            print("Warning: results won't be saved since `save_to` is not provided.")
             trials, decompositions = [], []
         else:
             trials_path, decompositions_path = Decompose.save_to_paths(save_to)
@@ -382,7 +372,7 @@ class Decompose:
         plt.yscale('log')
         plt.legend()
 
-    def generate_raw(self,options, key=random.PRNGKey(0), initial_angles_array=None, keep_history=False):
+    def generate_raw(self, options, key=random.PRNGKey(0), initial_angles_array=None, keep_history=False):
 
         # options = Decompose.updated_options(Decompose.default_static_options, options)
         anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
@@ -451,10 +441,10 @@ class Decompose:
         raw = Decompose.evaluate_raw(self, raw_results, options)
         prospective_results = raw
         prospective_results = [res for res in prospective_results if res[0] <= options.accepted_num_cz_gates]
+        successful_results = []
 
         if prospective_results:
             print(f'\nFound {len(prospective_results)}. Verifying...')
-            successful_results = []
             for num_cz_gates, res in tqdm(prospective_results):
 
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
@@ -475,7 +465,7 @@ class Decompose:
         else:
             print('No results passed.')
 
-        return prospective_results
+        return successful_results
 
     def adaptive(self,
                  static_options=None,
