@@ -2,7 +2,7 @@ import pickle
 import time
 import os
 from pprint import pprint
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 import dill
 import numpy as np
@@ -248,10 +248,7 @@ class RegularizationOptions:
 
 
 @dataclass
-class StaticOptions:
-    num_cp_gates: int
-    accepted_num_cz_gates: int
-    r: float = 0.00055
+class BasicOptions:
     num_samples: int = 100
     learning_rate: float = 0.1
     method: str = 'adam'
@@ -262,17 +259,47 @@ class StaticOptions:
     threshold_cp: float = 0.2
 
 
-class Decompose:
+@dataclass
+class StaticOptions(BasicOptions):
+    num_cp_gates: int = -1
+    r: float = 0.00055
+    accepted_num_cz_gates: int = -1
 
-    default_adaptive_options = {
-        'r_mean': 0.00055,
-        'r_variance': 0.5,
-        'max_num_cp_gates': None,
-        'min_num_cp_gates': None,
-        'max_evals': 100,
-        'stop_if_target_reached': True,
-        'hyperopt_random_seed': 0
-    }
+    def __post_init__(self):
+        if self.num_cp_gates == -1:
+            raise TypeError("Missing required argument 'num_cp_gates'")
+        if self.accepted_num_cz_gates == -1:
+            raise TypeError("Missing required argument 'accepted_num_cz_gates'")
+
+
+@dataclass
+class AdaptiveOptions(BasicOptions):
+    min_num_cp_gates: int = -1
+    max_num_cp_gates: int = -1
+    r_mean: float = 0.00055
+    r_variance: float = 0.5
+    max_evals: int = 100
+    target_num_cz_gates: int = 0
+    stop_if_target_reached: bool = False
+    hyperopt_random_seed: int = 0
+
+    def __post_init__(self):
+        if self.min_num_cp_gates == -1:
+            raise TypeError("Missing required argument 'min_num_cp_gates'")
+        if self.max_num_cp_gates == -1:
+            raise TypeError("Missing required argument 'max_num_cp_gates'")
+
+    def get_static(self, num_cp_gates, r):
+        default_static_dict = asdict(BasicOptions())
+        options_dict = asdict(self)
+        basic_dict = {key: value for key, value in options_dict.items() if key in default_static_dict}
+        basic_dict['num_cp_gates'] = num_cp_gates
+        basic_dict['r'] = r
+        basic_dict['accepted_num_cz_gates'] = None
+        return StaticOptions(**basic_dict)
+
+
+class Decompose:
 
     def __init__(self, layer, unitary_loss_func=None, cp_regularization_func=None, u_target=None):
         self.u_target = u_target
@@ -288,13 +315,6 @@ class Decompose:
             self.cp_regularization_func = make_regularization_function(RegularizationOptions)
         self.layer = layer
         self.num_qubits = num_qubits_from_layer(self.layer)
-
-    @staticmethod
-    def updated_options(default_options, new_options):
-        if new_options is None:
-            return default_options
-        else:
-            return dict(default_options, **new_options)
 
     @staticmethod
     def generate_initial_angles(key, num_angles, cp_mask, cp_dist='uniform', batch_size=1):
@@ -328,14 +348,14 @@ class Decompose:
             dill.dump(trials, f)
 
     @staticmethod
-    def save_decompositions(save_to, overwrite_existing, decompositions):
+    def save_decompositions(save_to, overwrite_existing_decompositions, decompositions):
         if save_to is None or decompositions is None:
             return
 
         trials_path, decompositions_path = Decompose.save_to_paths(save_to)
         existing_trials, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
 
-        if overwrite_existing:
+        if overwrite_existing_decompositions:
             decompositions_to_save = decompositions
         else:
             decompositions_to_save = existing_decompositions
@@ -419,12 +439,12 @@ class Decompose:
 
         return below_entry_loss_results
 
-    def static(self, options, key=random.PRNGKey(0), save_to=None, overwrite_existing=False):
+    def static(self, options, key=random.PRNGKey(0), save_to=None, overwrite_existing_decompositions=False):
 
         _, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
         _, decompositions_path = Decompose.save_to_paths(save_to)
 
-        if existing_decompositions and overwrite_existing:
+        if existing_decompositions and overwrite_existing_decompositions:
             print("Warning: existing decompositions will be overwritten.")
 
         print('\nStarting decomposition routine with the following options:\n')
@@ -461,45 +481,41 @@ class Decompose:
             print(f'\n{len(successful_results)} successful. cz counts are:')
             print(sorted([d.num_cz_gates for d in successful_results]))
 
-            Decompose.save_decompositions(save_to, overwrite_existing, successful_results)
+            Decompose.save_decompositions(save_to, overwrite_existing_decompositions, successful_results)
         else:
             print('No results passed.')
 
         return successful_results
 
     def adaptive(self,
-                 static_options=None,
-                 adaptive_options=None,
+                 options,
                  save_to=None,
                  overwrite_existing_trials=False,
                  overwrite_existing_decompositions=False):
-
-        static_options = Decompose.updated_options(Decompose.default_static_options, static_options)
-        adaptive_options = Decompose.updated_options(Decompose.default_adaptive_options, adaptive_options)
 
         def objective_from_cz_distribution(search_params):
 
             angles_random_seed = int(float(str(time.time())[::-1]))
             num_cp_gates, r = search_params
 
+            static_options = options.get_static(num_cp_gates, r)
+
             raw_results = Decompose.generate_raw(
                 self,
-                num_cp_gates,
-                r,
+                static_options,
                 key=random.PRNGKey(angles_random_seed),
-                options=static_options)
+                )
 
             evaluated_results = Decompose.evaluate_raw(
                 self,
                 raw_results,
-                num_cp_gates,
-                options=static_options,
+                static_options,
                 disable_tqdm=True,
             )
 
             cz_counts = [res[0] for res in evaluated_results]
-            score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - adaptive_options['target_num_gates']))).sum() / \
-                    static_options['batch_size']
+            score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - options.target_num_cz_gates))).sum() / \
+                    options.num_samples
 
             return {
                 'loss': -score,
@@ -512,23 +528,16 @@ class Decompose:
                 'attachments': {'prospective_decompositions': pickle.dumps(evaluated_results)}
             }
 
-        print('\nStarting decomposition routine with the following options:')
-        print('\nStatic:')
-        pprint(static_options)
-        print('\nAdaptive:')
-        pprint(adaptive_options)
+        print('\nStarting decomposition routine with the following options:\n')
+        print(options)
         print('\n')
-
-        assert adaptive_options['min_num_cp_gates'] is not None, 'min_num_cp_gates must be provided.'
-        assert adaptive_options['max_num_cp_gates'] is not None, 'max_num_cp_gates must be provided.'
-        assert adaptive_options['target_num_gates'] is not None, 'target_num_gates must be provided.'
 
         # Defining the hyperparameter search space.
         space = [
             scope.int(
-                hp.quniform('num_cp_gates', adaptive_options['min_num_cp_gates'], adaptive_options['max_num_cp_gates'],
+                hp.quniform('num_cp_gates', options.min_num_cp_gates, options.max_num_cp_gates,
                             1)),
-            hp.lognormal('r', jnp.log(adaptive_options['r_mean']), adaptive_options['r_variance'])
+            hp.lognormal('r', jnp.log(options.r_mean), options.r_variance)
         ]
 
         # Loading existing trials and decompositions.
@@ -541,39 +550,40 @@ class Decompose:
 
         # Creating scoreboard variable that keeps track of the best current cz count.
         if existing_decompositions:
-            scoreboard = set([cz for cz, *_ in existing_decompositions])
+            scoreboard = set([d.num_cz_gates for d in existing_decompositions])
             scoreboard = sorted(list(scoreboard))
         else:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
 
         decompositions = []
-        hyper_random_seed = adaptive_options['hyperopt_random_seed']
-        for _ in tqdm(range(adaptive_options['max_evals'] // adaptive_options['evals_between_verification']), desc='Epochs'):
+        hyper_random_seed = options.hyperopt_random_seed
+        for _ in tqdm(range(options.max_evals), desc='Epochs'):
 
             best = fmin(
                 objective_from_cz_distribution,
                 space=space,
                 algo=tpe.suggest,
-                max_evals=adaptive_options['evals_between_verification'] + len(trials.trials),
+                max_evals=len(trials.trials)+1,
                 trials=trials,
                 rstate=np.random.default_rng(hyper_random_seed))
-            hyper_random_seed += 1
 
+            hyper_random_seed += 1
             Decompose.save_trials(save_to, trials)
 
             current_best_cz = scoreboard[0]
             results_to_verify = []
-            for trial in trials.trials[-adaptive_options['evals_between_verification']:]:
-                msg = trials.trial_attachments(trial)['prospective_decompositions']
-                successful_results = pickle.loads(msg)
-                num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
-                prospective_results = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
-                num_equivalent_results = sum([cz == current_best_cz for cz, res in successful_results])
-                results_to_verify.extend(prospective_results)
+
+            trial = trials.trials[-1]
+            msg = trials.trial_attachments(trial)['prospective_decompositions']
+            successful_results = pickle.loads(msg)
+            num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+            prospective_results = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
+            num_equivalent_results = sum([cz == current_best_cz for cz, res in successful_results])
+            results_to_verify.extend(prospective_results)
 
             if len(results_to_verify):
                 print(
-                    f'\nFound {len(results_to_verify)} decompositions potentially better than current best count {current_best_cz}, verifying...')
+                    f'\nFound {len(results_to_verify)} decompositions potentially improving the current best count {current_best_cz}, verifying...')
             else:
                 print(
                     f'\nFound no better decompositions. Found {num_equivalent_results} decompositions with the current best count {current_best_cz}.')
@@ -582,12 +592,12 @@ class Decompose:
                 anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
 
                 print('verifying with options')
-                print(static_options)
+                print(options.get_static(None, None))
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
                     res,
                     anz,
                     self.unitary_loss_func,
-                    **static_options)
+                    options.get_static(None, None))
 
                 if success:
                     print(f'\nFound new decomposition with {num_cz_gates} gates.\n')
@@ -601,71 +611,71 @@ class Decompose:
                 if prospective_results:
                     print('\nNo decomposition passed.\n')
 
-            if adaptive_options['stop_if_target_reached'] and scoreboard[0] <= adaptive_options['target_num_gates']:
+            if options.stop_if_target_reached and scoreboard[0] <= options.target_num_cz_gates:
                 print('\nTarget number of gates reached.')
                 break
 
         return decompositions, trials, best
 
-    @staticmethod
-    def reconstruct_trial(trial):
+    # @staticmethod
+    # def reconstruct_trial(trial):
+    #
+    #     options = trial['result']['static_options']
+    #     layer = trial['result']['layer']
+    #     unitary_loss_func = trial['result']['unitary_loss_func']
+    #
+    #     num_qubits = num_qubits_from_layer(layer)
+    #     options = Decompose.updated_options(Decompose.default_static_options, options)
+    #
+    #     angles_random_seed = trial['result']['angles_random_seed']
+    #     num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+    #     r = trial['misc']['vals']['r'][0]
+    #
+    #     anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
+    #
+    #     initial_angles = Decompose.generate_initial_angles(
+    #         random.PRNGKey(angles_random_seed),
+    #         anz.num_angles,
+    #         anz.cp_mask,
+    #         cp_dist=options['cp_dist'],
+    #         batch_size=options['batch_size'])
+    #
+    #     d = Decompose(layer, unitary_loss_func=unitary_loss_func)
+    #     raw_results = d.generate_raw(
+    #         num_cp_gates,
+    #         r,
+    #         initial_angles_array=initial_angles,
+    #         options=options,
+    #         keep_history=True)
+    #
+    #     below_entry_loss_results = d.evaluate_raw(
+    #         raw_results,
+    #         num_cp_gates,
+    #         options=options,
+    #         disable_tqdm=False)
+    #
+    #     return below_entry_loss_results
 
-        options = trial['result']['static_options']
-        layer = trial['result']['layer']
-        unitary_loss_func = trial['result']['unitary_loss_func']
-
-        num_qubits = num_qubits_from_layer(layer)
-        options = Decompose.updated_options(Decompose.default_static_options, options)
-
-        angles_random_seed = trial['result']['angles_random_seed']
-        num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
-        r = trial['misc']['vals']['r'][0]
-
-        anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
-
-        initial_angles = Decompose.generate_initial_angles(
-            random.PRNGKey(angles_random_seed),
-            anz.num_angles,
-            anz.cp_mask,
-            cp_dist=options['cp_dist'],
-            batch_size=options['batch_size'])
-
-        d = Decompose(layer, unitary_loss_func=unitary_loss_func)
-        raw_results = d.generate_raw(
-            num_cp_gates,
-            r,
-            initial_angles_array=initial_angles,
-            options=options,
-            keep_history=True)
-
-        below_entry_loss_results = d.evaluate_raw(
-            raw_results,
-            num_cp_gates,
-            options=options,
-            disable_tqdm=False)
-
-        return below_entry_loss_results
-
-    @staticmethod
-    def reconstruct_verification(trials, i_trial, i_sample):
-        trial = trials.trials[i_trial]
-        msg = trials.trial_attachments(trial)['prospective_decompositions']
-        prospective_results = pickle.loads(msg)
-        cz, res = prospective_results[i_sample]
-
-        options = trial['result']['static_options']
-        layer = trial['result']['layer']
-        unitary_loss_func = trial['result']['unitary_loss_func']
-
-        num_qubits = num_qubits_from_layer(layer)
-        num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
-
-        anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
-
-        print('vefigying with options')
-        print(options)
-        success, num_cz_gates, circ, u, best_angs, angles_history, loss_history = verify_cp_result(
-            res, anz, unitary_loss_func, **options, keep_history=True)
-
-        return {'success': success, 'num_cz_gates': num_cz_gates, 'circ': circ, 'unitary': u, 'best_angles': best_angs,
-                'angles_history': angles_history, 'loss_history': loss_history}
+    # @staticmethod
+    # def reconstruct_verification(trials, i_trial, i_sample):
+    #     trial = trials.trials[i_trial]
+    #     msg = trials.trial_attachments(trial)['prospective_decompositions']
+    #     prospective_results = pickle.loads(msg)
+    #     cz, res = prospective_results[i_sample]
+    #
+    #     options = trial['result']['static_options']
+    #     layer = trial['result']['layer']
+    #     unitary_loss_func = trial['result']['unitary_loss_func']
+    #
+    #     num_qubits = num_qubits_from_layer(layer)
+    #     num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+    #
+    #     anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
+    #
+    #     print('vefigying with options')
+    #     print(options)
+    #     success, num_cz_gates, circ, u, best_angs, angles_history, loss_history = verify_cp_result(
+    #         res, anz, unitary_loss_func, **options, keep_history=True)
+    #
+    #     return {'success': success, 'num_cz_gates': num_cz_gates, 'circ': circ, 'unitary': u, 'best_angles': best_angs,
+    #             'angles_history': angles_history, 'loss_history': loss_history}
