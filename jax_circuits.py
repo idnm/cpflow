@@ -240,8 +240,8 @@ class Decomposition:
         self.num_cz_gates = num_cz_gates
         self.circuit = self.circuit_func(self.angles)
 
-    def draw(self):
-        self.circuit.draw(output='mpl')
+    def __repr__(self):
+        return f'Decomposition with {self.num_cz_gates} cz gates.'
 
 
 class Decompose:
@@ -587,7 +587,7 @@ class Decompose:
             for num_cp_gates, res in prospective_results:
                 anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
 
-                print('vefigying with options')
+                print('verifying with options')
                 print(static_options)
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
                     res,
@@ -599,8 +599,7 @@ class Decompose:
                     print(f'\nFound new decomposition with {num_cz_gates} gates.\n')
 
                     scoreboard.insert(0, num_cz_gates)
-                    new_decomposition = [num_cz_gates, circ, u, best_angs]
-                    decompositions.append(new_decomposition)
+                    new_decomposition = Decomposition(u, circ, best_angs, num_cz_gates)
                     Decompose.save_decompositions(save_to, overwrite_existing_decompositions, [new_decomposition])
 
                     break
