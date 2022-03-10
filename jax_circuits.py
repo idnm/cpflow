@@ -2,19 +2,12 @@ import pickle
 import time
 import os
 from pprint import pprint
+from dataclasses import dataclass
 
 import dill
 import numpy as np
 import matplotlib.pyplot as plt
-import jax.numpy as jnp
-
-from jax import random, value_and_grad, jit, lax, custom_jvp
-import optax
-
-from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
-
-from functools import partial
 
 from tqdm import tqdm
 
@@ -244,28 +237,44 @@ class Decomposition:
         return f'Decomposition with {self.num_cz_gates} cz gates.'
 
 
+@dataclass
+class RegularizationOptions:
+    function: str = 'linear'
+    ymax: float = 2
+    xmax: float = jnp.pi / 2
+    plato_0: float = 0.05
+    plato_1: float = 0.05
+    plato_2: float = 0.05
+
+
+@dataclass
+class StaticOptions:
+    num_cp_gates: int
+    accepted_num_cz_gates: int
+    r: float = 0.00055
+    num_samples: int = 100
+    learning_rate: float = 0.1
+    method: str = 'adam'
+    num_gd_iterations: int = 2000
+    cp_distribution: str = 'uniform'
+    entry_loss: float = 1e-3
+    target_loss: float = 1e-6
+    threshold_cp: float = 0.2
+
+
 class Decompose:
 
-    default_regularization_options = {
-        'function': 'linear',
-        'ymax': 2,
-        'xmax': jnp.pi / 2,
-        'plato_0': 0.05,
-        'plato_1': 0.05,
-        'plato_2': 0.05
-    }
-
-    default_static_options = {
-        'cp_dist': 'uniform',
-        'entry_loss': 1e-3,
-        'target_loss': 1e-6,
-        'threshold_cp': 0.2,
-        'batch_size': 1000,
-        'num_gd_iterations': 2000,
-        'method': 'adam',
-        'learning_rate': 0.01,
-        'accepted_num_gates': None,
-    }
+    # default_static_options = {
+    #     'cp_dist': 'uniform',
+    #     'entry_loss': 1e-3,
+    #     'target_loss': 1e-6,
+    #     'threshold_cp': 0.2,
+    #     'batch_size': 1000,
+    #     'num_gd_iterations': 2000,
+    #     'method': 'adam',
+    #     'learning_rate': 0.01,
+    #     'accepted_num_gates': None,
+    # }
 
     default_adaptive_options = {
         'r_mean': 0.00055,
@@ -288,7 +297,7 @@ class Decompose:
         if cp_regularization_func:
             self.cp_regularization_func = cp_regularization_func
         else:
-            self.cp_regularization_func = make_regularization_function(Decompose.default_regularization_options)
+            self.cp_regularization_func = make_regularization_function(RegularizationOptions)
         self.layer = layer
         self.num_qubits = num_qubits_from_layer(self.layer)
 
@@ -373,29 +382,29 @@ class Decompose:
         plt.yscale('log')
         plt.legend()
 
-    def generate_raw(self, num_cp_gates, r, key=random.PRNGKey(0), initial_angles_array=None, options=None, keep_history=False):
+    def generate_raw(self,options, key=random.PRNGKey(0), initial_angles_array=None, keep_history=False):
 
-        options = Decompose.updated_options(Decompose.default_static_options, options)
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
+        # options = Decompose.updated_options(Decompose.default_static_options, options)
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
         loss_func = lambda angles: self.unitary_loss_func(anz.unitary(angles))
 
         def regularization_func(angs):
-            return r*vmap(self.cp_regularization_func)(angs*anz.cp_mask).sum()
+            return options.r*vmap(self.cp_regularization_func)(angs*anz.cp_mask).sum()
 
         if initial_angles_array is None:
             initial_angles_array = Decompose.generate_initial_angles(
                 key,
                 anz.num_angles,
                 anz.cp_mask,
-                cp_dist=options['cp_dist'],
-                batch_size=options['batch_size'])
+                cp_dist=options.cp_distribution,
+                batch_size=options.num_samples)
 
         raw_results = mynimize_repeated(
             loss_func,
             anz.num_angles,
-            method=options['method'],
-            learning_rate=options['learning_rate'],
-            num_iterations=options['num_gd_iterations'],
+            method=options.method,
+            learning_rate=options.learning_rate,
+            num_iterations=options.num_gd_iterations,
             initial_params_batch=initial_angles_array,
             regularization_func=regularization_func,
             u_func=anz.unitary,  # For 'adam' this won't be used, but it will e.g. for 'natural adam'.
@@ -404,23 +413,23 @@ class Decompose:
 
         return raw_results
 
-    def evaluate_raw(self, raw_results, num_cp_gates, options=None, disable_tqdm=False):
+    def evaluate_raw(self, raw_results, options, disable_tqdm=False):
 
-        options = Decompose.updated_options(Decompose.default_static_options, options)
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
+        # options = Decompose.updated_options(Decompose.default_static_options, options)
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
 
         below_entry_loss_results = filter_cp_results(
             raw_results,
             anz.cp_mask,
             float('inf'),  # At this stage we only filter by convergence, not by the number of gates.
-            options['entry_loss'],
-            threshold_cp=options['threshold_cp'],
+            options.entry_loss,
+            threshold_cp=options.threshold_cp,
             disable_tqdm=disable_tqdm
         )
 
         return below_entry_loss_results
 
-    def static(self, num_cp_gates, r, key=random.PRNGKey(0), options=None, save_to=None, overwrite_existing=False):
+    def static(self, options, key=random.PRNGKey(0), save_to=None, overwrite_existing=False):
 
         _, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
         _, decompositions_path = Decompose.save_to_paths(save_to)
@@ -428,44 +437,39 @@ class Decompose:
         if existing_decompositions and overwrite_existing:
             print("Warning: existing decompositions will be overwritten.")
 
-        options = Decompose.updated_options(Decompose.default_static_options, options)
-        assert options['accepted_num_gates'] is not None, 'Accepted number of gates not provided'
-
         print('\nStarting decomposition routine with the following options:\n')
-        pprint(options)
+        print(options)
 
         print('\nComputing raw results...')
         raw_results = Decompose.generate_raw(self,
-                                             num_cp_gates,
-                                             r,
-                                             key=key,
-                                             options=options)
+                                             options,
+                                             key=key)
 
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates))
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
 
         print('\nSelecting prospective results...')
-        prospective_results = Decompose.evaluate_raw(self, raw_results, num_cp_gates, options)
-        prospective_results = [res for res in prospective_results if res[0] <= options['accepted_num_gates']]
+        raw = Decompose.evaluate_raw(self, raw_results, options)
+        prospective_results = raw
+        prospective_results = [res for res in prospective_results if res[0] <= options.accepted_num_cz_gates]
 
         if prospective_results:
             print(f'\nFound {len(prospective_results)}. Verifying...')
             successful_results = []
-            failed_results = []
             for num_cz_gates, res in tqdm(prospective_results):
 
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
                     res,
                     anz,
                     self.unitary_loss_func,
-                    **options)
+                    options,
+                    keep_history=False)
 
                 if success:
-                    successful_results.append([num_cz_gates, circ, u, best_angs])
-                else:
-                    failed_results.append([num_cz_gates, circ, u, best_angs])
+                    new_decomposition = Decomposition(u, circ, best_angs, num_cz_gates)
+                    successful_results.append(new_decomposition)
 
             print(f'\n{len(successful_results)} successful. cz counts are:')
-            print(sorted([r[0] for r in successful_results]))
+            print(sorted([d.num_cz_gates for d in successful_results]))
 
             Decompose.save_decompositions(save_to, overwrite_existing, successful_results)
         else:

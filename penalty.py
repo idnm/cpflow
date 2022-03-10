@@ -77,16 +77,16 @@ def cp_penalty_L1(a):
 
 def make_regularization_function(options):
 
-    if options['function'] == 'linear':
-        ymax = options['ymax']
-        xmax = options['xmax']
-        plato_0 = options['plato_0']
-        plato_1 = options['plato_1']
-        plato_2 = options['plato_2']
+    if options.function == 'linear':
+        ymax = options.ymax
+        xmax = options.xmax
+        plato_0 = options.plato_0
+        plato_1 = options.plato_1
+        plato_2 = options.plato_2
 
         penalty_func = lambda a: cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2)
 
-    elif options['function'] == 'L1':
+    elif options.function == 'L1':
         penalty_func = lambda a: cp_penalty_L1(a)
 
     else:

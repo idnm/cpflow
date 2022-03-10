@@ -193,7 +193,7 @@ def filter_cp_results(
     return selected_results
 
 
-def verify_cp_result(res, anz, unitary_loss_func, keep_history=False, **options):
+def verify_cp_result(res, anz, unitary_loss_func, options, keep_history=False):
     """ Takes a cp ansatz, projects it to cz/mixed ansatz and verifies if nearly-exact compilation is possible.
 
     Args:
@@ -213,14 +213,14 @@ def verify_cp_result(res, anz, unitary_loss_func, keep_history=False, **options)
     but mixed ansatz is not yet implemented.
     """
 
-    num_cz_gates, loss, angles = evaluate_cp_result(res, anz.cp_mask, threshold=options['threshold_cp'])
-    circ, u, free_angles = convert_cp_to_cz(anz, angles, threshold=options['threshold_cp'])
+    num_cz_gates, loss, angles = evaluate_cp_result(res, anz.cp_mask, threshold=options.threshold_cp)
+    circ, u, free_angles = convert_cp_to_cz(anz, angles, threshold=options.threshold_cp)
 
     refined_result = mynimize(
         lambda angs: unitary_loss_func(u(angs)),
         anz.num_angles,
-        method=options['method'],
-        learning_rate=options['learning_rate'],
+        method=options.method,
+        learning_rate=options.learning_rate,
         u_func=anz.unitary,
         keep_history=keep_history,
         initial_params=free_angles
@@ -232,9 +232,9 @@ def verify_cp_result(res, anz, unitary_loss_func, keep_history=False, **options)
     best_loss = loss_history[best_i]
 
     if not keep_history:
-        return best_loss <= options['target_loss'], num_cz_gates, circ, u, best_angs
+        return best_loss <= options.target_loss, num_cz_gates, circ, u, best_angs
     else:
-        return best_loss <= options['target_loss'], num_cz_gates, circ, u, best_angs, angles_history, loss_history
+        return best_loss <= options.target_loss, num_cz_gates, circ, u, best_angs, angles_history, loss_history
 
 
 def refine_cp_result(res, u_target, anz, disc_func=None, target_loss=1e-8, threshold=0.2):
