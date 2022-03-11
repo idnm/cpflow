@@ -519,8 +519,13 @@ class Decompose:
             )
 
             cz_counts = [res[0] for res in evaluated_results]
-            score = (2 ** (-(jnp.array(cz_counts, dtype=jnp.float32) - options.target_num_cz_gates))).sum() / \
-                    options.num_samples
+
+            # Score is defined as the weighted sum of cz counts of all successfull results.
+            # For convenience it is normalized on the number of samples and shown in log scale.
+            # Absolute value of the score has little meaning.
+            score = 2 ** (-jnp.array(cz_counts, dtype=jnp.float32))
+            score = (score.sum() / options.num_samples)
+            score = jnp.log(score)
 
             return {
                 'loss': -score,
