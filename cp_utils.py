@@ -220,7 +220,8 @@ def verify_cp_result(res, anz, unitary_loss_func, options, keep_history=False):
         lambda angs: unitary_loss_func(u(angs)),
         anz.num_angles,
         method=options.method,
-        learning_rate=options.learning_rate,
+        learning_rate=options.learning_rate_at_verification,
+        num_iterations=options.num_gd_iterations_at_verification,
         u_func=anz.unitary,
         keep_history=keep_history,
         initial_params=free_angles

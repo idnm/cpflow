@@ -250,13 +250,15 @@ class RegularizationOptions:
 @dataclass
 class BasicOptions:
     num_samples: int = 100
-    learning_rate: float = 0.1
     method: str = 'adam'
+    learning_rate: float = 0.1
     num_gd_iterations: int = 2000
     cp_distribution: str = 'uniform'
     entry_loss: float = 1e-3
     target_loss: float = 1e-6
     threshold_cp: float = 0.2
+    learning_rate_at_verification: float = 0.01
+    num_gd_iterations_at_verification: int = 5000
 
 
 @dataclass
@@ -441,8 +443,8 @@ class Decompose:
 
     def static(self, options, key=random.PRNGKey(0), save_to=None, overwrite_existing_decompositions=False):
 
-        _, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
         _, decompositions_path = Decompose.save_to_paths(save_to)
+        _, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
 
         if existing_decompositions and overwrite_existing_decompositions:
             print("Warning: existing decompositions will be overwritten.")
@@ -455,8 +457,6 @@ class Decompose:
                                              options,
                                              key=key)
 
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
-
         print('\nSelecting prospective results...')
         raw = Decompose.evaluate_raw(self, raw_results, options)
         prospective_results = raw
@@ -465,6 +465,8 @@ class Decompose:
 
         if prospective_results:
             print(f'\nFound {len(prospective_results)}. Verifying...')
+
+            anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
             for num_cz_gates, res in tqdm(prospective_results):
 
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
@@ -478,10 +480,13 @@ class Decompose:
                     new_decomposition = Decomposition(u, circ, best_angs, num_cz_gates)
                     successful_results.append(new_decomposition)
 
-            print(f'\n{len(successful_results)} successful. cz counts are:')
-            print(sorted([d.num_cz_gates for d in successful_results]))
+            if successful_results:
+                print(f'\n{len(successful_results)} successful. cz counts are:')
+                print(sorted([d.num_cz_gates for d in successful_results]))
+                Decompose.save_decompositions(save_to, overwrite_existing_decompositions, successful_results)
+            else:
+                print('\nAll prospective results failed.\n')
 
-            Decompose.save_decompositions(save_to, overwrite_existing_decompositions, successful_results)
         else:
             print('No results passed.')
 
