@@ -281,7 +281,7 @@ class AdaptiveOptions(BasicOptions):
     max_evals: int = 100
     target_num_cz_gates: int = 0
     stop_if_target_reached: bool = False
-    hyperopt_random_seed: int = 0
+    random_seed: int = 0
 
     def __post_init__(self):
         if self.min_num_cp_gates == -1:
@@ -493,9 +493,9 @@ class Decompose:
                  overwrite_existing_trials=False,
                  overwrite_existing_decompositions=False):
 
-        def objective_from_cz_distribution(search_params):
+        def objective_from_cz_distribution(random_seed, search_params):
 
-            angles_random_seed = int(float(str(time.time())[::-1]))
+            # angles_random_seed = int(float(str(time.time())[::-1]))
             num_cp_gates, r = search_params
 
             static_options = options.get_static(num_cp_gates, r)
@@ -503,7 +503,7 @@ class Decompose:
             raw_results = Decompose.generate_raw(
                 self,
                 static_options,
-                key=random.PRNGKey(angles_random_seed),
+                key=random.PRNGKey(random_seed),
                 )
 
             evaluated_results = Decompose.evaluate_raw(
@@ -520,7 +520,7 @@ class Decompose:
             return {
                 'loss': -score,
                 'status': STATUS_OK,
-                'angles_random_seed': angles_random_seed,
+                'angles_random_seed': random_seed,
                 'cz_counts': cz_counts,
                 'layer': self.layer,
                 'unitary_loss_func': self.unitary_loss_func,
@@ -556,18 +556,21 @@ class Decompose:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
 
         decompositions = []
-        hyper_random_seed = options.hyperopt_random_seed
+        key = random.PRNGKey(options.random_seed)
+
         for _ in tqdm(range(options.max_evals), desc='Epochs'):
 
+            key, subkey = random.split(key)
+            seed_angles, seed_hyperopt = random.randint(subkey, (2,),  minval=0, maxval=10e6)
+
             best = fmin(
-                objective_from_cz_distribution,
+                partial(objective_from_cz_distribution, seed_angles),
                 space=space,
                 algo=tpe.suggest,
                 max_evals=len(trials.trials)+1,
                 trials=trials,
-                rstate=np.random.default_rng(hyper_random_seed))
+                rstate=np.random.default_rng(int(seed_hyperopt)))
 
-            hyper_random_seed += 1
             Decompose.save_trials(save_to, trials)
 
             current_best_cz = scoreboard[0]
