@@ -500,7 +500,6 @@ class Decompose:
 
         def objective_from_cz_distribution(random_seed, search_params):
 
-            # angles_random_seed = int(float(str(time.time())[::-1]))
             num_cp_gates, r = search_params
 
             static_options = options.get_static(num_cp_gates, r)
@@ -530,7 +529,7 @@ class Decompose:
             return {
                 'loss': -score,
                 'status': STATUS_OK,
-                'angles_random_seed': random_seed,
+                'random_seed': random_seed,
                 'cz_counts': cz_counts,
                 'layer': self.layer,
                 'unitary_loss_func': self.unitary_loss_func,
@@ -552,11 +551,14 @@ class Decompose:
 
         # Loading existing trials and decompositions.
         existing_trials, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
+
         if existing_trials and not overwrite_existing_trials:
             print('\nFound existing trials, resuming from here.')
             trials = existing_trials
+            random_seed = trials.results[-1]['random_seed']
         else:
             trials = Trials()
+            random_seed = options.random_seed
 
         # Creating scoreboard variable that keeps track of the best current cz count.
         if existing_decompositions:
@@ -566,20 +568,18 @@ class Decompose:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
 
         decompositions = []
-        key = random.PRNGKey(options.random_seed)
+        for _ in tqdm(range(options.max_evals), desc='Evaluations'):
 
-        for _ in tqdm(range(options.max_evals), desc='Epochs'):
-
-            key, subkey = random.split(key)
-            seed_angles, seed_hyperopt = random.randint(subkey, (2,),  minval=0, maxval=10e6)
+            _, subkey = random.split(random.PRNGKey(random_seed))
+            random_seed = int(subkey[1])
 
             best = fmin(
-                partial(objective_from_cz_distribution, seed_angles),
+                partial(objective_from_cz_distribution, random_seed),
                 space=space,
                 algo=tpe.suggest,
                 max_evals=len(trials.trials)+1,
                 trials=trials,
-                rstate=np.random.default_rng(int(seed_hyperopt)))
+                rstate=np.random.default_rng(int(random_seed)))
 
             Decompose.save_trials(save_to, trials)
 
