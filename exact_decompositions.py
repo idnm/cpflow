@@ -1,6 +1,7 @@
 from matrix_utils import *
 from qiskit.quantum_info import Operator
 from qiskit.circuit.library import *
+from trigonometric_utils import *
 
 
 def check_approximation(circuit, new_circuit, loss=1e-3):
@@ -117,7 +118,6 @@ def move_single_rz_along_wire(data, qubit):
 def move_rz_along_wire_once(data):
     """Given a wire starting from an rz gate attempts to commute this gate past the next one."""
 
-
     rz_gate, rz_qargs, rz_cargs = data[0]
     next_gate, next_qargs, next_cargs = data[1]
 
@@ -132,6 +132,40 @@ def move_rz_along_wire_once(data):
         move_successful = False
         data01 = [data[0], data[1]]
     return move_successful, data01 + data[2:]
+
+
+def merge_all_rz(circuit):
+    """Merges all adjacent 'rz' gates."""
+
+    new_circuit = circuit.copy()
+    new_data = new_circuit.data
+    for qubit in circuit.qubits:
+        new_data = merge_rz_in_data(new_data, qubit)
+
+    new_circuit.data = new_data
+
+    check_approximation(circuit, new_circuit)
+
+    return new_circuit
+
+
+def merge_rz_in_data(data, qubit):
+    i = i_of_rz_followed_by_another_rz(data, qubit)
+    if i is None:
+        return data
+
+    data0, data1 = data[:i], data[i:]
+    rz_gate, qargs, cargs = data1[0]
+    next_rz_gate, next_qargs, next_cargs = data1[1]
+
+    rz_gate_angle = rz_gate.params[0]
+    next_rz_gate_angle = next_rz_gate.params[0]
+
+    new_rz_gate = RZGate(bracket_angle(rz_gate_angle + next_rz_gate_angle))
+
+    data1 = [(new_rz_gate, qargs, cargs)] + data1[2:]
+
+    return data0 + merge_rz_in_data(data1, qubit)
 
 
 def get_indices_rz_at_wire(data, qubit):
@@ -149,4 +183,15 @@ def contains_rz_at_wire(data, qubit):
 
 def get_last_rz_index(data, qubit):
     return get_indices_rz_at_wire(data, qubit)[-1]
+
+
+def i_of_rz_followed_by_another_rz(data, qubit):
+    all_rz_indices = get_indices_rz_at_wire(data, qubit)
+    for i in all_rz_indices:
+        if i+1 in all_rz_indices:
+            return i
+
+    return None
+
+
 

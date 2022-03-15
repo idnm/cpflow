@@ -36,3 +36,9 @@ def random_angles(num_angles, key=None):
     if key is None:
         key = random.PRNGKey(0)
     return random.uniform(key, (num_angles, ), minval=0, maxval=2*jnp.pi)
+
+
+def bracket_angle(a):
+    """Returns a new angle which differs from `a` by a multiple of 2pi and lies in (-pi, pi). """
+
+    return ((a+jnp.pi) % (2*jnp.pi))-jnp.pi
