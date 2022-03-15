@@ -3,7 +3,14 @@ from qiskit.quantum_info import Operator
 from qiskit.circuit.library import *
 
 
+def check_approximation(circuit, new_circuit, loss=1e-3):
+    assert disc2(Operator(circuit).data,
+                 Operator(new_circuit).data) < loss, 'Difference between projected and original circuit too large.'
+    print('ver succ')
+
+
 def project_circuit(circuit, threshold):
+    """Replaces gates with parameters numerically close to refernce values by these values."""
     new_data = circuit.data.copy()
     projected_data = [(project_gate(gate, threshold), qargs, cargs) for gate, qargs, cargs in new_data]
     new_data = []
@@ -17,8 +24,8 @@ def project_circuit(circuit, threshold):
     new_circuit = circuit.copy()
     new_circuit.data = new_data
 
-    assert disc2(Operator(circuit).data,
-                 Operator(new_circuit).data) < 1e-3, 'Difference between projected and original circuit too large.'
+    check_approximation(circuit, new_circuit)
+
     return new_circuit
 
 
@@ -45,6 +52,8 @@ rz_projections = {
 
 
 def project_gate(gate, threshold):
+    """Projects 'rx' or 'ry' if their parameters are below `threshold` distance away from predefined reference values."""
+
     if gate.name == 'rx':
         projections = rx_projections
     elif gate.name == 'rz':
@@ -61,19 +70,22 @@ def project_gate(gate, threshold):
 
 
 def move_all_rz(circuit):
-    """Moves all rz gates to the right as far as possible."""
+    """Moves all rz gates as far to the right as possible."""
 
-    new_circuit_data = circuit.data.copy()
+    new_circuit = circuit.copy()
+    new_circuit_data = new_circuit.data
     for qubit in circuit.qubits:
         new_circuit_data = move_all_rz_along_wire(new_circuit_data, qubit)
 
-    new_circuit = circuit.copy()
     new_circuit.data = new_circuit_data
+    check_approximation(circuit, new_circuit)
+
     return new_circuit
 
 
 def move_all_rz_along_wire(data, qubit):
     """Moves all rz gates at a given wire as far to the right as possible."""
+
     if not contains_rz_at_wire(data, qubit):
         return data
 
@@ -84,23 +96,28 @@ def move_all_rz_along_wire(data, qubit):
 
 
 def move_last_rz_along_wire(data, qubit):
+    """Moves last rz gate at a given wire as far to the right as possible."""
     i = get_last_rz_index(data, qubit)
 
-    return data[:i] + move_single_rz_alog_wire(data[i:], qubit)
+    return data[:i] + move_single_rz_along_wire(data[i:], qubit)
 
 
-def move_single_rz_alog_wire(data, qubit):
+def move_single_rz_along_wire(data, qubit):
+    """Given a wire starting with an rz gate moves this gate as far to the right as possible."""
     if len(data) == 1:
         return data
 
-    move_successfull, new_data = move_rz_along_wire_once(data, qubit)
-    if move_successfull:
-        return [new_data[0]] + move_single_rz_alog_wire(new_data[1:], qubit)
+    move_successful, new_data = move_rz_along_wire_once(data)
+    if move_successful:
+        return [new_data[0]] + move_single_rz_along_wire(new_data[1:], qubit)
     else:
         return data
 
 
-def move_rz_along_wire_once(data, qubit):
+def move_rz_along_wire_once(data):
+    """Given a wire starting from an rz gate attempts to commute this gate past the next one."""
+
+
     rz_gate, rz_qargs, rz_cargs = data[0]
     next_gate, next_qargs, next_cargs = data[1]
 
