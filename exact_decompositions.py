@@ -2,12 +2,34 @@ from matrix_utils import *
 from qiskit.quantum_info import Operator
 from qiskit.circuit.library import *
 from trigonometric_utils import *
+from optimization import mynimize_repeated
 
 
 def check_approximation(circuit, new_circuit, loss=1e-3):
     assert disc2(Operator(circuit).data,
                  Operator(new_circuit).data) < loss, 'Difference between projected and original circuit too large.'
     print('ver succ')
+
+
+def lasso_angles(loss_function, angles, eps=1e-5, threshold_loss=1e-6):
+
+    penatly_f = lambda angs: eps * (jnp.abs(vmap(bracket_angle)(angs))).sum()
+
+    res = mynimize_repeated(
+        loss_function,
+        len(angles),
+        regularization_func=penatly_f,
+        num_repeats=1,
+        method='adam',
+        learning_rate=0.01,
+        initial_params_batch=angles,
+        num_iterations=10000)
+
+    best_i = jnp.argmin(res['regloss'])
+    best_angs = res['params'][best_i]
+    assert res['loss'][best_i] <= threshold_loss, 'L1 regularization was not successful.'
+
+    return best_angs
 
 
 def project_circuit(circuit, threshold):
