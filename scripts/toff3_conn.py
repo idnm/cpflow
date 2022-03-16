@@ -9,7 +9,7 @@ from scipy.stats import unitary_group
 
 
 layer = sequ_layer(3)
-decomposer = Decompose(layer, u_target=u_toff3)
+decomposer = Decompose(layer, target_unitary=u_toff3)
 
 static_options = {'batch_size': 100, 'accepted_num_gates': 4}
 

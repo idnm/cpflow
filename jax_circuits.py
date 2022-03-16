@@ -301,22 +301,52 @@ class AdaptiveOptions(BasicOptions):
         return StaticOptions(**basic_dict)
 
 
+@dataclass
+class Results:
+    loss_function: callable
+    layer: list
+    label: str = ''
+    trials: Trials = None
+    decompositions: tuple = ()
+    save_to: str = ''
+
+    def __post_init__(self):
+        if self.save_to is '':
+            self.save_to = f'results/{self.label}'
+
+    def save(self):
+        os.makedirs(os.path.dirname(self.save_to), exist_ok=True)
+        with open(self.save_to, 'wb') as f:
+            dill.dump(self, f)
+
+    @staticmethod
+    def load(path):
+        with open(path, 'rb') as f:
+            results = dill.load(f)
+
+        return results
+
+
 class Decompose:
 
-    def __init__(self, layer, unitary_loss_func=None, cp_regularization_func=None, u_target=None):
-        self.u_target = u_target
+    def __init__(self, layer, unitary_loss_func=None, target_unitary=None, label=None, cp_regularization_func=None):
+
+        self.layer = layer
+        self.num_qubits = num_qubits_from_layer(self.layer)
+
+        self.target_unitary = target_unitary
         if unitary_loss_func is not None:
             self.unitary_loss_func = unitary_loss_func
         else:
-            assert self.u_target is not None, 'Neither unitary loss function nor target unitary is provided.'
-            self.unitary_loss_func = lambda u: disc2(u, self.u_target)
+            assert self.target_unitary is not None, 'Neither unitary loss function nor target unitary is provided.'
+            assert self.target_unitary.shape == (2**self.num_qubits, 2**self.num_qubits), 'Target unitary has incorrect shape.'
+            self.unitary_loss_func = lambda u: disc2(u, self.target_unitary)
 
+        self.label = label
         if cp_regularization_func:
             self.cp_regularization_func = cp_regularization_func
         else:
             self.cp_regularization_func = make_regularization_function(RegularizationOptions)
-        self.layer = layer
-        self.num_qubits = num_qubits_from_layer(self.layer)
 
     @staticmethod
     def generate_initial_angles(key, num_angles, cp_mask, cp_dist='uniform', batch_size=1):
@@ -326,65 +356,6 @@ class Decompose:
              for k in subkeys])
 
         return initial_angles_array
-
-    @staticmethod
-    def save_to_paths(save_to):
-        if save_to is None:
-            print("Warning: results will not be saved since 'save_to' is not provided.")
-            return None, None
-        if not os.path.exists(save_to):
-            os.makedirs(save_to)
-
-        trials_path = save_to + 'trials'
-        decompositions_path = save_to + 'decompositions'
-
-        return trials_path, decompositions_path
-
-    @staticmethod
-    def save_trials(save_to, trials):
-        if save_to is None:
-            return
-        trials_path, decompositions_path = Decompose.save_to_paths(save_to)
-
-        with open(trials_path, 'wb') as f:
-            dill.dump(trials, f)
-
-    @staticmethod
-    def save_decompositions(save_to, overwrite_existing_decompositions, decompositions):
-        if save_to is None or decompositions is None:
-            return
-
-        trials_path, decompositions_path = Decompose.save_to_paths(save_to)
-        existing_trials, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
-
-        if overwrite_existing_decompositions:
-            decompositions_to_save = decompositions
-        else:
-            decompositions_to_save = existing_decompositions
-            decompositions_to_save.extend(decompositions)
-
-        with open(decompositions_path, 'wb') as f:
-            dill.dump(decompositions_to_save, f)
-
-    @staticmethod
-    def load_trials_and_decompositions(save_to):
-        if save_to is None:
-            trials, decompositions = [], []
-        else:
-            trials_path, decompositions_path = Decompose.save_to_paths(save_to)
-            try:
-                with open(trials_path, 'rb') as f:
-                    trials = dill.load(f)
-            except FileNotFoundError:
-                trials = Trials()
-
-            try:
-                with open(decompositions_path, 'rb') as f:
-                    decompositions = dill.load(f)
-            except FileNotFoundError:
-                decompositions = []
-
-        return trials, decompositions
 
     @staticmethod
     def plot_raw(res):
@@ -441,13 +412,19 @@ class Decompose:
 
         return below_entry_loss_results
 
-    def static(self, options, key=random.PRNGKey(0), save_to=None, overwrite_existing_decompositions=False):
+    def static(self, options, key=random.PRNGKey(0), save_results=True, save_to=''):
 
-        _, decompositions_path = Decompose.save_to_paths(save_to)
-        _, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
+        results = Results(self.unitary_loss_func, self.layer, label=self.label)
+        if save_results:
+            assert self.label or save_to, 'To save results either `label` or `save_to` must be provided.'
+            if save_to:
+                results.save_to = save_to
 
-        if existing_decompositions and overwrite_existing_decompositions:
-            print("Warning: existing decompositions will be overwritten.")
+            # Try to load existing results.
+            try:
+                results = Results.load(results.save_to)
+            except FileNotFoundError:
+                pass
 
         print('\nStarting decomposition routine with the following options:\n')
         print(options)
@@ -483,14 +460,17 @@ class Decompose:
             if successful_results:
                 print(f'\n{len(successful_results)} successful. cz counts are:')
                 print(sorted([d.num_cz_gates for d in successful_results]))
-                Decompose.save_decompositions(save_to, overwrite_existing_decompositions, successful_results)
+                results.decompositions = list(results.decompositions)+successful_results
+                if save_results:
+                    results.save()
+
             else:
                 print('\nAll prospective results failed.\n')
 
         else:
             print('No results passed.')
 
-        return successful_results
+        return results
 
     def adaptive(self,
                  options,
@@ -628,65 +608,3 @@ class Decompose:
 
         return decompositions, trials, best
 
-    # @staticmethod
-    # def reconstruct_trial(trial):
-    #
-    #     options = trial['result']['static_options']
-    #     layer = trial['result']['layer']
-    #     unitary_loss_func = trial['result']['unitary_loss_func']
-    #
-    #     num_qubits = num_qubits_from_layer(layer)
-    #     options = Decompose.updated_options(Decompose.default_static_options, options)
-    #
-    #     angles_random_seed = trial['result']['angles_random_seed']
-    #     num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
-    #     r = trial['misc']['vals']['r'][0]
-    #
-    #     anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
-    #
-    #     initial_angles = Decompose.generate_initial_angles(
-    #         random.PRNGKey(angles_random_seed),
-    #         anz.num_angles,
-    #         anz.cp_mask,
-    #         cp_dist=options['cp_dist'],
-    #         batch_size=options['batch_size'])
-    #
-    #     d = Decompose(layer, unitary_loss_func=unitary_loss_func)
-    #     raw_results = d.generate_raw(
-    #         num_cp_gates,
-    #         r,
-    #         initial_angles_array=initial_angles,
-    #         options=options,
-    #         keep_history=True)
-    #
-    #     below_entry_loss_results = d.evaluate_raw(
-    #         raw_results,
-    #         num_cp_gates,
-    #         options=options,
-    #         disable_tqdm=False)
-    #
-    #     return below_entry_loss_results
-
-    # @staticmethod
-    # def reconstruct_verification(trials, i_trial, i_sample):
-    #     trial = trials.trials[i_trial]
-    #     msg = trials.trial_attachments(trial)['prospective_decompositions']
-    #     prospective_results = pickle.loads(msg)
-    #     cz, res = prospective_results[i_sample]
-    #
-    #     options = trial['result']['static_options']
-    #     layer = trial['result']['layer']
-    #     unitary_loss_func = trial['result']['unitary_loss_func']
-    #
-    #     num_qubits = num_qubits_from_layer(layer)
-    #     num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
-    #
-    #     anz = Ansatz(num_qubits, 'cp', fill_layers(layer, num_cp_gates))
-    #
-    #     print('vefigying with options')
-    #     print(options)
-    #     success, num_cz_gates, circ, u, best_angs, angles_history, loss_history = verify_cp_result(
-    #         res, anz, unitary_loss_func, **options, keep_history=True)
-    #
-    #     return {'success': success, 'num_cz_gates': num_cz_gates, 'circ': circ, 'unitary': u, 'best_angles': best_angs,
-    #             'angles_history': angles_history, 'loss_history': loss_history}
