@@ -412,8 +412,7 @@ class Decompose:
 
         return below_entry_loss_results
 
-    def static(self, options, key=random.PRNGKey(0), save_results=True, save_to=''):
-
+    def _initialize_results(self, save_results, save_to):
         results = Results(self.unitary_loss_func, self.layer, label=self.label)
         if save_results:
             assert self.label or save_to, 'To save results either `label` or `save_to` must be provided.'
@@ -425,6 +424,12 @@ class Decompose:
                 results = Results.load(results.save_to)
             except FileNotFoundError:
                 pass
+
+        return results
+
+    def static(self, options, key=random.PRNGKey(0), save_results=True, save_to=''):
+
+        results = Decompose._initialize_results(self, save_results, save_to)
 
         print('\nStarting decomposition routine with the following options:\n')
         print(options)
