@@ -479,9 +479,8 @@ class Decompose:
 
     def adaptive(self,
                  options,
-                 save_to=None,
-                 overwrite_existing_trials=False,
-                 overwrite_existing_decompositions=False):
+                 save_results=True,
+                 save_to=''):
 
         def objective_from_cz_distribution(random_seed, search_params):
 
@@ -523,8 +522,7 @@ class Decompose:
             }
 
         print('\nStarting decomposition routine with the following options:\n')
-        print(options)
-        print('\n')
+        print(options, '\n')
 
         # Defining the hyperparameter search space.
         space = [
@@ -535,19 +533,20 @@ class Decompose:
         ]
 
         # Loading existing trials and decompositions.
-        existing_trials, existing_decompositions = Decompose.load_trials_and_decompositions(save_to)
+        results = Decompose._initialize_results(self, save_results, save_to)
 
-        if existing_trials and not overwrite_existing_trials:
+        if results.trials is not None:
             print('\nFound existing trials, resuming from here.')
-            trials = existing_trials
+            trials = results.trials
             random_seed = trials.results[-1]['random_seed']
         else:
             trials = Trials()
             random_seed = options.random_seed
 
         # Creating scoreboard variable that keeps track of the best current cz count.
-        if existing_decompositions:
-            scoreboard = set([d.num_cz_gates for d in existing_decompositions])
+
+        if results.decompositions:
+            scoreboard = set([d.num_cz_gates for d in results.decompositions])
             scoreboard = sorted(list(scoreboard))
         else:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
@@ -566,7 +565,8 @@ class Decompose:
                 trials=trials,
                 rstate=np.random.default_rng(int(random_seed)))
 
-            Decompose.save_trials(save_to, trials)
+            results.trials = trials
+            results.save()
 
             current_best_cz = scoreboard[0]
             results_to_verify = []
@@ -600,8 +600,8 @@ class Decompose:
 
                     scoreboard.insert(0, num_cz_gates)
                     new_decomposition = Decomposition(u, circ, best_angs, num_cz_gates)
-                    Decompose.save_decompositions(save_to, overwrite_existing_decompositions, [new_decomposition])
-
+                    results.decompositions = list(results.decompositions) + [new_decomposition]
+                    results.save()
                     break
             else:
                 if prospective_results:
