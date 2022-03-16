@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from qiskit.circuit import Parameter
 
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 from cp_utils import random_cp_angles, filter_cp_results, refine_cp_result, verify_cp_result
 from gates import *
@@ -431,7 +431,7 @@ class Decompose:
 
         results = Decompose._initialize_results(self, save_results, save_to)
 
-        print('\nStarting decomposition routine with the following options:\n')
+        print('\nStarting decomposition routine with the following options:')
         print(options)
 
         print('\nComputing raw results...')
@@ -470,10 +470,10 @@ class Decompose:
                     results.save()
 
             else:
-                print('\nAll prospective results failed.\n')
+                print('\nAll prospective results failed.')
 
         else:
-            print('No results passed.')
+            print('\nNo results passed.')
 
         return results
 
@@ -485,7 +485,7 @@ class Decompose:
         def objective_from_cz_distribution(random_seed, search_params):
 
             num_cp_gates, r = search_params
-
+            tqdm.write(f'\nnum_cp_gates: {num_cp_gates}, r: {r}')
             static_options = options.get_static(num_cp_gates, r)
 
             raw_results = Decompose.generate_raw(
@@ -510,6 +510,8 @@ class Decompose:
             score = (score.sum() / options.num_samples)
             score = jnp.log(score)
 
+            tqdm.write(f'score: {-score}, cz counts of prospective results: {cz_counts}')
+
             return {
                 'loss': -score,
                 'status': STATUS_OK,
@@ -521,8 +523,8 @@ class Decompose:
                 'attachments': {'prospective_decompositions': pickle.dumps(evaluated_results)}
             }
 
-        print('\nStarting decomposition routine with the following options:\n')
-        print(options, '\n')
+        print('\nStarting decomposition routine with the following options:')
+        print('\n', options)
 
         # Defining the hyperparameter search space.
         space = [
@@ -551,19 +553,23 @@ class Decompose:
         else:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
 
-        decompositions = []
         for _ in tqdm(range(options.max_evals), desc='Evaluations'):
+
+            tqdm.write('\n' + '-'*42)
 
             _, subkey = random.split(random.PRNGKey(random_seed))
             random_seed = int(subkey[1])
 
-            best = fmin(
+            fmin(
                 partial(objective_from_cz_distribution, random_seed),
                 space=space,
                 algo=tpe.suggest,
                 max_evals=len(trials.trials)+1,
                 trials=trials,
-                rstate=np.random.default_rng(int(random_seed)))
+                rstate=np.random.default_rng(int(random_seed)),
+                verbose=False,
+                show_progressbar=False
+            )
 
             results.trials = trials
             results.save()
@@ -580,11 +586,11 @@ class Decompose:
             results_to_verify.extend(prospective_results)
 
             if len(results_to_verify):
-                print(
+                tqdm.write(
                     f'\nFound {len(results_to_verify)} decompositions potentially improving the current best count {current_best_cz}, verifying...')
             else:
-                print(
-                    f'\nFound no better decompositions. Found {num_equivalent_results} decompositions with the current best count {current_best_cz}.')
+                tqdm.write(
+                    f'\nFound no better decompositions.')
 
             for num_cp_gates, res in prospective_results:
                 anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
@@ -596,7 +602,7 @@ class Decompose:
                     options.get_static(None, None))
 
                 if success:
-                    print(f'\nFound new decomposition with {num_cz_gates} gates.\n')
+                    tqdm.write(f'\nFound a new decomposition with {num_cz_gates} gates.')
 
                     scoreboard.insert(0, num_cz_gates)
                     new_decomposition = Decomposition(u, circ, best_angs, num_cz_gates)
@@ -605,11 +611,11 @@ class Decompose:
                     break
             else:
                 if prospective_results:
-                    print('\nNo decomposition passed.\n')
+                    tqdm.write('\nNo decomposition passed.')
 
             if options.stop_if_target_reached and scoreboard[0] <= options.target_num_cz_gates:
-                print('\nTarget number of gates reached.')
+                tqdm.write('\nTarget number of gates reached.')
                 break
 
-        return decompositions, trials, best
+        return results
 

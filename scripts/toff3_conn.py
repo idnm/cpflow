@@ -8,21 +8,15 @@ from matrix_utils import *
 from scipy.stats import unitary_group
 
 
-layer = sequ_layer(3)
-decomposer = Decompose(layer, target_unitary=u_toff3)
+layer = [[0,1]]
+u_target = jnp.kron(y_mat, x_mat)
 
-static_options = {'batch_size': 100, 'accepted_num_gates': 4}
+decomposer = Decompose(layer, target_unitary=u_target, label='2qtest_ad')
 
-adaptive_options = {'max_evals':5,
-                   'max_num_cp_gates':12,
-                   'min_num_cp_gates':2,
-                   'target_num_gates': 5,
-                   'evals_between_verification':1}
-                   
-adaptive_results = decomposer.adaptive(
-    static_options=static_options,
-    adaptive_options=adaptive_options,
-    save_to='data/toff3_conn/',
-    overwrite_existing_trials=False,
-    overwrite_existing_decompositions=False)
+adaptive_options = AdaptiveOptions(
+    num_samples=3,
+    min_num_cp_gates=1,
+    max_num_cp_gates=5,
+    max_evals=3)
 
+results = decomposer.adaptive(adaptive_options)
