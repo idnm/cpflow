@@ -226,15 +226,18 @@ class Ansatz:
 
 
 class Decomposition:
-    def __init__(self, unitary_func, circuit_func, angles, num_cz_gates):
+    def __init__(self, unitary_loss_func, unitary_func, circuit_func, angles, num_cz_gates, label=''):
+        self.unitary_loss_func = unitary_loss_func
         self.unitary_func = unitary_func
         self.circuit_func = circuit_func
         self.angles = angles
+        self.label = label
         self.num_cz_gates = num_cz_gates
         self.circuit = self.circuit_func(self.angles)
+        self.loss = self.unitary_loss_func(self.unitary_func(self.angles))
 
     def __repr__(self):
-        return f'Decomposition with {self.num_cz_gates} cz gates.'
+        return f"< {self.label} | num_cz_gates: {self.num_cz_gates} | loss: {self.loss} >"
 
 
 @dataclass
@@ -427,6 +430,9 @@ class Decompose:
 
         return results
 
+    def _make_decomposition(self, u, circ, best_angs, num_cz_gates):
+        return Decomposition(self.unitary_loss_func, u, circ, best_angs, num_cz_gates, label=self.label)
+
     def static(self, options, key=random.PRNGKey(0), save_results=True, save_to=''):
 
         results = Decompose._initialize_results(self, save_results, save_to)
@@ -459,7 +465,7 @@ class Decompose:
                     keep_history=False)
 
                 if success:
-                    new_decomposition = Decomposition(u, circ, best_angs, num_cz_gates)
+                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs, num_cz_gates)
                     successful_results.append(new_decomposition)
 
             if successful_results:
@@ -582,7 +588,6 @@ class Decompose:
             successful_results = pickle.loads(msg)
             num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
             prospective_results = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
-            num_equivalent_results = sum([cz == current_best_cz for cz, res in successful_results])
             results_to_verify.extend(prospective_results)
 
             if len(results_to_verify):
@@ -605,13 +610,13 @@ class Decompose:
                     tqdm.write(f'\nFound a new decomposition with {num_cz_gates} gates.')
 
                     scoreboard.insert(0, num_cz_gates)
-                    new_decomposition = Decomposition(u, circ, best_angs, num_cz_gates)
+                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs, num_cz_gates)
                     results.decompositions = list(results.decompositions) + [new_decomposition]
                     results.save()
                     break
             else:
                 if prospective_results:
-                    tqdm.write('\nNo decomposition passed.')
+                    tqdm.write('\nNone of prospective decompositions passed.')
 
             if options.stop_if_target_reached and scoreboard[0] <= options.target_num_cz_gates:
                 tqdm.write('\nTarget number of gates reached.')
