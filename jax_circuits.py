@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from qiskit.circuit import Parameter
 
-from tqdm.autonotebook import tqdm
+from tqdm.auto import tqdm
 
 from cp_utils import random_cp_angles, filter_cp_results, refine_cp_result, verify_cp_result
 from gates import *
@@ -329,6 +329,18 @@ class Results:
 
         return results
 
+    def plot_trials(self):
+        trials = self.trials
+        options_list = [res['static_options'] for res in trials.results]
+        num_list = [o.num_cp_gates for o in options_list]
+        r_list = [o.r for o in options_list]
+        loss_list = [res['loss'] for res in trials.results]
+
+        plt.scatter(num_list, r_list, c=jnp.exp(jnp.array(loss_list, dtype=jnp.float32)), cmap='gray')
+        plt.ylabel('r')
+        plt.xlabel('num_cp_gates')
+        plt.title('score')
+
 
 class Decompose:
 
@@ -438,7 +450,7 @@ class Decompose:
         results = Decompose._initialize_results(self, save_results, save_to)
 
         print('\nStarting decomposition routine with the following options:')
-        print(options)
+        print('\n', options)
 
         print('\nComputing raw results...')
         raw_results = Decompose.generate_raw(self,

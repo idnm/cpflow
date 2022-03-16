@@ -4,7 +4,7 @@ from jax import random, jit, vmap
 from penalty import *
 from matplotlib import pyplot as plt
 from trigonometric_utils import random_angles
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from optimization import mynimize, unitary_learn
 import pickle
 
@@ -181,7 +181,8 @@ def filter_cp_results(
     """
 
     selected_results = []
-    for i, res in tqdm(enumerate(res_list), disable=disable_tqdm):
+    # for i, res in tqdm(enumerate(res_list), disable=disable_tqdm):
+    for i, res in enumerate(res_list):
         cz, loss, angles = evaluate_cp_result(res, cp_mask, threshold=threshold_cp)
         cz_success = cz <= threshold_cz_count
         loss_success = loss <= threshold_loss
