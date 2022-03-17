@@ -1,4 +1,5 @@
 from matrix_utils import *
+from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import Operator
 from qiskit.circuit.library import *
 from trigonometric_utils import *
@@ -30,6 +31,42 @@ def lasso_angles(loss_function, angles, eps=1e-5, threshold_loss=1e-6):
     assert res['loss'][best_i] <= threshold_loss, 'L1 regularization was not successful.'
 
     return best_angs
+
+
+def cp_to_cz_circuit(circuit, cp_threshold=0.2):
+    new_data = []
+    for gate, qargs, cargs in circuit.data:
+        if gate.name == 'cp':
+            new_gate = cp_to_cz_gate(gate, cp_threshold)
+        else:
+            new_gate = gate
+
+        new_data.append((new_gate, qargs, cargs))
+
+    new_circuit = circuit.copy()
+    new_circuit.data = new_data
+    new_circuit = new_circuit.decompose(gates_to_decompose=['id', 'cp_trans'])
+
+    check_approximation(circuit, new_circuit)
+
+    return new_circuit
+
+
+def cp_to_cz_gate(gate, cp_threshold):
+    cp_angle = gate.params[0]
+    if jnp.abs(cp_angle) < cp_threshold:
+        qc = QuantumCircuit(2)
+        qc.i([0, 1])
+        gate = qc.to_gate(label='id')
+    elif jnp.abs(cp_angle - jnp.pi) < cp_threshold:
+        gate = CZGate()
+    else:
+        qc = QuantumCircuit(2)
+        qc.cp(cp_angle, 0, 1)
+        qc = transpile(qc, basis_gates=['cz', 'rz', 'rx'], optimization_level=3)
+        gate = qc.to_gate(label='cp_trans')
+
+    return gate
 
 
 def project_circuit(circuit, threshold):

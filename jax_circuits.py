@@ -234,7 +234,8 @@ class Decomposition:
         self.label = label
         self.num_cz_gates = num_cz_gates
         self.circuit = self.circuit_func(self.angles)
-        self.loss = self.unitary_loss_func(self.unitary_func(self.angles))
+        self.unitary = self.unitary_func(self.angles)
+        self.loss = self.unitary_loss_func(self.unitary)
 
     def __repr__(self):
         return f"< {self.label} | num_cz_gates: {self.num_cz_gates} | loss: {self.loss} >"
@@ -314,7 +315,7 @@ class Results:
     save_to: str = ''
 
     def __post_init__(self):
-        if self.save_to is '':
+        if self.save_to == '':
             self.save_to = f'results/{self.label}'
 
     def save(self):
@@ -607,7 +608,7 @@ class Decompose:
                     f'\nFound {len(results_to_verify)} decompositions potentially improving the current best count {current_best_cz}, verifying...')
             else:
                 tqdm.write(
-                    f'\nFound no better decompositions.')
+                    f'\nFound no decompositions potentially improving the current best count {current_best_cz}.')
 
             for num_cp_gates, res in prospective_results:
                 anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
