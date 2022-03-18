@@ -14,6 +14,7 @@ def cp_penalty_trig(a, height):
 def line(x, x0, y0, x1, y1):
     return (y1-y0)/(x1-x0)*x+(x0*y1-x1*y0)/(x0-x1)
 
+
 def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
     a = a % (2 * jnp.pi)
 

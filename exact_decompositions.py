@@ -6,7 +6,7 @@ from trigonometric_utils import *
 from optimization import mynimize_repeated
 
 
-def check_approximation(circuit, new_circuit, loss=1e-3):
+def check_approximation(circuit, new_circuit, loss=1e-4):
     assert disc2(Operator(circuit).data,
                  Operator(new_circuit).data) < loss, 'Difference between projected and original circuit too large.'
     print('ver succ')
@@ -129,13 +129,13 @@ def project_gate(gate, threshold):
     return gate
 
 
-def move_all_rz(circuit):
-    """Moves all rz gates as far to the right as possible."""
+def move_all_rgates(circuit):
+    """Moves all rotations gates as far to the right as possible."""
 
     new_circuit = circuit.copy()
     new_circuit_data = new_circuit.data
     for qubit in circuit.qubits:
-        new_circuit_data = move_all_rz_along_wire(new_circuit_data, qubit)
+        new_circuit_data = move_all_rgates_along_wire(new_circuit_data, qubit)
 
     new_circuit.data = new_circuit_data
     check_approximation(circuit, new_circuit)
@@ -143,63 +143,106 @@ def move_all_rz(circuit):
     return new_circuit
 
 
-def move_all_rz_along_wire(data, qubit):
-    """Moves all rz gates at a given wire as far to the right as possible."""
+def move_all_rgates_along_wire(data, qubit):
+    """Moves all rotation gates at a given wire as far to the right as possible."""
 
-    if not contains_rz_at_wire(data, qubit):
+    if not contains_rgate_at_wire(data, qubit):
         return data
 
-    data = move_last_rz_along_wire(data, qubit)
-    i = get_last_rz_index(data, qubit)
+    data = move_last_rgate_along_wire(data, qubit)
 
-    return move_all_rz_along_wire(data[:i], qubit) + data[i:]
+    i = get_last_rgate_index(data, qubit)
 
-
-def move_last_rz_along_wire(data, qubit):
-    """Moves last rz gate at a given wire as far to the right as possible."""
-    i = get_last_rz_index(data, qubit)
-
-    return data[:i] + move_single_rz_along_wire(data[i:], qubit)
+    return move_all_rgates_along_wire(data[:i], qubit) + data[i:]
 
 
-def move_single_rz_along_wire(data, qubit):
-    """Given a wire starting with an rz gate moves this gate as far to the right as possible."""
+def move_last_rgate_along_wire(data, qubit):
+    """Moves last rotation gate at a given wire as far to the right as possible."""
+    i = get_last_rgate_index(data, qubit)
+
+    return data[:i] + move_single_rgate_along_wire(data[i:], qubit)
+
+
+def move_single_rgate_along_wire(data, qubit):
+    """Given a wire starting with a rotation gate moves this gate as far to the right as possible."""
     if len(data) == 1:
         return data
 
-    move_successful, new_data = move_rz_along_wire_once(data)
+    move_successful, new_data = move_rgate_along_wire_once(data)
     if move_successful:
-        return [new_data[0]] + move_single_rz_along_wire(new_data[1:], qubit)
+        return [new_data[0]] + move_single_rgate_along_wire(new_data[1:], qubit)
     else:
         return data
 
 
-def move_rz_along_wire_once(data):
-    """Given a wire starting from an rz gate attempts to commute this gate past the next one."""
+def move_rgate_along_wire_once(data):
+    """Given a wire starting from a rotation gate attempts to commute this gate past the next one."""
 
-    rz_gate, rz_qargs, rz_cargs = data[0]
+    r_gate, r_qargs, r_cargs = data[0]
     next_gate, next_qargs, next_cargs = data[1]
 
-    if rz_qargs != next_qargs or next_gate.name == 'id':
-        move_successful = True
-        data01 = [data[1], data[0]]
-    elif next_gate.name == 'x':
-        move_successful = True
-        rz_gate.params = [-rz_gate.params[0]]  # Commutation with X gate flips the sign in RZ gate.
-        data01 = [data[1], data[0]]
+    move_successful = True
+
+    if r_gate.name == 'rz':
+        if r_qargs != next_qargs or next_gate.name in ['id', 'z', 's', 't', 'sdg', 'tdg']:
+            new_r_gate = r_gate
+        elif next_gate.name == 'x':
+            new_r_gate = r_gate
+            new_r_gate.params = [-r_gate.params[0]]  # Commutation with X gate flips the sign in RZ gate.
+        elif next_gate.name == 'h':  # Commutation with H changes Z to X
+            new_r_gate = RXGate(r_gate.params[0])
+        else:
+            move_successful = False
+
+    elif r_gate.name == 'rx':
+        if r_qargs[0] not in next_qargs or next_gate.name in ['id', 'x']:
+            new_r_gate = r_gate
+        elif r_qargs == next_qargs:
+            if next_gate.name == 'z':
+                new_r_gate = r_gate
+                new_r_gate.params = [-r_gate.params[0]]  # Commutation with Z gate flips the sign in RX gate.
+            elif next_gate.name == 'h':  # Commutation with H changes X to Z
+                new_r_gate = RZGate(r_gate.params[0])
+            elif next_gate.name == 's':
+                new_r_gate = RYGate(r_gate.params[0])  # XS=-SY
+            elif next_gate.name == 'sdg':
+                new_r_gate = RYGate(-r_gate.params[0])  # XS^*=S^*Y
+            else:
+                move_successful = False
+        else:
+            move_successful = False
+
+    elif r_gate.name == 'ry':
+        if r_qargs[0] not in next_qargs or next_gate.name == 'id':
+            new_r_gate = r_gate
+        elif r_qargs == next_qargs:
+            if next_gate.name in ['x', 'z', 'h']:
+                new_r_gate = r_gate
+                new_r_gate.params = [-r_gate.params[0]]  # YZ=-ZY, YX=-XY, YH=-HY
+            elif next_gate.name == 's':
+                new_r_gate = RXGate(-r_gate.params[0])
+            elif next_gate.name == 'sdg':
+                new_r_gate = RXGate(r_gate.params[0])  # YS^*=-S^*X
+            else:
+                move_successful = False
+        else:
+            move_successful = False
+
+    if move_successful:
+        data01 = [data[1], (new_r_gate, r_qargs, r_cargs)]
     else:
-        move_successful = False
         data01 = [data[0], data[1]]
+
     return move_successful, data01 + data[2:]
 
 
-def merge_all_rz(circuit):
+def merge_all_rgates(circuit):
     """Merges all adjacent 'rz' gates."""
 
     new_circuit = circuit.copy()
     new_data = new_circuit.data
     for qubit in circuit.qubits:
-        new_data = merge_rz_in_data(new_data, qubit)
+        new_data = merge_rgates_in_data(new_data, qubit)
 
     new_circuit.data = new_data
 
@@ -208,47 +251,50 @@ def merge_all_rz(circuit):
     return new_circuit
 
 
-def merge_rz_in_data(data, qubit):
-    i = i_of_rz_followed_by_another_rz(data, qubit)
+def merge_rgates_in_data(data, qubit):
+    i = i_of_rgate_followed_by_same_rgate(data, qubit)
     if i is None:
         return data
 
     data0, data1 = data[:i], data[i:]
-    rz_gate, qargs, cargs = data1[0]
-    next_rz_gate, next_qargs, next_cargs = data1[1]
+    r_gate, qargs, cargs = data1[0]
+    next_r_gate, next_qargs, next_cargs = data1[1]
 
-    rz_gate_angle = rz_gate.params[0]
-    next_rz_gate_angle = next_rz_gate.params[0]
+    r_gate_angle = r_gate.params[0]
+    next_r_gate_angle = next_r_gate.params[0]
 
-    new_rz_gate = RZGate(bracket_angle(rz_gate_angle + next_rz_gate_angle))
+    new_r_gate = r_gate
+    new_r_gate.params = [bracket_angle(r_gate_angle + next_r_gate_angle)] 
 
-    data1 = [(new_rz_gate, qargs, cargs)] + data1[2:]
+    data1 = [(new_r_gate, qargs, cargs)] + data1[2:]
 
-    return data0 + merge_rz_in_data(data1, qubit)
+    return data0 + merge_rgates_in_data(data1, qubit)
 
 
-def get_indices_rz_at_wire(data, qubit):
+def get_indices_of_rgates_at_wire(data, qubit):
     i_list = []
     for i, (gate, qargs, cargs) in enumerate(data):
-        if gate.name == 'rz':
+        if gate.name in ['rx', 'ry', 'rz']:
             if qubit == qargs[0]:
                 i_list.append(i)
     return i_list
 
 
-def contains_rz_at_wire(data, qubit):
-    return bool(get_indices_rz_at_wire(data, qubit))
+def contains_rgate_at_wire(data, qubit):
+    return bool(get_indices_of_rgates_at_wire(data, qubit))
 
 
-def get_last_rz_index(data, qubit):
-    return get_indices_rz_at_wire(data, qubit)[-1]
+def get_last_rgate_index(data, qubit):
+    return get_indices_of_rgates_at_wire(data, qubit)[-1]
 
 
-def i_of_rz_followed_by_another_rz(data, qubit):
-    all_rz_indices = get_indices_rz_at_wire(data, qubit)
-    for i in all_rz_indices:
-        if i+1 in all_rz_indices:
-            return i
+def i_of_rgate_followed_by_same_rgate(data, qubit):
+    all_gate_indices = get_indices_of_rgates_at_wire(data, qubit)
+    for i, (gate, qargs, cargs) in enumerate(data[:-1]):
+        next_gate, next_qargs, next_cargs = data[i+1]
+        if i in all_gate_indices and i+1 in all_gate_indices:
+            if gate.name == next_gate.name:
+                return i
 
     return None
 

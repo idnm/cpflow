@@ -527,7 +527,7 @@ class Decompose:
             # Absolute value of the score has little meaning.
             score = 2 ** (-jnp.array(cz_counts, dtype=jnp.float32))
             score = (score.sum() / options.num_samples)
-            score = jnp.log(score)
+            score = jnp.log2(score)
 
             tqdm.write(f'score: {-score}, cz counts of prospective results: {cz_counts}')
 
