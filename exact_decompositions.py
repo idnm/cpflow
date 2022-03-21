@@ -5,6 +5,9 @@ from qiskit.circuit.library import *
 from trigonometric_utils import *
 from optimization import mynimize_repeated
 from cp_utils import constrained_function
+from circuit_assembly import qiskit_circ_to_jax_unitary
+from qiskit.transpiler.passes import SolovayKitaevDecomposition
+from jax import jit
 
 
 def check_approximation(circuit, new_circuit, loss=1e-4):
@@ -300,17 +303,17 @@ def i_of_rgate_followed_by_same_rgate(data, qubit):
     return None
 
 
-def reduce_all_1q_angles(loss_func, initial_angles, threshold=1e-6):
+def reduce_all_1q_angles(loss_func, initial_angles, wires, threshold=1e-6):
     if len(initial_angles) == 0:
         return initial_angles
 
-    new_angles = reduce_first_1q_angle(loss_func, initial_angles, threshold)
+    new_angles = reduce_first_1q_angle(loss_func, initial_angles, wires, threshold)
     new_loss_func = constrained_function(loss_func, new_angles[:1], [0])
 
-    return jnp.concatenate([new_angles[:1], reduce_all_1q_angles(new_loss_func, new_angles[1:], threshold=threshold)])
+    return jnp.concatenate([new_angles[:1], reduce_all_1q_angles(new_loss_func, new_angles[1:], wires[1:], threshold=threshold)])
 
 
-def reduce_first_1q_angle(loss_func, angles, threshold):
+def reduce_first_1q_angle(loss_func, angles, wires, threshold):
     new_angles = angles
     if loss_func(angles.at[0].set(0)) < threshold:
         new_angles = new_angles.at[0].set(0)
@@ -318,14 +321,17 @@ def reduce_first_1q_angle(loss_func, angles, threshold):
 
     else:
         for i in range(1, len(angles)):
-            can_reduce, new_angles = can_reduce_two_angles(loss_func, angles, 0, i, threshold)
+            can_reduce, new_angles = can_reduce_two_angles(loss_func, angles, 0, i, wires[0], wires[i], threshold)
             if can_reduce:
                 return new_angles
 
     return angles
 
 
-def can_reduce_two_angles(loss_func, angles, i, j, threshold):
+def can_reduce_two_angles(loss_func, angles, i, j, wi, wj, threshold):
+    if wi != wj:
+        return False, angles
+
     new_angles = angles
     for sign in [-1, 1]:
         new_angles = new_angles.at[j].set(angles[j] + sign * angles[i])
@@ -352,3 +358,26 @@ def replace_angles_in_circuit(qc, angles):
     check_approximation(qc, new_qc)
 
     return new_qc
+
+
+def make_exact(circuit, cp_threshold=0.01, reduce_threshold=1e-5, recursion_degree=0, recursion_depth=5):
+    qc = circuit.copy()
+    qc = cp_to_cz_circuit(qc, cp_threshold=cp_threshold)
+    qc = transpile(qc, basis_gates=['id', 'rx', 'rz', 'cz'], optimization_level=3)
+
+    u, angles, wires = qiskit_circ_to_jax_unitary(qc)
+    loss_f = lambda angs: disc2(u(angs), Operator(qc.reverse_bits()).data)
+    loss_f = jit(loss_f)
+
+    reduced_angs = reduce_all_1q_angles(loss_f, jnp.array(angles), wires, threshold=reduce_threshold)
+    qc = replace_angles_in_circuit(qc, vmap(bracket_angle)(reduced_angs))
+
+    basis_gates = [TGate(), TdgGate(), SGate(), SdgGate(), HGate()]
+    skd = SolovayKitaevDecomposition(recursion_degree=recursion_degree, basis_gates=basis_gates, depth=recursion_depth)
+    qc = skd(qc)
+
+    check_approximation(qc, circuit)
+
+    return qc
+
+

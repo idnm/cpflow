@@ -47,6 +47,7 @@ def qiskit_circ_to_jax_unitary(qc):
     num_qubits = len(qc.qubits)
 
     qc_angles = [gate.params[0] for gate, _, _ in qc.data if gate.name in ['rx', 'rz']]
+    wires = [qregs[0]._index for gate, qregs, _ in qc.data if gate.name in ['rx', 'rz']]
 
     def u(angles):
 
@@ -72,4 +73,4 @@ def qiskit_circ_to_jax_unitary(qc):
 
     assert disc2(u(qc_angles), Operator(qc.reverse_bits()).data) < 1e-6, 'Error in converting from qiskit to jax.'
 
-    return u, qc_angles
+    return u, qc_angles, wires

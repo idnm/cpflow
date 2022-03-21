@@ -13,10 +13,11 @@ from tqdm.auto import tqdm
 
 from cp_utils import random_cp_angles, filter_cp_results, refine_cp_result, verify_cp_result
 from gates import *
-from circuit_assemebly import *
+from circuit_assembly import *
 from optimization import *
 from penalty import *
 from topology import *
+from exact_decompositions import make_exact
 
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll import scope
@@ -226,19 +227,65 @@ class Ansatz:
 
 
 class Decomposition:
-    def __init__(self, unitary_loss_func, unitary_func, circuit_func, angles, num_cz_gates, label=''):
+    def __init__(self, unitary_loss_func, unitary_func, circuit_func, angles, label=''):
         self.unitary_loss_func = unitary_loss_func
         self.unitary_func = unitary_func
         self.circuit_func = circuit_func
         self.angles = angles
         self.label = label
-        self.num_cz_gates = num_cz_gates
         self.circuit = self.circuit_func(self.angles)
         self.unitary = self.unitary_func(self.angles)
         self.loss = self.unitary_loss_func(self.unitary)
+        self.type = 'Approximate'
+        self._attempted_exact = False
+
+        self.cz_count = None
+        self.cz_depth = None
+        self.t_count = None
+        self.t_depth = None
+
+    def make_exact(self):
+        exact_qc = make_exact(self.circuit)
+        if self.unitary_loss_func(Operator(exact_qc).data) < 1e-10:
+            self.circuit = exact_qc
+            self.type = 'Exact'
+            self._attempted_exact = True
+        else:
+            self._attempted_exact = True
+
+    def count(self, gate):
+        ops = self.circuit.count_ops()
+        if gate.name == 'cz':
+            return ops['cz']
+        elif gate.name == 't':
+            if self.type == 'Exact':
+                return ops['t']+ops['tdg']
+            else:
+                print('Decomposition is not exact')
+                return None
+
+    @staticmethod
+    def gate_filter(gate_names, d):
+        gate, qargs, cargs = d
+        if gate.name in gate_names:
+            return True
+        else:
+            return False
+
+    def depth(self, gate):
+        if gate == 'cz':
+            return self.circuit.depth(partial(gate_filter, ['cz']))
+        elif gate == 't':
+            if self.type == 'Exact':
+                return self.circuit.depth(partial(gate_filter, ['t', 'tdg']))
+            else:
+                print('Decomposition is not exact')
+                return None
 
     def __repr__(self):
-        return f"< {self.label} | num_cz_gates: {self.num_cz_gates} | loss: {self.loss} >"
+        cz
+        if self.type == 'Approximate':
+            return f"< {self.label}| {self.type} | num_cz_gates: {self.count('cz')} | loss: {self.loss} >"
 
 
 @dataclass
