@@ -1,4 +1,5 @@
-import jax.numpy as jnp
+from gates import *
+from matrix_utils import disc2
 
 
 def gate_transposition(placement):
@@ -41,3 +42,34 @@ def apply_gate_to_tensor(gate, tensor, placement):
 
     return jnp.transpose(contraction, axes=t)
 
+
+def qiskit_circ_to_jax_unitary(qc):
+    num_qubits = len(qc.qubits)
+
+    qc_angles = [gate.params[0] for gate, _, _ in qc.data if gate.name in ['rx', 'rz']]
+
+    def u(angles):
+
+        u0 = jnp.identity(2 ** num_qubits).reshape([2] * (2 * num_qubits))
+        i = 0
+        for gate, qargs, cargs in qc.data:
+            if gate.name == 'cz':
+                qbit0, qbit1 = qargs
+                u0 = apply_gate_to_tensor(cz_mat.reshape(2, 2, 2, 2), u0, [qbit0._index, qbit1._index])
+            else:
+                if gate.name == 'rx':
+                    mat = rx_mat
+                elif gate.name == 'rz':
+                    mat = rz_mat
+                else:
+                    raise TypeError(f'Gate `{gate.name}` not `rz` or `rx`.')
+
+                qbit = qargs[0]
+                u0 = apply_gate_to_tensor(mat(angles[i]), u0, [qbit._index])
+                i += 1
+
+        return u0.reshape(2 ** num_qubits, 2 ** num_qubits)
+
+    assert disc2(u(qc_angles), Operator(qc.reverse_bits()).data) < 1e-6, 'Error in converting from qiskit to jax.'
+
+    return u, qc_angles

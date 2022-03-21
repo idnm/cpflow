@@ -336,3 +336,19 @@ def can_reduce_two_angles(loss_func, angles, i, j, threshold):
         return False, angles
 
 
+def replace_angles_in_circuit(qc, angles):
+    new_qc = qc.copy()
+    angles = angles.copy()
+
+    new_data = []
+    i = 0
+    for gate, qregs, cregs in new_qc.data:
+        if gate.name in ['rx', 'rz']:
+            gate.params = [angles[i]]
+            i += 1
+        new_data.append((gate, qregs, cregs))
+
+    new_qc.data = new_data
+    check_approximation(qc, new_qc)
+
+    return new_qc
