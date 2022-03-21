@@ -4,6 +4,7 @@ from qiskit.quantum_info import Operator
 from qiskit.circuit.library import *
 from trigonometric_utils import *
 from optimization import mynimize_repeated
+from cp_utils import constrained_function
 
 
 def check_approximation(circuit, new_circuit, loss=1e-4):
@@ -298,5 +299,40 @@ def i_of_rgate_followed_by_same_rgate(data, qubit):
 
     return None
 
+
+def reduce_all_1q_angles(loss_func, initial_angles, threshold=1e-6):
+    if len(initial_angles) == 0:
+        return initial_angles
+
+    new_angles = reduce_first_1q_angle(loss_func, initial_angles, threshold)
+    new_loss_func = constrained_function(loss_func, new_angles[:1], [0])
+
+    return jnp.concatenate([new_angles[:1], reduce_all_1q_angles(new_loss_func, new_angles[1:], threshold=threshold)])
+
+
+def reduce_first_1q_angle(loss_func, angles, threshold):
+    new_angles = angles
+    if loss_func(angles.at[0].set(0)) < threshold:
+        new_angles = new_angles.at[0].set(0)
+        return new_angles
+
+    else:
+        for i in range(1, len(angles)):
+            can_reduce, new_angles = can_reduce_two_angles(loss_func, angles, 0, i, threshold)
+            if can_reduce:
+                return new_angles
+
+    return angles
+
+
+def can_reduce_two_angles(loss_func, angles, i, j, threshold):
+    new_angles = angles
+    for sign in [-1, 1]:
+        new_angles = new_angles.at[j].set(angles[j] + sign * angles[i])
+        new_angles = new_angles.at[i].set(0)
+        if loss_func(new_angles) < threshold:
+            return True, new_angles
+    else:
+        return False, angles
 
 
