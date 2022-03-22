@@ -7,7 +7,10 @@ from dataclasses import dataclass, asdict
 import dill
 import numpy as np
 import matplotlib.pyplot as plt
+
+from qiskit import transpile
 from qiskit.circuit import Parameter
+from qiskit.quantum_info import Operator
 
 from tqdm.auto import tqdm
 
@@ -17,7 +20,7 @@ from circuit_assembly import *
 from optimization import *
 from penalty import *
 from topology import *
-from exact_decompositions import make_exact
+from exact_decompositions import make_exact, cp_to_cz_circuit
 
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll import scope
@@ -227,65 +230,75 @@ class Ansatz:
 
 
 class Decomposition:
-    def __init__(self, unitary_loss_func, unitary_func, circuit_func, angles, label=''):
-        self.unitary_loss_func = unitary_loss_func
-        self.unitary_func = unitary_func
-        self.circuit_func = circuit_func
-        self.angles = angles
-        self.label = label
-        self.circuit = self.circuit_func(self.angles)
-        self.unitary = self.unitary_func(self.angles)
-        self.loss = self.unitary_loss_func(self.unitary)
-        self.type = 'Approximate'
-        self._attempted_exact = False
-
-        self.cz_count = None
-        self.cz_depth = None
-        self.t_count = None
-        self.t_depth = None
-
-    def make_exact(self):
-        exact_qc = make_exact(self.circuit)
-        if self.unitary_loss_func(Operator(exact_qc).data) < 1e-10:
-            self.circuit = exact_qc
-            self.type = 'Exact'
-            self._attempted_exact = True
-        else:
-            self._attempted_exact = True
-
-    def count(self, gate):
-        ops = self.circuit.count_ops()
-        if gate.name == 'cz':
-            return ops['cz']
-        elif gate.name == 't':
-            if self.type == 'Exact':
-                return ops['t']+ops['tdg']
-            else:
-                print('Decomposition is not exact')
-                return None
 
     @staticmethod
-    def gate_filter(gate_names, d):
+    def _gate_filter(gate_names, d):
         gate, qargs, cargs = d
         if gate.name in gate_names:
             return True
         else:
             return False
 
-    def depth(self, gate):
-        if gate == 'cz':
-            return self.circuit.depth(partial(gate_filter, ['cz']))
-        elif gate == 't':
-            if self.type == 'Exact':
-                return self.circuit.depth(partial(gate_filter, ['t', 'tdg']))
-            else:
-                print('Decomposition is not exact')
-                return None
+    @staticmethod
+    def _gate_count(gate_name, circuit):
+        ops = circuit.count_ops()
+        if gate_name in ops:
+            return ops[gate_name]
+        else:
+            return 0
+
+    def __init__(self, unitary_loss_func, circuit, label='', type='Approximate'):
+
+        self.unitary_loss_func = unitary_loss_func
+        self.circuit = circuit
+        self.unitary = Operator(self.circuit.reverse_bits()).data
+        self.label = label
+
+        self.loss = self.unitary_loss_func(self.unitary)
+        self.type = type
+
+        self.cz_count = Decomposition._gate_count('cz', self.circuit)
+        self.cz_depth = self.circuit.depth(partial(Decomposition._gate_filter, ['cz']))
+
+        self._cp_data = None
+
+        self.t_count = None
+        self.t_depth = None
+
+    @classmethod
+    def from_cp_circuit(cls, unitary_loss_func, u_func, circ_func, angles, label):
+        circuit = cp_to_cz_circuit(circ_func(angles))
+        circuit = transpile(circuit, basis_gates=['cz', 'rz', 'rx', 'id'], optimization_level=3)
+
+        d = cls(unitary_loss_func, circuit, label=label)
+        d._cp_data = [u_func, circ_func, angles]
+
+        return d
+
+    def make_exact(self, cp_threshold=0.01, reduce_threshold=1e-5, recursion_degree=0, recursion_depth=5):
+        exact_qc = make_exact(
+            self.circuit,
+            cp_threshold=cp_threshold,
+            reduce_threshold=reduce_threshold,
+            recursion_degree=recursion_degree,
+            recursion_depth=recursion_depth)
+
+        if self.unitary_loss_func(Operator(exact_qc.reverse_bits()).data) < 1e-6:
+            self.circuit = exact_qc
+            self.type = 'Exact'
+
+            self.t_count = Decomposition._gate_count('t', self.circuit)+Decomposition._gate_count('tdg', self.circuit)
+            self.t_depth = self.circuit.depth(partial(Decomposition._gate_filter, ['t', 'tdg']))
+
 
     def __repr__(self):
-        cz
         if self.type == 'Approximate':
-            return f"< {self.label}| {self.type} | num_cz_gates: {self.count('cz')} | loss: {self.loss} >"
+            return f"< {self.label}| {self.type} | cz count: {self.cz_count} | cz depth: {self.cz_count} | loss: {self.loss} >"
+        elif self.type == 'Exact':
+            return f"< {self.label}| {self.type} | cz count: {self.cz_count} | cz depth: {self.cz_count} | t count: {self.t_count} | t depth: {self.t_depth} >"
+
+
+
 
 
 @dataclass
@@ -402,7 +415,7 @@ class Decompose:
             self.unitary_loss_func = unitary_loss_func
         else:
             assert self.target_unitary is not None, 'Neither unitary loss function nor target unitary is provided.'
-            assert self.target_unitary.shape == (2**self.num_qubits, 2**self.num_qubits), 'Target unitary has incorrect shape.'
+            assert self.target_unitary.shape == (2**self.num_qubits, 2**self.num_qubits), 'Number of qubits in target unitary and layer do not match.'
             self.unitary_loss_func = lambda u: disc2(u, self.target_unitary)
 
         self.label = label
@@ -490,8 +503,8 @@ class Decompose:
 
         return results
 
-    def _make_decomposition(self, u, circ, best_angs, num_cz_gates):
-        return Decomposition(self.unitary_loss_func, u, circ, best_angs, num_cz_gates, label=self.label)
+    def _make_decomposition(self, u_func, circ_func, best_angs):
+        return Decomposition.from_cp_circuit(self.unitary_loss_func, u_func, circ_func, best_angs, self.label)
 
     def static(self, options, key=random.PRNGKey(0), save_results=True, save_to=''):
 
@@ -525,12 +538,12 @@ class Decompose:
                     keep_history=False)
 
                 if success:
-                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs, num_cz_gates)
+                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs)
                     successful_results.append(new_decomposition)
 
             if successful_results:
                 print(f'\n{len(successful_results)} successful. cz counts are:')
-                print(sorted([d.num_cz_gates for d in successful_results]))
+                print(sorted([d.cz_count for d in successful_results]))
                 results.decompositions = list(results.decompositions)+successful_results
                 if save_results:
                     results.save()
@@ -670,7 +683,7 @@ class Decompose:
                     tqdm.write(f'\nFound a new decomposition with {num_cz_gates} gates.')
 
                     scoreboard.insert(0, num_cz_gates)
-                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs, num_cz_gates)
+                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs)
                     results.decompositions = list(results.decompositions) + [new_decomposition]
                     results.save()
                     break

@@ -12,8 +12,7 @@ from jax import jit
 
 def check_approximation(circuit, new_circuit, loss=1e-4):
     assert disc2(Operator(circuit).data,
-                 Operator(new_circuit).data) < loss, 'Difference between projected and original circuit too large.'
-    print('ver succ')
+                 Operator(new_circuit).data) < loss, 'Difference between modified and original circuit too large.'
 
 
 def lasso_angles(loss_function, angles, eps=1e-5, threshold_loss=1e-6):
