@@ -276,19 +276,29 @@ class Decomposition:
         return d
 
     def make_exact(self, cp_threshold=0.01, reduce_threshold=1e-5, recursion_degree=0, recursion_depth=5):
-        exact_qc = make_exact(
-            self.circuit,
-            cp_threshold=cp_threshold,
-            reduce_threshold=reduce_threshold,
-            recursion_degree=recursion_degree,
-            recursion_depth=recursion_depth)
 
-        if self.unitary_loss_func(Operator(exact_qc.reverse_bits()).data) < 1e-6:
+        try:
+            exact_qc = make_exact(
+                self.circuit,
+                self.unitary_loss_func,
+                cp_threshold=cp_threshold,
+                reduce_threshold=reduce_threshold,
+                recursion_degree=recursion_degree,
+                recursion_depth=recursion_depth)
+
             self.circuit = exact_qc
             self.type = 'Exact'
 
             self.t_count = Decomposition._gate_count('t', self.circuit)+Decomposition._gate_count('tdg', self.circuit)
             self.t_depth = self.circuit.depth(partial(Decomposition._gate_filter, ['t', 'tdg']))
+
+            return 'Successful'
+        except ValueError as e:
+            print(e)
+            return 'Failed'
+
+
+
 
 
     def __repr__(self):

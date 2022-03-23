@@ -7,12 +7,183 @@ from optimization import mynimize_repeated
 from cp_utils import constrained_function
 from circuit_assembly import qiskit_circ_to_jax_unitary
 from qiskit.transpiler.passes import SolovayKitaevDecomposition
+from qiskit.quantum_info import OneQubitEulerDecomposer
 from jax import jit
 
 
-def check_approximation(circuit, new_circuit, loss=1e-4):
-    assert disc2(Operator(circuit).data,
-                 Operator(new_circuit).data) < loss, 'Difference between modified and original circuit too large.'
+def check_approximation(circuit, new_circuit, loss=1e-5):
+    l = disc2(Operator(circuit).data, Operator(new_circuit).data)
+    if not l < loss:
+        raise ValueError(f'Difference {l} between modified and original circuit is above threshold {loss}.')
+
+
+def check_loss(circuit, unitary_loss_func, threshold_loss=1e-5):
+    loss = unitary_loss_func(Operator(circuit.reverse_bits()).data)
+    if not loss < threshold_loss:
+        raise ValueError(f'Circuit loss {loss} is above threshold {threshold_loss}.')
+
+
+def cp_to_cz_circuit(circuit, cp_threshold=0.2):
+    new_data = []
+    for gate, qargs, cargs in circuit.data:
+        if gate.name == 'cp':
+            new_gate = cp_to_cz_gate(gate, cp_threshold)
+        else:
+            new_gate = gate
+
+        new_data.append((new_gate, qargs, cargs))
+
+    new_circuit = circuit.copy()
+    new_circuit.data = new_data
+    new_circuit = new_circuit.decompose(gates_to_decompose=['id', 'cp_trans'])
+
+    check_approximation(circuit, new_circuit, loss=1e-5)
+
+    return new_circuit
+
+
+def cp_to_cz_gate(gate, cp_threshold):
+    cp_angle = gate.params[0]
+    if jnp.abs(cp_angle) < cp_threshold:
+        qc = QuantumCircuit(2)
+        qc.i([0, 1])
+        gate = qc.to_gate(label='id')
+    elif jnp.abs(cp_angle - jnp.pi) < cp_threshold:
+        gate = CZGate()
+    else:
+        qc = QuantumCircuit(2)
+        qc.cp(cp_angle, 0, 1)
+        qc = transpile(qc, basis_gates=['cz', 'rz', 'rx'], optimization_level=3)
+        gate = qc.to_gate(label='cp_trans')
+
+    return gate
+
+
+def reduce_all_1q_angles(loss_func, initial_angles, wires, threshold=1e-5):
+    if len(initial_angles) == 0:
+        return initial_angles
+
+    new_angles = reduce_first_1q_angle(loss_func, initial_angles, wires, threshold)
+    new_loss_func = constrained_function(loss_func, new_angles[:1], [0], jax_numpy=False)
+
+    return jnp.concatenate([new_angles[:1], reduce_all_1q_angles(new_loss_func, new_angles[1:], wires[1:], threshold=threshold)])
+
+
+def reduce_first_1q_angle(loss_func, angles, wires, threshold):
+    new_angles = angles
+    if loss_func(angles.at[0].set(0)) < threshold:
+        new_angles = new_angles.at[0].set(0)
+        return new_angles
+
+    else:
+        for i in range(1, len(angles)):
+            can_reduce, new_angles = can_reduce_two_angles(loss_func, angles, 0, i, wires[0], wires[i], threshold)
+            if can_reduce:
+                return new_angles
+
+    return angles
+
+
+def can_reduce_two_angles(loss_func, angles, i, j, wi, wj, threshold):
+    if wi != wj:
+        return False, angles
+
+    for sign in [-1, 1]:
+        new_angles = angles
+        new_angles = new_angles.at[j].set(angles[j] + sign * angles[i])
+        new_angles = new_angles.at[i].set(0)
+        if loss_func(new_angles) < threshold:
+            return True, new_angles
+    else:
+        return False, angles
+
+
+def replace_angles_in_circuit(qc, angles):
+    new_qc = qc.copy()
+    angles = angles.copy()
+
+    new_data = []
+    i = 0
+    for gate, qregs, cregs in new_qc.data:
+        if gate.name in ['rx', 'ry', 'rz']:
+            gate.params = [angles[i]]
+            i += 1
+        new_data.append((gate, qregs, cregs))
+
+    new_qc.data = new_data
+
+    return new_qc
+
+
+def U_to_ZXZ(gate):
+    qc = QuantumCircuit(1)
+    qc.append(gate, [0])
+
+    euler = OneQubitEulerDecomposer(basis='ZXZ')
+    x1, z2, z1 = euler.angles(Operator(qc).data)
+
+    qc = QuantumCircuit(1)
+    qc.rz(z1, 0)
+    qc.rx(x1, 0)
+    qc.rz(z2, 0)
+
+    return qc.to_gate(label='zxz')
+
+
+def convert_to_ZXZ(circuit):
+    qc = transpile(circuit, basis_gates=['cz', 'u'], optimization_level=3)
+    new_data = []
+    for gate, qargs, cargs in qc.data:
+        if gate.name == 'u':
+            new_gate = U_to_ZXZ(gate)
+        else:
+            new_gate = gate
+        new_data.append((new_gate, qargs, cargs))
+
+    qc.data = new_data
+    check_approximation(circuit, qc)
+    return qc.decompose('zxz')
+
+
+def reduce_angles(circuit, unitary_loss_func, reduce_threshold=1e-5, cp_threshold=0.01):
+
+    qc = circuit.copy()
+    qc = cp_to_cz_circuit(qc, cp_threshold=cp_threshold)
+
+    qc = transpile(qc, basis_gates=['cz', 'u'], optimization_level=3)
+    qc = convert_to_ZXZ(qc)
+
+    u, angles, wires = qiskit_circ_to_jax_unitary(qc)
+    loss_f = lambda angs: unitary_loss_func(u(angs))
+    loss_f = jit(loss_f)
+
+    reduced_angs = reduce_all_1q_angles(loss_f, jnp.array(angles), wires, threshold=reduce_threshold)
+    qc = replace_angles_in_circuit(qc, vmap(bracket_angle)(reduced_angs))
+
+    check_loss(qc, unitary_loss_func, threshold_loss=reduce_threshold)
+
+    return qc
+
+
+def solovay_kitaev(circuit, recursion_degree=0, recursion_depth=5):
+    qc = circuit.copy()
+    basis_gates = [TGate(), TdgGate(), SGate(), SdgGate(), HGate()]
+    skd = SolovayKitaevDecomposition(recursion_degree=recursion_degree, basis_gates=basis_gates, depth=recursion_depth)
+    qc = skd(qc)
+
+    check_approximation(qc, circuit)
+
+    return qc
+
+
+def make_exact(circuit, unitary_loss_func, cp_threshold=0.01, reduce_threshold=1e-5, recursion_degree=0, recursion_depth=5):
+
+    qc = reduce_angles(circuit, unitary_loss_func, reduce_threshold=reduce_threshold, cp_threshold=cp_threshold)
+    qc = solovay_kitaev(qc, recursion_degree=recursion_degree, recursion_depth=recursion_depth)
+
+    check_loss(qc, unitary_loss_func, threshold_loss=reduce_threshold)
+
+    return qc
 
 
 def lasso_angles(loss_function, angles, eps=1e-5, threshold_loss=1e-6):
@@ -34,42 +205,6 @@ def lasso_angles(loss_function, angles, eps=1e-5, threshold_loss=1e-6):
     assert res['loss'][best_i] <= threshold_loss, 'L1 regularization was not successful.'
 
     return best_angs
-
-
-def cp_to_cz_circuit(circuit, cp_threshold=0.2):
-    new_data = []
-    for gate, qargs, cargs in circuit.data:
-        if gate.name == 'cp':
-            new_gate = cp_to_cz_gate(gate, cp_threshold)
-        else:
-            new_gate = gate
-
-        new_data.append((new_gate, qargs, cargs))
-
-    new_circuit = circuit.copy()
-    new_circuit.data = new_data
-    new_circuit = new_circuit.decompose(gates_to_decompose=['id', 'cp_trans'])
-
-    check_approximation(circuit, new_circuit)
-
-    return new_circuit
-
-
-def cp_to_cz_gate(gate, cp_threshold):
-    cp_angle = gate.params[0]
-    if jnp.abs(cp_angle) < cp_threshold:
-        qc = QuantumCircuit(2)
-        qc.i([0, 1])
-        gate = qc.to_gate(label='id')
-    elif jnp.abs(cp_angle - jnp.pi) < cp_threshold:
-        gate = CZGate()
-    else:
-        qc = QuantumCircuit(2)
-        qc.cp(cp_angle, 0, 1)
-        qc = transpile(qc, basis_gates=['cz', 'rz', 'rx'], optimization_level=3)
-        gate = qc.to_gate(label='cp_trans')
-
-    return gate
 
 
 def project_circuit(circuit, threshold):
@@ -301,82 +436,5 @@ def i_of_rgate_followed_by_same_rgate(data, qubit):
 
     return None
 
-
-def reduce_all_1q_angles(loss_func, initial_angles, wires, threshold=1e-6):
-    if len(initial_angles) == 0:
-        return initial_angles
-
-    new_angles = reduce_first_1q_angle(loss_func, initial_angles, wires, threshold)
-    new_loss_func = constrained_function(loss_func, new_angles[:1], [0])
-
-    return jnp.concatenate([new_angles[:1], reduce_all_1q_angles(new_loss_func, new_angles[1:], wires[1:], threshold=threshold)])
-
-
-def reduce_first_1q_angle(loss_func, angles, wires, threshold):
-    new_angles = angles
-    if loss_func(angles.at[0].set(0)) < threshold:
-        new_angles = new_angles.at[0].set(0)
-        return new_angles
-
-    else:
-        for i in range(1, len(angles)):
-            can_reduce, new_angles = can_reduce_two_angles(loss_func, angles, 0, i, wires[0], wires[i], threshold)
-            if can_reduce:
-                return new_angles
-
-    return angles
-
-
-def can_reduce_two_angles(loss_func, angles, i, j, wi, wj, threshold):
-    if wi != wj:
-        return False, angles
-
-    new_angles = angles
-    for sign in [-1, 1]:
-        new_angles = new_angles.at[j].set(angles[j] + sign * angles[i])
-        new_angles = new_angles.at[i].set(0)
-        if loss_func(new_angles) < threshold:
-            return True, new_angles
-    else:
-        return False, angles
-
-
-def replace_angles_in_circuit(qc, angles):
-    new_qc = qc.copy()
-    angles = angles.copy()
-
-    new_data = []
-    i = 0
-    for gate, qregs, cregs in new_qc.data:
-        if gate.name in ['rx', 'rz']:
-            gate.params = [angles[i]]
-            i += 1
-        new_data.append((gate, qregs, cregs))
-
-    new_qc.data = new_data
-    check_approximation(qc, new_qc)
-
-    return new_qc
-
-
-def make_exact(circuit, cp_threshold=0.01, reduce_threshold=1e-5, recursion_degree=0, recursion_depth=5):
-    qc = circuit.copy()
-    qc = cp_to_cz_circuit(qc, cp_threshold=cp_threshold)
-    qc = transpile(qc, basis_gates=['id', 'rx', 'rz', 'cz'], optimization_level=3)
-
-    u, angles, wires = qiskit_circ_to_jax_unitary(qc)
-    loss_f = lambda angs: disc2(u(angs), Operator(qc.reverse_bits()).data)
-    loss_f = jit(loss_f)
-
-    reduced_angs = reduce_all_1q_angles(loss_f, jnp.array(angles), wires, threshold=reduce_threshold)
-    qc = replace_angles_in_circuit(qc, vmap(bracket_angle)(reduced_angs))
-
-    basis_gates = [TGate(), TdgGate(), SGate(), SdgGate(), HGate()]
-    skd = SolovayKitaevDecomposition(recursion_degree=recursion_degree, basis_gates=basis_gates, depth=recursion_depth)
-    qc = skd(qc)
-
-    check_approximation(qc, circuit)
-
-    return qc
 
 

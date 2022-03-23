@@ -46,8 +46,8 @@ def apply_gate_to_tensor(gate, tensor, placement):
 def qiskit_circ_to_jax_unitary(qc):
     num_qubits = len(qc.qubits)
 
-    qc_angles = [gate.params[0] for gate, _, _ in qc.data if gate.name in ['rx', 'rz']]
-    wires = [qregs[0]._index for gate, qregs, _ in qc.data if gate.name in ['rx', 'rz']]
+    qc_angles = [gate.params[0] for gate, _, _ in qc.data if gate.name in ['rx', 'ry', 'rz']]
+    wires = [qregs[0]._index for gate, qregs, _ in qc.data if gate.name in ['rx', 'ry', 'rz']]
 
     def u(angles):
 
@@ -62,8 +62,10 @@ def qiskit_circ_to_jax_unitary(qc):
                     mat = rx_mat
                 elif gate.name == 'rz':
                     mat = rz_mat
+                elif gate.name == 'ry':
+                    mat = ry_mat
                 else:
-                    raise TypeError(f'Gate `{gate.name}` not `rz` or `rx`.')
+                    raise TypeError(f"Gate `{gate.name}` not in ['rx', 'ry', 'rz'].")
 
                 qbit = qargs[0]
                 u0 = apply_gate_to_tensor(mat(angles[i]), u0, [qbit._index])

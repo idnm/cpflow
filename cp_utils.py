@@ -1,6 +1,7 @@
 import os.path
 
-from jax import random, jit, vmap
+from jax import random, jit, vmap, ops
+import numpy as np
 from penalty import *
 from matplotlib import pyplot as plt
 from trigonometric_utils import random_angles
@@ -76,28 +77,34 @@ def project_cp_angle(a, threshold=0.2):
         return a
 
 
-def insert_params(params, insertion_params, indices):
+def insert_params(params, insertion_params, insertion_indices, jax_numpy=True):
     """Replaces params array at positions specified by indices by insertion_params.
     Example: params=[0,1,2,3], insertion_params=[-1,-2,-4], indices=[0,2,4] gives [-1,  0, -2,  1, -4,  2,  3]
     params and insertion_params must be jnp.arrays, indices must be list."""
-    if not indices:
-        return params
 
-    new_params = jnp.concatenate([params[:indices[0]], jnp.array([insertion_params[0], ]), params[indices[0]:]])
-    return insert_params(new_params, insertion_params[1:], indices[1:])
+    total_params = len(params) + len(insertion_params)
+    params_indices = [i for i in range(total_params) if i not in insertion_indices]
+    if jax_numpy:
+        res = jnp.zeros(total_params)
+        res = ops.index_update(res, jnp.array(params_indices), params)
+        res = ops.index_update(res, jnp.array(insertion_indices), insertion_params)
+        return res
+    else:
+        res = np.zeros(total_params)
+        res[params_indices] = params
+        res[insertion_indices] = insertion_params
+        return jnp.array(res)
 
 
-def constrained_function(f, fixed_params, indices):
+def constrained_function(f, fixed_params, indices, jax_numpy=True):
     """Function with part of parameters fixed.
 
     Example f=f(x,y,z), fixed_params=[1,10], indices=[0,2] gives g(y)=f(1,y,10) """
 
     def cf(free_params):
-        return f(insert_params(free_params, fixed_params, indices))
+        return f(insert_params(free_params, fixed_params, indices, jax_numpy=jax_numpy))
 
     return cf
-
-    # return lambda free_params: f(insert_params(free_params, fixed_params, indices))
 
 
 def convert_cp_to_cz(anz, angles, threshold=0.2):
