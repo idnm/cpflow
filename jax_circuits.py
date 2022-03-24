@@ -325,6 +325,7 @@ class BasicOptions:
     threshold_cp: float = 0.2
     learning_rate_at_verification: float = 0.01
     num_gd_iterations_at_verification: int = 5000
+    random_seed: int = 0
 
 
 @dataclass
@@ -348,7 +349,6 @@ class AdaptiveOptions(BasicOptions):
     r_variance: float = 0.5
     max_evals: int = 100
     target_num_cz_gates: int = 0
-    random_seed: int = 0
     stop_if_target_reached: bool = False
     keep_logs: bool = False
 
@@ -447,7 +447,7 @@ class Decompose:
         plt.yscale('log')
         plt.legend()
 
-    def generate_raw(self, options, key=random.PRNGKey(0), initial_angles_array=None, keep_history=False):
+    def generate_raw(self, options, initial_angles_array=None, keep_history=False):
 
         # options = Decompose.updated_options(Decompose.default_static_options, options)
         anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
@@ -456,6 +456,7 @@ class Decompose:
         def regularization_func(angs):
             return options.r*vmap(self.cp_regularization_func)(angs*anz.cp_mask).sum()
 
+        key = random.PRNGKey(options.random_seed)
         if initial_angles_array is None:
             initial_angles_array = Decompose.generate_initial_angles(
                 key,
@@ -516,7 +517,7 @@ class Decompose:
         d._decomposer = self
         return d
 
-    def static(self, options, key=random.PRNGKey(0), save_results=True, save_to=''):
+    def static(self, options, save_results=True, save_to=''):
 
         results = Decompose._initialize_results(self, save_results, save_to)
 
@@ -524,9 +525,7 @@ class Decompose:
         print('\n', options)
 
         print('\nComputing raw results...')
-        raw_results = Decompose.generate_raw(self,
-                                             options,
-                                             key=key)
+        raw_results = Decompose.generate_raw(self, options)
 
         print('\nSelecting prospective results...')
         raw = Decompose.evaluate_raw(self, raw_results, options)
@@ -581,12 +580,9 @@ class Decompose:
             num_cp_gates, r = search_params
             tqdm.write(f'\nnum_cp_gates: {num_cp_gates}, r: {r}')
             static_options = options.get_static(num_cp_gates, r)
+            static_options.random_seed = random_seed
 
-            raw_results = Decompose.generate_raw(
-                self,
-                static_options,
-                key=random.PRNGKey(random_seed),
-                )
+            raw_results = Decompose.generate_raw(self, static_options)
 
             evaluated_results = Decompose.evaluate_raw(
                 self,
