@@ -671,14 +671,12 @@ class Decompose:
             results.save()
 
             current_best_cz = scoreboard[0]
-            results_to_verify = []
 
             trial = trials.trials[-1]
             msg = trials.trial_attachments(trial)['prospective_decompositions']
             successful_results = pickle.loads(msg)
             num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
-            prospective_results = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
-            results_to_verify.extend(prospective_results)
+            results_to_verify = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
 
             if len(results_to_verify):
                 tqdm.write(
@@ -687,7 +685,7 @@ class Decompose:
                 tqdm.write(
                     f'\nFound no decompositions potentially improving the current best count {current_best_cz}.')
 
-            for num_cp_gates, res in prospective_results:
+            for num_cp_gates, res in results_to_verify:
                 anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
 
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
@@ -705,7 +703,7 @@ class Decompose:
                     results.save()
                     break
             else:
-                if prospective_results:
+                if results_to_verify:
                     tqdm.write('\nNone of prospective decompositions passed.')
 
             if options.stop_if_target_reached and scoreboard[0] <= options.target_num_cz_gates:
