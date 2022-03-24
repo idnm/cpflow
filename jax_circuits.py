@@ -256,10 +256,13 @@ class Decomposition:
         self.cz_count = Decomposition._gate_count('cz', self.circuit)
         self.cz_depth = self.circuit.depth(partial(Decomposition._gate_filter, ['cz']))
 
-        self._cp_data = None
-
         self.t_count = None
         self.t_depth = None
+
+        self._cp_data = None
+        self._static_options = None
+        self._adaptive_options = None
+        self._decomposer = None
 
     @classmethod
     def from_cp_circuit(cls, unitary_loss_func, u_func, circ_func, angles, label):
@@ -292,10 +295,6 @@ class Decomposition:
         except ValueError as e:
             print(e)
             return 'Failed'
-
-
-
-
 
     def __repr__(self):
         if self.type == 'Approximate':
@@ -349,8 +348,9 @@ class AdaptiveOptions(BasicOptions):
     r_variance: float = 0.5
     max_evals: int = 100
     target_num_cz_gates: int = 0
-    stop_if_target_reached: bool = False
     random_seed: int = 0
+    stop_if_target_reached: bool = False
+    keep_logs: bool = False
 
     def __post_init__(self):
         if self.min_num_cp_gates == -1:
@@ -509,8 +509,12 @@ class Decompose:
 
         return results
 
-    def _make_decomposition(self, u_func, circ_func, best_angs):
-        return Decomposition.from_cp_circuit(self.unitary_loss_func, u_func, circ_func, best_angs, self.label)
+    def _make_decomposition(self, u_func, circ_func, best_angs, static_options=None, adaptive_options=None):
+        d = Decomposition.from_cp_circuit(self.unitary_loss_func, u_func, circ_func, best_angs, self.label)
+        d._static_options = static_options
+        d._adaptive_options = adaptive_options
+        d._decomposer = self
+        return d
 
     def static(self, options, key=random.PRNGKey(0), save_results=True, save_to=''):
 
@@ -544,7 +548,7 @@ class Decompose:
                     keep_history=False)
 
                 if success:
-                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs)
+                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs, static_options=options)
                     successful_results.append(new_decomposition)
 
             if successful_results:
@@ -602,17 +606,23 @@ class Decompose:
 
             tqdm.write(f'score: {-score}, cz counts of prospective results: {cz_counts}')
 
-
-            return {
+            return_dict = {
                 'loss': -score,
                 'status': STATUS_OK,
                 'random_seed': random_seed,
                 'cz_counts': cz_counts,
+                'num_cp_gates': num_cp_gates,
+                'r': r,
                 'layer': self.layer,
-                'unitary_loss_func': self.unitary_loss_func,
-                'static_options': static_options,
-                'attachments': {'prospective_decompositions': pickle.dumps(evaluated_results)}
-            }
+                'prospective_decompositions': evaluated_results}
+
+            if options.keep_logs:
+                return_dict['attachments'] = {
+                    'prospective_decompositions': dill.dumps(evaluated_results),
+                    'static_options': dill.dumps(static_options),
+                    'unitary_loss_func': dill.dumps(self.unitary_loss_func)}
+
+            return return_dict
 
         print('\nStarting decomposition routine with the following options:')
         print('\n', options)
@@ -672,10 +682,13 @@ class Decompose:
 
             current_best_cz = scoreboard[0]
 
-            trial = trials.trials[-1]
-            msg = trials.trial_attachments(trial)['prospective_decompositions']
-            successful_results = pickle.loads(msg)
-            num_cp_gates = int(trial['misc']['vals']['num_cp_gates'][0])
+            last_result = trials.results[-1]
+            num_cp_gates = last_result['num_cp_gates']
+            r = last_result['r']
+            successful_results = last_result['prospective_decompositions']
+            if not options.keep_logs:
+                last_result.pop('prospective_decompositions')
+
             results_to_verify = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
 
             if len(results_to_verify):
@@ -698,7 +711,13 @@ class Decompose:
                     tqdm.write(f'\nFound a new decomposition with {num_cz_gates} gates.')
 
                     scoreboard.insert(0, num_cz_gates)
-                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs)
+                    new_decomposition = Decompose._make_decomposition(
+                        self,
+                        u,
+                        circ,
+                        best_angs,
+                        adaptive_options=options,
+                        static_options=options.get_static(num_cp_gates, r))
                     results.decompositions = list(results.decompositions) + [new_decomposition]
                     results.save()
                     break
