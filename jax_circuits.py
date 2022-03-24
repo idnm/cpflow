@@ -647,7 +647,7 @@ class Decompose:
 
         if num_existing_trials >= options.max_evals:
             print(f'Maximum number of evaluations reached.')
-            
+
         for i in tqdm(range(num_existing_trials, options.max_evals), desc='Evaluations'):
 
             tqdm.write('\n' + '-'*42)
