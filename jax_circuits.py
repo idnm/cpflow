@@ -1,7 +1,5 @@
 import pickle
-import time
 import os
-from pprint import pprint
 from dataclasses import dataclass, asdict
 
 import dill
@@ -10,20 +8,18 @@ import matplotlib.pyplot as plt
 
 from qiskit import transpile
 from qiskit.circuit import Parameter
-from qiskit.quantum_info import Operator
+
+from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
+from hyperopt.pyll import scope
 
 from tqdm.auto import tqdm
 
-from cp_utils import random_cp_angles, filter_cp_results, refine_cp_result, verify_cp_result
-from gates import *
+from cp_utils import random_cp_angles, filter_cp_results, verify_cp_result
 from circuit_assembly import *
 from optimization import *
 from penalty import *
 from topology import *
 from exact_decompositions import make_exact, cp_to_cz_circuit
-
-from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
-from hyperopt.pyll import scope
 
 
 class EntanglingBlock:
@@ -308,9 +304,6 @@ class Decomposition:
             return f"< {self.label}| {self.type} | cz count: {self.cz_count} | cz depth: {self.cz_count} | t count: {self.t_count} | t depth: {self.t_depth} >"
 
 
-
-
-
 @dataclass
 class RegularizationOptions:
     function: str = 'linear'
@@ -414,7 +407,10 @@ class Results:
 
 
 class Decompose:
+    """Class for efficient automated decomposing of unitary matrices into CZ+1q gates.
 
+
+    """
     def __init__(self, layer, unitary_loss_func=None, target_unitary=None, label=None, cp_regularization_func=None):
 
         self.layer = layer
@@ -572,6 +568,11 @@ class Decompose:
                  save_to=''):
 
         def objective_from_cz_distribution(random_seed, search_params):
+            """Evalueates quality of the hyperparameter configuration.
+
+            Params:
+                random_seed: seed to be used for generating random initial angles and setting hyperopt state.
+                search_params: params subject to hyperopt optimization."""
 
             num_cp_gates, r = search_params
             tqdm.write(f'\nnum_cp_gates: {num_cp_gates}, r: {r}')
@@ -592,14 +593,15 @@ class Decompose:
 
             cz_counts = [res[0] for res in evaluated_results]
 
-            # Score is defined as the weighted sum of cz counts of all successfull results.
-            # For convenience it is normalized on the number of samples and shown in log scale.
-            # Absolute value of the score has little meaning.
+            # Score is defined as the weighted sum of cz counts of all successful results.
+            # For convenience it is normalized on the number of samples and presented in log scale.
+
             score = 2 ** (-jnp.array(cz_counts, dtype=jnp.float32))
             score = (score.sum() / options.num_samples)
             score = jnp.log2(score)
 
             tqdm.write(f'score: {-score}, cz counts of prospective results: {cz_counts}')
+
 
             return {
                 'loss': -score,
@@ -630,21 +632,26 @@ class Decompose:
             print('\nFound existing trials, resuming from here.')
             trials = results.trials
             random_seed = trials.results[-1]['random_seed']
+            num_existing_trials = len(trials.results)
         else:
             trials = Trials()
             random_seed = options.random_seed
+            num_existing_trials = 0
 
         # Creating scoreboard variable that keeps track of the best current cz count.
-
         if results.decompositions:
-            scoreboard = set([d.num_cz_gates for d in results.decompositions])
+            scoreboard = set([d.cz_count for d in results.decompositions])
             scoreboard = sorted(list(scoreboard))
         else:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
 
-        for _ in tqdm(range(options.max_evals), desc='Evaluations'):
+        if num_existing_trials >= options.max_evals:
+            print(f'Maximum number of evaluations reached.')
+            
+        for i in tqdm(range(num_existing_trials, options.max_evals), desc='Evaluations'):
 
             tqdm.write('\n' + '-'*42)
+            tqdm.write(f'iteration {i}/{options.max_evals}')
 
             _, subkey = random.split(random.PRNGKey(random_seed))
             random_seed = int(subkey[1])
