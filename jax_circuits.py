@@ -393,16 +393,23 @@ class Results:
 
         return results
 
+    def best_hyperparameters(self):
+        """Returns list of pairs [num_cp_gates, r] ordered by increasing score."""
+
+        results = self.trials.results
+        results = sorted(results, key=lambda res: res['loss'])
+        hyperparams = [[res['num_cp_gates'], res['r']] for res in results]
+        return hyperparams
+
     def plot_trials(self):
-        trials = self.trials
-        options_list = [res['static_options'] for res in trials.results]
-        num_list = [o.num_cp_gates for o in options_list]
-        r_list = [o.r for o in options_list]
-        loss_list = [res['loss'] for res in trials.results]
+        results = self.trials.results
+        num_list = [res['num_cp_gates'] for res in results]
+        r_list = [res['r'] for res in results]
+        loss_list = [res['loss'] for res in results]
 
         plt.scatter(num_list, r_list, c=jnp.exp(jnp.array(loss_list, dtype=jnp.float32)), cmap='gray')
-        plt.ylabel('r')
         plt.xlabel('num_cp_gates')
+        plt.ylabel('r')
         plt.title('score')
 
 
