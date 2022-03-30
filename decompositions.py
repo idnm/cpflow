@@ -13,7 +13,7 @@ qc = QuantumCircuit(3)
 qc.ccx(0, 1, 2)
 u_toff3 = Operator(qc.reverse_bits()).data
 
-anz = Ansatz(3, 'cp', fill_layers(sequ_layer(3), 10))
+anz = Ansatz(3, 'cp', fill_layers(connected_layer(3), 10))
 
 reg_options = {'r': 0.001,
                'function': 'linear',

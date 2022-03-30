@@ -7,7 +7,7 @@ from jax_circuits import *
 
 
 def success_ratio(num_qubits, num_cz_gates, target_type, num_samples, random_seed):
-    anz = Ansatz(num_qubits, 'cz', fill_layers(sequ_layer(num_qubits), num_cz_gates))
+    anz = Ansatz(num_qubits, 'cz', fill_layers(connected_layer(num_qubits), num_cz_gates))
 
     if target_type == 'random_unitary':
         u_target = unitary_group.rvs(2 ** num_qubits, random_state=random_seed)

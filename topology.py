@@ -2,7 +2,7 @@ from jax import random
 import jax.numpy as jnp
 
 
-def sequ_layer(num_qubits):
+def connected_layer(num_qubits):
     return [[i, j] for i in range(num_qubits) for j in range(i + 1, num_qubits)]
 
 

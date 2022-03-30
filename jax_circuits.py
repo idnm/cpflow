@@ -178,7 +178,7 @@ class Ansatz:
 
     def circuit(self, angles=None):
         if angles is None:
-            angles = np.array([Parameter('a{}'.format(i)) for i in range(self.num_angles)])
+            angles = np.array([Parameter(f"a_{ {i} }") for i in range(self.num_angles)])
             parametrized = True
         else:
             parametrized = False
