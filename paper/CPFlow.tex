@@ -1,0 +1,88 @@
+\documentclass[amsfonts, amssymb, aps, nofootinbib]{revtex4-2}
+\usepackage[T1]{fontenc}
+\usepackage{tgtermes}
+\usepackage{amsmath}
+\usepackage{empheq}
+\usepackage[braket, qm]{qcircuit}
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks   = true, %Colours links instead of ugly boxes
+	urlcolor     = blue, %Colour for external hyperlinks
+	linkcolor    = blue, %Colour of internal links
+	citecolor   = red %Colour of citations
+}
+
+
+\begin{document}
+\title{Optimal variational synthesis of small-scale quantum circuits.}
+\begin{abstract}
+	We consider the problem of variational unitary synthesis. 
+\end{abstract}
+\maketitle	
+\tableofcontents
+\section{Introduction}
+\begin{itemize}
+\item Compilation -- translate from high-level algorithm to hardware instructions
+\item Relation to hardware efficient variational algorithms
+
+\end{itemize}
+\section{Challenges to variational synthesis}
+\subsection{Generally}
+\begin{itemize}
+	\item Discrete search over architectures 
+	\item Continuous optimization
+	\item Overview of existing software: QFAST, QSearch, SQUANDER
+\end{itemize}
+In variational algorithms: barren plateaus and local minimums. We: only local minimums.
+\subsection{Focus on local minimums}
+Let us quantify the challenges presented by local minimums by the empirical success ratio
+\begin{align}
+SR=\frac{M}{N} \ .
+\end{align}
+Here the same optimization procedure is performed $N$ times in total starting from random initial conditions and $M$ is the number of times a global minimum is reached. 
+
+For the sake of concreteness, consider a circuit and a template at fig.\ref{}
+
+\begin{figure}
+\centering{\text{Template circuit}}
+
+\scalebox{0.7}{
+	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+		& \gate{\mathrm{R_Z}\,(\mathrm{a_{0}})} & \gate{\mathrm{R_X}\,(\mathrm{a_{1}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{2}})} & \ctrl{1} & \gate{\mathrm{R_X}\,(\mathrm{a_{9}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{10}})} & \ctrl{2} & \gate{\mathrm{R_X}\,(\mathrm{a_{13}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{14}})} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{R_X}\,(\mathrm{a_{21}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{22}})} & \qw & \qw\\
+		& \gate{\mathrm{R_Z}\,(\mathrm{a_{3}})} & \gate{\mathrm{R_X}\,(\mathrm{a_{4}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{5}})} & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{a_{11}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{12}})} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{R_X}\,(\mathrm{a_{17}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{18}})} & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{a_{23}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{24}})} & \qw & \qw\\
+		& \gate{\mathrm{R_Z}\,(\mathrm{a_{6}})} & \gate{\mathrm{R_X}\,(\mathrm{a_{7}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{8}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{a_{15}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{16}})} & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{a_{19}})} & \gate{\mathrm{R_Z}\,(\mathrm{a_{20}})} & \qw & \qw & \qw & \qw & \qw\\
+		\\ }}
+
+\centering{\text{Target circuit}}	
+
+\scalebox{0.7}{
+	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+		& \gate{\mathrm{R_Z}\,(\mathrm{6.246})} & \gate{\mathrm{R_X}\,(\mathrm{0.5124})} & \gate{\mathrm{R_Z}\,(\mathrm{1.219})} & \ctrl{1} & \gate{\mathrm{R_X}\,(\mathrm{1.903})} & \gate{\mathrm{R_Z}\,(\mathrm{5.638})} & \ctrl{2} & \gate{\mathrm{R_X}\,(\mathrm{2.711})} & \gate{\mathrm{R_Z}\,(\mathrm{5.384})} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{R_X}\,(\mathrm{1.105})} & \gate{\mathrm{R_Z}\,(\mathrm{1.16})} & \qw & \qw\\
+		& \gate{\mathrm{R_Z}\,(\mathrm{4.646})} & \gate{\mathrm{R_X}\,(\mathrm{2.216})} & \gate{\mathrm{R_Z}\,(\mathrm{1.714})} & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{2.833})} & \gate{\mathrm{R_Z}\,(\mathrm{0.6454})} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{R_X}\,(\mathrm{2.812})} & \gate{\mathrm{R_Z}\,(\mathrm{2.779})} & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{2.515})} & \gate{\mathrm{R_Z}\,(\mathrm{2.283})} & \qw & \qw\\
+		& \gate{\mathrm{R_Z}\,(\mathrm{6.106})} & \gate{\mathrm{R_X}\,(\mathrm{2.695})} & \gate{\mathrm{R_Z}\,(\mathrm{1.408})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{5.926})} & \gate{\mathrm{R_Z}\,(\mathrm{0.1336})} & \control\qw & \gate{\mathrm{R_X}\,(\mathrm{3.677})} & \gate{\mathrm{R_Z}\,(\mathrm{1.53})} & \qw & \qw & \qw & \qw & \qw\\
+		\\ }}
+	
+\caption{Exemplary template and target circuits.}	
+\end{figure}
+To quantify the problem of local minimums we perform the following numerical experiments. 
+\begin{itemize}
+	\item 3q and 4q charts.
+	\item Separately marked Toffoli gates
+\end{itemize}
+\section{CPFlow}
+\begin{itemize}
+	\item Aiming to solve both discrete and continuous optimization at once
+	\item Local minimums addressed in a direct way -- trying many initial conditions
+	\item Better than random search
+	\item Hyperparameters are essential
+	\item Bayesian optimization of hyperparameters
+	\item Exact synthesis
+\end{itemize}
+\section{Benchmarks}
+\subsection{Clifford+T from database}
+\subsection{State prep for error correction}
+\section{Synthesis of special gates}
+\subsection{Toffoli 3 on chain up to SWAP}
+\subsection{Toffoli 4 on all topologies including new record at T-shaped}
+\subsection{Toffoli 5 already difficult, can be done separating into parts}
+\end{document}
