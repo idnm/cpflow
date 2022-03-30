@@ -23,7 +23,8 @@ def success_ratio(num_qubits, num_cz_gates, target_type, num_samples, random_see
     best_losses = [jnp.min(r['loss']) for r in results]
 
     if target_type == 'random_unitary':
-        successes = [loss <= (min(best_losses) + 1e-4) for loss in best_losses]
+        best_loss = min(best_losses)
+        successes = [loss <= (best_loss + 1e-4) for loss in best_losses]
     elif target_type == 'random_self':
         successes = [loss < 1e-4 for loss in best_losses]
 
@@ -52,9 +53,9 @@ def success_chart(num_qubits, range_cz_gates, target_type, num_samples, random_s
 
 
 num_qubits = 2
-target_type = 'random_self'
+target_type = 'random_unitary'
 num_samples = 100
-num_targets = 2
+num_targets = 5
 for random_seed in range(num_targets):
     save_to = f'results/local_minimums/{num_qubits}q_{target_type}_rs{random_seed}'
     success_chart(
