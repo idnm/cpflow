@@ -14,12 +14,10 @@ def success_ratio(num_qubits, num_cz_gates, target_type, num_samples, random_see
     elif target_type == 'random_self':
         angles_target = random_angles(anz.num_angles, key=random.PRNGKey(random_seed))
         u_target = anz.unitary(angles_target)
-    elif target_type == 'unitary':
-        pass
     else:
         raise TypeError
 
-    results = anz.learn(u_target, num_repeats=num_samples)
+    results = anz.learn(u_target, num_repeats=num_samples, keep_history=False)
     best_losses = [jnp.min(r['loss']) for r in results]
 
     if target_type == 'random_unitary':
