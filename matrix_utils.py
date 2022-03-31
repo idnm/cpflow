@@ -30,7 +30,7 @@ def disc(u, u_target):
     return 1 - jnp.abs(trace_prod(u, u_target)) / n
 
 
-def disc2(u, u_target):
+def cost_HST(u, u_target):
     """Discrepancy between two unitary matrices proportional to the trace product squared.
 
     Normalized so that disc(u,u)=0, disc(u,v)=1 when u,v are orthogonal in the trace product.
@@ -44,7 +44,7 @@ def disc2_swap(u, u_target, num_qubits):
 
     p_matrices = permutation_matrices(num_qubits)
 
-    return jnp.product(jnp.array([disc2(m@u, u_target) for m in p_matrices]))
+    return jnp.product(jnp.array([cost_HST(m @ u, u_target) for m in p_matrices]))
 
 
 def permutation_matrices(n):

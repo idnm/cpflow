@@ -429,7 +429,7 @@ class Decompose:
         else:
             assert self.target_unitary is not None, 'Neither unitary loss function nor target unitary is provided.'
             assert self.target_unitary.shape == (2**self.num_qubits, 2**self.num_qubits), 'Number of qubits in target unitary and layer do not match.'
-            self.unitary_loss_func = lambda u: disc2(u, self.target_unitary)
+            self.unitary_loss_func = lambda u: cost_HST(u, self.target_unitary)
 
         self.label = label
         if cp_regularization_func:

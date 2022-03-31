@@ -399,7 +399,7 @@ def unitary_learn(u_func,
         num_qubits = int(jnp.log2(u_target.shape[0]))
         loss_func = lambda angs: disc2_swap(u_func(angs), u_target, num_qubits)
     else:
-        loss_func = lambda angs: disc2(u_func(angs), u_target)
+        loss_func = lambda angs: cost_HST(u_func(angs), u_target)
 
     if regularization_options is not None:
         regularization_func = construct_penalty_function(regularization_options)

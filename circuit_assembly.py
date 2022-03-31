@@ -1,5 +1,5 @@
 from gates import *
-from matrix_utils import disc2
+from matrix_utils import cost_HST
 
 
 def gate_transposition(placement):
@@ -73,6 +73,6 @@ def qiskit_circ_to_jax_unitary(qc):
 
         return u0.reshape(2 ** num_qubits, 2 ** num_qubits)
 
-    assert disc2(u(qc_angles), Operator(qc.reverse_bits()).data) < 1e-6, 'Error in converting from qiskit to jax.'
+    assert cost_HST(u(qc_angles), Operator(qc.reverse_bits()).data) < 1e-6, 'Error in converting from qiskit to jax.'
 
     return u, qc_angles, wires

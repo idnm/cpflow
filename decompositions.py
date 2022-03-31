@@ -24,7 +24,7 @@ reg_options = {'r': 0.001,
                'angle_tolerance': 0.2,
                'cp_mask': anz.cp_mask}
 
-loss_f = lambda angs: disc2(anz.unitary(angs), u_toff3)
+loss_f = lambda angs: cost_HST(anz.unitary(angs), u_toff3)
 
 time_start = time.time()
 res_repeated = mynimize_repeated(loss_f, anz.num_angles, num_repeats=5)

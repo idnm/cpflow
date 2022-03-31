@@ -12,7 +12,7 @@ from jax import jit
 
 
 def check_approximation(circuit, new_circuit, loss=1e-5):
-    l = disc2(Operator(circuit).data, Operator(new_circuit).data)
+    l = cost_HST(Operator(circuit).data, Operator(new_circuit).data)
     if not l < loss:
         raise ValueError(f'Difference {l} between modified and original circuit is above threshold {loss}.')
 
