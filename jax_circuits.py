@@ -19,7 +19,7 @@ from circuit_assembly import *
 from optimization import *
 from penalty import *
 from topology import *
-from exact_decompositions import make_exact, cp_to_cz_circuit
+from exact_decompositions import make_exact, cp_to_cz_circuit, convert_to_ZXZ
 
 
 class EntanglingBlock:
@@ -266,10 +266,11 @@ class Decomposition:
 
     @classmethod
     def from_cp_circuit(cls, unitary_loss_func, u_func, circ_func, angles, label):
-        circuit = cp_to_cz_circuit(circ_func(angles))
-        circuit = transpile(circuit, basis_gates=['cz', 'rz', 'rx', 'id'], optimization_level=3)
+        qc = circ_func(angles)
+        qc = cp_to_cz_circuit(qc)
+        qc = convert_to_ZXZ(qc)
 
-        d = cls(unitary_loss_func, circuit, label=label)
+        d = cls(unitary_loss_func, qc, label=label)
         d._cp_data = [u_func, circ_func, angles]
 
         return d
@@ -517,8 +518,16 @@ class Decompose:
 
         return results
 
-    def _make_decomposition(self, u_func, circ_func, best_angs, static_options=None, adaptive_options=None):
-        d = Decomposition.from_cp_circuit(self.unitary_loss_func, u_func, circ_func, best_angs, self.label)
+    def _make_decomposition(self, u_func, circ_func, best_angs, static_options=None, adaptive_options=None, circuit=None):
+        if circuit is None:
+            circuit = Decomposition.from_cp_circuit(
+                self.unitary_loss_func,
+                u_func,
+                circ_func,
+                best_angs,
+                self.label)
+
+        d = circuit
         d._static_options = static_options
         d._adaptive_options = adaptive_options
         d._decomposer = self

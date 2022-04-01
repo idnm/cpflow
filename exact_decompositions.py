@@ -2,6 +2,8 @@ from matrix_utils import *
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import Operator
 from qiskit.circuit.library import *
+from qiskit.transpiler import PassManager
+from qiskit.transpiler.passes import Optimize1qGates
 from trigonometric_utils import *
 from optimization import mynimize_repeated
 from cp_utils import constrained_function
@@ -46,7 +48,6 @@ def cp_to_cz_gate(gate, cp_threshold):
     cp_angle = gate.params[0]
     if jnp.abs(cp_angle) < cp_threshold:
         qc = QuantumCircuit(2)
-        qc.i([0, 1])
         gate = qc.to_gate(label='id')
     elif jnp.abs(cp_angle - jnp.pi) < cp_threshold:
         gate = CZGate()
@@ -115,6 +116,35 @@ def replace_angles_in_circuit(qc, angles):
     return new_qc
 
 
+def singeq_to_U(gate):
+    qc = QuantumCircuit(1)
+    qc.append(gate, [0])
+
+    qc = transpile(qc, basis_gates=['u'])
+
+    return qc.to_gate(label='uu')
+
+
+def convert_to_U(circuit):
+    qc = circuit.copy()
+    new_data = []
+    for gate, qargs, cargs in qc.data:
+        if len(qargs) == 1:
+            new_gate = singeq_to_U(gate)
+        else:
+            new_gate = gate
+        new_data.append((new_gate, qargs, cargs))
+
+    qc.data = new_data
+    qc = qc.decompose('uu')
+
+    pass_ = Optimize1qGates(basis=['u'])
+    pm = PassManager(pass_)
+    qc = pm.run(qc)
+
+    check_approximation(circuit, qc)
+    return qc
+
 def U_to_ZXZ(gate):
     qc = QuantumCircuit(1)
     qc.append(gate, [0])
@@ -131,7 +161,7 @@ def U_to_ZXZ(gate):
 
 
 def convert_to_ZXZ(circuit):
-    qc = transpile(circuit, basis_gates=['cz', 'u'], optimization_level=3)
+    qc = convert_to_U(circuit)
     new_data = []
     for gate, qargs, cargs in qc.data:
         if gate.name == 'u':
@@ -150,7 +180,6 @@ def reduce_angles(circuit, unitary_loss_func, reduce_threshold=1e-5, cp_threshol
     qc = circuit.copy()
     qc = cp_to_cz_circuit(qc, cp_threshold=cp_threshold)
 
-    qc = transpile(qc, basis_gates=['cz', 'u'], optimization_level=3)
     qc = convert_to_ZXZ(qc)
 
     u, angles, wires = qiskit_circ_to_jax_unitary(qc)

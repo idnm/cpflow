@@ -182,13 +182,32 @@ The loss function directly addressed by CPFlow is given by
 \end{align}
 The first term is simply the value of the loss function at the given unitary. The second term is the regularization term summing the $CP$-penalties for all $CP$-angles in the circuit. The number of 2q gates $k$ and the overall regularization weight $r$ are two of the most important hyperparameters of the model.
 
-Main stages of the algorithm are as follows.
+Three main stages of the algorithm are as follows.
 
 \begin{enumerate}
-\item \textit{Raw sampling.} Loss function \eqref{CP loss} is minimized starting from many initial conditions. Both the $CP$-angles and angles of 1q gates are selected uniformly and independently at random\footnote{Distribution of $CP$ angles could be changed.}. 
-\item \textit{Selection.} Results of the first step are selected based on two criteria (i) the original loss function $L(U^k_{CP}(a^*))$ must be below a given threshold (we use $10^-4$) and (ii) the number of gates $\sum_{a_i\in CP}G(a_i)$ is below a specified value. Condition (i) means we only accept circuits that are close enough to the global minimum while (ii) filters out decompositions with too high $CZ$ count.
-\item \textit{Verification.} Results selected at the previous step are dubbed as prospective. At this stage they are verified more...
+\item \textit{\textbf{ Raw sampling.}} Loss function \eqref{CP loss} is minimized starting from many initial conditions. Both the $CP$-angles and angles of 1q gates are selected uniformly and independently at random\footnote{Distribution of $CP$ angles could be changed.}. 
+\item \textit{\textbf{Selecting prospective results.}} Results of the first step are selected based on two criteria (i) the original loss function $L(U^k_{CP}(a^*))$ must be below a given threshold (typically we use $10^{-4}$) and (ii) the number of gates $\sum_{a_i\in CP}G(a_i)$ is below a specified value. Condition (i) means we only accept circuits that are close enough to the global minimum while (ii) filters out decompositions with too high $CZ$ count.
+\item \textit{\textbf{Verification.}} Circuits selected at the previous step are first projected from $CP$ to $CZ$ circuits $U_{CP}^k(a)\to U_{CZ}^{k'}(a')$ by rounding off values of $CP$ gates that are sufficiently close to $0$ or $2\pi$ and substituting other $CP$ gates with their 2-CZ decompositions. 1q angles $a'$ are mostly inherited from $a$ except when a decomposition procedure was used. Next, the loss function $L(U_{CZ}^{k'}(a)$ (without the regularization term) is optimized starting from initial angles $a=a'$. The verification is considered successful if the projected $CZ$ circuit reaches a more stringent loss threshold (typically we use $10^{-6}$).
 \end{enumerate}
+
+This scheme can be modified in many ways: by choosing a different regularization function, using non-uniform sampling of initial angles, altering details of the gradient based optimizer to name a few. We have mostly experimented with varying two hyperparameters that are evidently crucial, the number of $CP$ gates $k$ and the regularization weight $r$. Heuristically, we find that a reasonable number of $CP$ gates is about twice as much as the expected $CZ$-count of the optimal solution and the value of $r$ for loss functions normalized so that $0\le L(U) \le 1$ is of order $r=5\times 10^{-4}$. To make better choices of hyperparameters on a case by case basis we use Bayesian tuning algorithm provided by Hyperopt package \cite{hyperopt, ?}. Tuning of hyperparameters is significantly hindered by the fact that the loss function is stochastic. Taking sufficiently many samples to reliably estimate the quality of a hyperparameter configuration may cost too much computational resources, while not taking enough the acquired data too noisy to be useful. On the positive side the goal of the algorithm is not to find the best hyperparameters, but rather to find the best decompositions, which can occur (although less likely) for suboptimal hyperparameters as well. The routine including hyperparameter tuning can be summarized as follows.
+
+\begin{enumerate}
+\item Choose a distribution to draw $k$ and $r$ from. Typically we use uniform distribution for $k$ in some integer range and lognormal distribution for $r$ with mean around $5\times 10^{-4}$ and standard deviation $0.5$.
+\item Draw a sample $k, r$ from the hyperparmeter distribution according to the Hyperopt algorithm. Execute steps 1 and 2 from the basic routine. Any $CZ$-count is accepted at this stage, i.e. the results are only selected by the value of the original loss function $L(U_{CP}^k(a))$. Let $k_1, k_2,\dots$ be $CZ$ counts of all prospective results selected. We define the score function by
+\begin{align}
+-\log_2\frac{1}{N}\sum_{i}2^{-k_i}
+\end{align}
+where $N$ is the total number of raw samples. The minimum of this function is $k_0$, the $CZ$-count of the best decomposition. It can be reached if all raw samples reached the threshold fidelity and have the optimal count $k_0$ when projected to $CZ$-circuits. The maximum is $+\infty=-\log 0$ when none raw samples passed the fidelity threshold.
+\item At the previous stage all prospective decompositions are not verified as the verification process is time-consuming is should not significantly alter the score estimation (some of the decompositions may fail to pass the verification, but this is rare). However, if there are prospective decompositions that improve on the current best they are verified and if accepted, the current best is replaced.
+
+\item Repeat steps 2 and 3 until either the maximum number of score evaluations is reached or a decomposition with the desired number of gates is found.
+\end{enumerate}
+
+Because
+\subsubsection{Hyperparameter tuning}
+
+
 
 
 
@@ -211,7 +230,7 @@ In the previous sections we painted the problem of local minimums as a very real
 \subsection{Toffoli 4 on all topologies including new record at T-shaped}
 \subsection{Toffoli 5 already difficult, can be done separating into parts}
 
-\bibliography{/home/idnm/Dropbox/hep/Sheets/library.bib}
+\bibliography{/home/idnm/Dropbox/hep/Sheets/library.bib, bibfile.bib}
 \end{document}
 
 \begin{figure}
