@@ -267,8 +267,8 @@ class Decomposition:
     @classmethod
     def from_cp_circuit(cls, unitary_loss_func, u_func, circ_func, angles, label):
         qc = circ_func(angles)
-        # qc = cp_to_cz_circuit(qc)
-        # qc = convert_to_ZXZ(qc)
+        qc = cp_to_cz_circuit(qc, cp_threshold=1e-6)
+        qc = convert_to_ZXZ(qc)
 
         d = cls(unitary_loss_func, qc, label=label)
         d._cp_data = [u_func, circ_func, angles]

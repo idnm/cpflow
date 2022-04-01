@@ -46,10 +46,10 @@ def cp_to_cz_circuit(circuit, cp_threshold=0.2):
 
 def cp_to_cz_gate(gate, cp_threshold):
     cp_angle = gate.params[0]
-    if jnp.abs(cp_angle) < cp_threshold:
+    if jnp.abs(cp_angle) <= cp_threshold:
         qc = QuantumCircuit(2)
         gate = qc.to_gate(label='id')
-    elif jnp.abs(cp_angle - jnp.pi) < cp_threshold:
+    elif jnp.abs(cp_angle - jnp.pi) <= cp_threshold:
         gate = CZGate()
     else:
         qc = QuantumCircuit(2)
