@@ -14,6 +14,7 @@
 	citecolor   = red %Colour of citations
 }
 
+\newcommand{\cpflow}{\textit{cpflow }}
 
 \begin{document}
 \title{Optimal variational synthesis of small-scale quantum circuits.}
@@ -173,7 +174,7 @@ We can anticipate, however, that training $CP$ templates to minimize the Hilbert
 
 This penalty is intended to drive all $CP$-angles during optimization to either $0$ or $\pi$ and hence to reduce the $CZ$-count of the resulting circuit. For numerical stability small plateaus are added near values $0,\pi$ and also $\frac12\pi, \frac32\pi$  (empirically we find that $CP$ angles are often equilibrate near these values too).
 
-\subsection{Details}
+\subsection{Procedure}
 We formulate the general synthesis problem as follows. Let $L(U)$ be the loss function to be minimized with unitary as the argument. For unitary synthesis $L(U)$ may be any measure of fidelity to the target unitary $V$, for example $L(U)=D(U, V)$. For state preparation we can choose $L(U) = \Big|\braket{\psi|U|0}\Big|^2$ where $\ket{\psi}$ is the target state and $\ket{0}$ is the usual reference state, etc. The goal is to find a unitary $U^k_{CZ}(a)$ such that $L(U^k_{CZ}(a))$ is sufficiently close to the global minimum of $L(U)$ and at the same time the number $k$ of 2q gates in $U^k_{CZ}$ is as small as possible. 
 
 The loss function directly addressed by CPFlow is given by
@@ -203,23 +204,13 @@ where $N$ is the total number of raw samples. The minimum of this function is $k
 
 \item \textit{\textbf{Repeat.}} Repeat steps 2 and 3 until either the maximum number of score evaluations is reached or a decomposition with the desired number of gates is found.
 \end{enumerate}
-
-Because
-\subsubsection{Hyperparameter tuning}
-
+\subsection{Technical details}
+The \textit{static} routine implemented in \cpflow uses the following default specifications (all could be customized by the user). At the raw sampling stage the optimization of the loss function \eqref{CP loss} is performed using ADAM\cite{} optimizer with learning rate $0.1$ and 2000 iterations. At the selection stage for each sample the best configuration of angles $a^*$ is chosen corresponding to the minimum of the regularized loss function \eqref{CP loss} across all iterations. If the primary loss function $L(U_{CP}^k(a^*))$ is below $10^{-4}$ threshold and the $CP$ circuit is projected to the $CZ$ circuit $U_{CP}^k(a^*)\to U_{CZ}^{k'}(a')$. Projection is performed as follows. $CP$-gates with angles lying withing the threshold distance (0.2 by default) away from $0$ or $\pi$ are replaced by identity and $CZ$ gates respectively.  $CP$-gates that were not replaced at the previous stage are decomposed into 2-$CZ$ decomposition using standard methods. If the 2q gate count $k'$ of the resulting $CZ$-circuit is within the accepted range the circuit is deemed prospective. At the verification stage the original loss function $L(U_{CZ}^{k'}(a))$ is further optimized with the ADAM optimizer, possibly with a smaller learning rate (0.01) and for larger number of iterations (5000). Importantly, the new optimization starts with the initial angles $a'$ obtained after projecting the $CP$ circuit. If the new optimization pass reaches a more stringent threshold ($10^{-6}$ by default) the verification is considered successful and the resulting circuit is added to the collection of decompositions.
 
 
-
-
-
-In the previous sections we painted the problem of local minimums as a very real obstacle to finding optimal circuits
 
 \begin{itemize}
-	\item Aiming to solve both discrete and continuous optimization at once
-	\item Local minimums addressed in a direct way -- trying many initial conditions
 	\item Better than random search
-	\item Hyperparameters are essential
-	\item Bayesian optimization of hyperparameters
 	\item Exact synthesis
 \end{itemize}
 \section{Benchmarks}

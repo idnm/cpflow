@@ -299,9 +299,9 @@ class Decomposition:
 
     def __repr__(self):
         if self.type == 'Approximate':
-            return f"< {self.label}| {self.type} | cz count: {self.cz_count} | cz depth: {self.cz_count} | loss: {self.loss} >"
+            return f"< {self.label}| {self.type} | cz count: {self.cz_count} | cz depth: {self.cz_depth} | loss: {self.loss} >"
         elif self.type == 'Exact':
-            return f"< {self.label}| {self.type} | cz count: {self.cz_count} | cz depth: {self.cz_count} | t count: {self.t_count} | t depth: {self.t_depth} >"
+            return f"< {self.label}| {self.type} | cz count: {self.cz_count} | cz depth: {self.cz_depth} | t count: {self.t_count} | t depth: {self.t_depth} >"
 
 
 @dataclass
