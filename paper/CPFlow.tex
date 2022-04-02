@@ -4,9 +4,11 @@
 \usepackage{amsmath}
 \usepackage{empheq}
 \usepackage{graphicx}
+\usepackage{booktabs}
 \usepackage[braket, qm]{qcircuit}
 \usepackage{braket}
 \usepackage{hyperref}
+\usepackage{xcolor}
 \hypersetup{
 	colorlinks   = true, %Colours links instead of ugly boxes
 	urlcolor     = blue, %Colour for external hyperlinks
@@ -15,7 +17,12 @@
 }
 
 \newcommand{\cpflow}{\textit{cpflow }}
-
+\newcommand{\static}{\textit{static }}
+\newcommand{\adaptive}{\textit{adaptive }}
+\newcommand{\CZ}{$CZ$}
+\newcommand{\CP}{$CP$}
+\newcommand{\T}{$T$}
+\newcommand{\tgate}[1]{\textcolor{red}{#1}}
 \begin{document}
 \title{Optimal variational synthesis of small-scale quantum circuits.}
 \begin{abstract}
@@ -214,7 +221,7 @@ The \textit{static} routine implemented in \cpflow uses the following default sp
 	\item Exact synthesis
 \end{itemize}
 \section{Synthesis of Toffoli gates}
-Toffoli gates are among the most essential building blocks for great variety of quantum algorithms \cite{}. The basic Toffoli gate, also known as the Controlled-Controlled-NOT is defined by
+Toffoli gates are among the most essential building blocks for a great variety of quantum algorithms \cite{}. The basic Toffoli gate, also known as the Controlled-Controlled-NOT or the CCX gate is depicted as follows
 \begin{align}
 \scalebox{1.0}{
 	\Qcircuit @C=1.0em @R=0.2em @!R { \\
@@ -223,10 +230,52 @@ Toffoli gates are among the most essential building blocks for great variety of 
 		&&&&&\qw&\targ&\qw&\qw&\qquad{ }\qquad& & \gate{\mathrm{H}} & \control\qw & \gate{\mathrm{H}} & \qw\\
 		\\ }}
 \end{align}
-The right diagram represent the Toffoli gate as the $CCZ$ gate conjugated by the two Hadamard gates ($HZH=X$). Large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can be propagated to the large multi-controlled gates required in useful quantum algorithms. 
+The right diagram represents the Toffoli gate as the $CCZ$ gate conjugated by the two Hadamard gates ($HZH=X$). The $CCZ$ gate itself is represented by a diagonal matrix $CCZ=\operatorname{diag}(1,1,1,1,1,1,1,-1)$ and is symmetric with respect to all qubits. Therefore, up to a conjugation by 1q gates the Toffoli gates (C${}^2$X as well as C${}^{n}$X) are also symmetric wrt all qubits. This implies that even if the symmetry between the qubits is broken by e.g. a non-trivial topology, the choice of the target qubit is not relevant for the synthesis problem.
+
+Large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can be propagated to the large multi-controlled gates required in useful quantum algorithms. 
 
 \subsection{Toffoli 3}
-The basic Toffoli gate can be decomposed into 6 $CZ$ gates on the fully connected topology or 8 $CZ$ gates on the chain topology. Using the \cpflow we were able to find many inequivalent decomposition 
+The basic Toffoli gate can be decomposed into 6 $CZ$ gates on the fully connected topology or 8 $CZ$ gates on the chain topology. Using the \cpflow we were able to find many inequivalent decompositions with these optimal \CZ-counts. First, we ran the \textit{adaptive} routine for a 100 score evaluations to identify the best hyperparameters in each case. Results are reported at fig.\ref{fig trials}. Best hyperparameters for each topology are shown in tab.\ref{tab toff3}. Note that at this stage decompositions with the optimal \CZ-count have already been found, but it is instructive to further analyze the performance of the algorithm and generate more decompositions.
+
+To this end we ran the \static routine with optimal hyperparameters and 100 samples for each topology. Third column in tab.\ref{tab toff3} states how many of the initial conditions led to the decompositions with the optimal \CZ-count. For connected topology this is roughly $50\%$, while for chain topology about $10\%$. These figures are to be compared with the success ratios at the respective gate counts \ref{fig local minumums}, which are of order $15\%$ and $3\%$ respectively. The remarkable conclusion is that (at least in this simple example) out strategy our coherent learning of the architecture together with continuous parameters is more efficient than learning continuous parameters alone ... 
+
+
+\begin{figure}
+	Connected topology
+	\scalebox{0.7}{
+	\Qcircuit @C=1.0em @R=0.4em @!R { \\
+	& \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw & \ctrl{1} & \qw & \ctrl{2} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \ctrl{2} & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})}} & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+	& \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})}} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \control\qw & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \qw & \qw & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})}} & \qw & \qw\\
+	& \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})}} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw\\
+	\\ }}\\
+Chain topology
+\scalebox{0.65}{
+	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+		& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{5\pi}{4}})}} & \qw & \qw & \qw & \qw & \qw\\
+		& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{4}})}} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})}} & \qw & \qw\\
+		& \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \qw & \qw & \control\qw & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \qw & \qw\\
+		\\ }}
+\label{fig toff3}
+\caption{Decompositions of Toffoli 3 gate that are likely to be optimal with respect to all four metrics: \CZ-depth, \CZ-count, \T-depth, \T-count. Non-Clifford gates are highlighted.}
+\end{figure}
+
+\begin{figure}
+\includegraphics[scale=0.5]{figures/toff3_trials_conn}
+\includegraphics[scale=0.5]{figures/toff3_trials_chain}
+\caption{Visualization of hyperparameter optimization in synthesis of Toffoli gate on connected (left panel) and chain (right panel) topologies. Red crosses corresponds to infinite score value and imply that no valid decompositions were found at these points. Gold star marks the best hyperparameter configuration.}
+\label{fig trials}	
+\end{figure}
+\begin{table}[]
+	\begin{tabular}{@{}ccccc@{}}
+		\toprule
+		& best k & best r              & Optimal decompositions &  \\ \midrule
+		Connected & 6      & $0.82\times10^{-3}$ & 49/100                 &  \\
+		Chain     & 14     & $0.96\times10^{-3}$ & 8/100                  &  \\
+		&        &                     &                        &  \\ \bottomrule
+	\end{tabular}
+\label{tab toff3}
+\end{table}
+
 
 \section{Benchmarks and results}
 \subsection{Clifford+T from database}

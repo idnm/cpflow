@@ -296,6 +296,26 @@ def project_gate(gate, threshold):
     return gate
 
 
+def remove_zero_rgates(circuit):
+    """Removes rotation gates with zero angles."""
+    new_circuit = circuit.copy()
+    new_data = []
+    for gate, qregs, cregs in circuit.data:
+        if gate.name in ['rx', 'ry', 'rz'] and jnp.abs(gate.params[0]) < 1e-5:
+            qc = QuantumCircuit(1)
+            new_gate = qc.to_gate(label='id')
+        else:
+            new_gate = gate
+        new_data.append((new_gate, qregs, cregs))
+
+    new_circuit.data = new_data
+    new_circuit = new_circuit.decompose('id')
+
+    check_approximation(circuit, new_circuit)
+
+    return new_circuit
+
+
 def move_all_rgates(circuit):
     """Moves all rotations gates as far to the right as possible."""
 
