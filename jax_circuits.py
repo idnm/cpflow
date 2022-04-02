@@ -404,14 +404,30 @@ class Results:
 
     def plot_trials(self):
         results = self.trials.results
-        num_list = [res['num_cp_gates'] for res in results]
-        r_list = [res['r'] for res in results]
-        loss_list = [res['loss'] for res in results]
 
-        plt.scatter(num_list, r_list, c=jnp.exp(jnp.array(loss_list, dtype=jnp.float32)), cmap='gray')
-        plt.xlabel('num_cp_gates')
-        plt.ylabel('r')
-        plt.title('score')
+        num_list = jnp.array([res['num_cp_gates'] for res in results])
+        r_list = jnp.array([res['r'] for res in results])
+        loss_list = jnp.array([res['loss'] for res in results])
+
+        finite_num_list = num_list[loss_list < jnp.inf]
+        finite_r_list = r_list[loss_list < jnp.inf]
+        finite_loss_list = loss_list[loss_list < jnp.inf]
+
+        inf_num_list = num_list[loss_list >= jnp.inf]
+        inf_r_list = r_list[loss_list >= jnp.inf]
+
+        n_best, r_best = self.best_hyperparameters()[0]
+
+        plt.scatter(finite_num_list, finite_r_list, c=finite_loss_list, cmap='jet', edgecolors='black')
+        plt.colorbar()
+        plt.scatter(inf_num_list, inf_r_list, marker='x', color='red')
+        plt.scatter([n_best], [r_best], marker='*', facecolors='gold', edgecolors='black', s=[250])
+
+
+
+        plt.xlabel('Number of CP gates')
+        plt.ylabel('r: regularization weight')
+        plt.title('Score')
 
 
 class Synthesize:
