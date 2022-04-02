@@ -414,7 +414,7 @@ class Results:
         plt.title('score')
 
 
-class Decompose:
+class Synthesize:
     """Class for efficient automated decomposing of unitary matrices into CZ+1q gates.
 
 
@@ -457,7 +457,6 @@ class Decompose:
 
     def generate_raw(self, options, initial_angles_array=None, keep_history=False):
 
-        # options = Decompose.updated_options(Decompose.default_static_options, options)
         anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
         loss_func = lambda angles: self.unitary_loss_func(anz.unitary(angles))
 
@@ -466,7 +465,7 @@ class Decompose:
 
         key = random.PRNGKey(options.random_seed)
         if initial_angles_array is None:
-            initial_angles_array = Decompose.generate_initial_angles(
+            initial_angles_array = Synthesize.generate_initial_angles(
                 key,
                 anz.num_angles,
                 anz.cp_mask,
@@ -535,16 +534,16 @@ class Decompose:
 
     def static(self, options, save_results=True, save_to=''):
 
-        results = Decompose._initialize_results(self, save_results, save_to)
+        results = Synthesize._initialize_results(self, save_results, save_to)
 
         print('\nStarting decomposition routine with the following options:')
         print('\n', options)
 
         print('\nComputing raw results...')
-        raw_results = Decompose.generate_raw(self, options)
+        raw_results = Synthesize.generate_raw(self, options)
 
         print('\nSelecting prospective results...')
-        raw = Decompose.evaluate_raw(self, raw_results, options)
+        raw = Synthesize.evaluate_raw(self, raw_results, options)
         prospective_results = raw
         prospective_results = [res for res in prospective_results if res[0] <= options.accepted_num_cz_gates]
         successful_results = []
@@ -563,7 +562,7 @@ class Decompose:
                     keep_history=False)
 
                 if success:
-                    new_decomposition = Decompose._make_decomposition(self, u, circ, best_angs, static_options=options)
+                    new_decomposition = Synthesize._make_decomposition(self, u, circ, best_angs, static_options=options)
                     successful_results.append(new_decomposition)
 
             if successful_results:
@@ -598,9 +597,9 @@ class Decompose:
             static_options = options.get_static(num_cp_gates, r)
             static_options.random_seed = random_seed
 
-            raw_results = Decompose.generate_raw(self, static_options)
+            raw_results = Synthesize.generate_raw(self, static_options)
 
-            evaluated_results = Decompose.evaluate_raw(
+            evaluated_results = Synthesize.evaluate_raw(
                 self,
                 raw_results,
                 static_options,
@@ -648,7 +647,7 @@ class Decompose:
         ]
 
         # Loading existing trials and decompositions.
-        results = Decompose._initialize_results(self, save_results, save_to)
+        results = Synthesize._initialize_results(self, save_results, save_to)
 
         if results.trials is not None:
             print('\nFound existing trials, resuming from here.')
@@ -723,7 +722,7 @@ class Decompose:
                     tqdm.write(f'\nFound a new decomposition with {num_cz_gates} gates.')
 
                     scoreboard.insert(0, num_cz_gates)
-                    new_decomposition = Decompose._make_decomposition(
+                    new_decomposition = Synthesize._make_decomposition(
                         self,
                         u,
                         circ,

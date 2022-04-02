@@ -213,7 +213,22 @@ The \textit{static} routine implemented in \cpflow uses the following default sp
 	\item Better than random search
 	\item Exact synthesis
 \end{itemize}
-\section{Benchmarks}
+\section{Synthesis of Toffoli gates}
+Toffoli gates are among the most essential building blocks for great variety of quantum algorithms \cite{}. The basic Toffoli gate, also known as the Controlled-Controlled-NOT is defined by
+\begin{align}
+\scalebox{1.0}{
+	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+		&&&&&\qw&\ctrl{1}&\qw&\qw&\qquad{ }\qquad&& \qw & \ctrl{1} & \qw & \qw \\
+		&CCX&&\qquad&  =\qquad&\qw&\ctrl{1}&\qw&\qw&\qquad=\qquad&	& \qw & \ctrl{1} & \qw & \qw \\
+		&&&&&\qw&\targ&\qw&\qw&\qquad{ }\qquad& & \gate{\mathrm{H}} & \control\qw & \gate{\mathrm{H}} & \qw\\
+		\\ }}
+\end{align}
+The right diagram represent the Toffoli gate as the $CCZ$ gate conjugated by the two Hadamard gates ($HZH=X$). Large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can be propagated to the large multi-controlled gates required in useful quantum algorithms. 
+
+\subsection{Toffoli 3}
+The basic Toffoli gate can be decomposed into 6 $CZ$ gates on the fully connected topology or 8 $CZ$ gates on the chain topology. Using the \cpflow we were able to find many inequivalent decomposition 
+
+\section{Benchmarks and results}
 \subsection{Clifford+T from database}
 \subsection{State prep for error correction}
 \section{Synthesis of special gates}

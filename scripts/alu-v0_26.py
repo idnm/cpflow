@@ -10,7 +10,7 @@ sys.path.append('/home/rqc-qit-0/nnemkov/jc_module')
 from jax_circuits import *
 
 layer = chain_layer(5)
-decomposer = Decompose(layer, target_unitary=u_target)
+decomposer = Synthesize(layer, target_unitary=u_target)
 options = AdaptiveOptions(
     min_num_cp_gates=20,
     max_num_cp_gates=60,
