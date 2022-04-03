@@ -38,9 +38,9 @@ class EntanglingBlock:
     @staticmethod
     def num_angles(gate_name):
         if gate_name == 'cp':
-            return 5
+            return 7
         else:
-            return 4
+            return 6
 
     def circuit(self):
         """Quantum circuit in `qiskit` corresponding to our block."""
@@ -55,15 +55,17 @@ class EntanglingBlock:
         elif self.gate_name == 'cz':
             qc.cz(0, 1)
         elif self.gate_name == 'cp':
-            qc.cp(angles[4], 0, 1)
+            qc.cp(angles[6], 0, 1)
         else:
             print("Gate '{}' not yet supported'".format(self.gate_name))
 
         # Apply single-qubit gates.
         qc.rx(angles[0], 0)
         qc.ry(angles[1], 0)
-        qc.rx(angles[2], 1)
-        qc.ry(angles[3], 1)
+        qc.rz(angles[2], 0)
+        qc.rx(angles[3], 1)
+        qc.ry(angles[4], 1)
+        qc.rz(angles[5], 1)
 
         return qc
 
@@ -75,14 +77,14 @@ class EntanglingBlock:
         elif self.gate_name == 'cz':
             entangling_matrix = cz_mat
         elif self.gate_name == 'cp':
-            entangling_matrix = cp_mat(self.angles[4])
+            entangling_matrix = cp_mat(self.angles[-1])
         else:
             raise Exception("Gate '{}' not yet supported'".format(self.gate_name))
 
-        x_rotations = jnp.kron(rx_mat(self.angles[0]), rx_mat(self.angles[2]))
-        y_rotations = jnp.kron(ry_mat(self.angles[1]), ry_mat(self.angles[3]))
-
-        return y_rotations @ x_rotations @ entangling_matrix
+        x_rotations = jnp.kron(rx_mat(self.angles[0]), rx_mat(self.angles[3]))
+        y_rotations = jnp.kron(ry_mat(self.angles[1]), ry_mat(self.angles[4]))
+        z_rotations = jnp.kron(rz_mat(self.angles[2]), rz_mat(self.angles[5]))
+        return z_rotations @ y_rotations @ x_rotations @ entangling_matrix
 
 
 def split_angles(angles, num_qubits, num_block_angles, layer_len=0, num_layers=0):
@@ -94,7 +96,7 @@ def split_angles(angles, num_qubits, num_block_angles, layer_len=0, num_layers=0
     else:
         layers_angles = block_angles[:layer_len * num_layers].reshape(num_layers, layer_len, num_block_angles)
     free_block_angles = block_angles[layer_len * num_layers:]
-    if num_block_angles == 5:  # CP blocks
+    if num_block_angles == 7:  # CP blocks
         cp_angles = [b[-1] for b in block_angles]
     else:
         cp_angles = []
@@ -171,7 +173,7 @@ class Ansatz:
 
         if self.block_type == 'cp':
             sample_angles = jnp.arange(self.num_angles)
-            cp_angles = split_angles(sample_angles, self.num_qubits, 5)['cp angles']
+            cp_angles = split_angles(sample_angles, self.num_qubits, 7)['cp angles']
             self.cp_mask = jnp.array([1 if a in cp_angles else 0 for a in sample_angles])
 
         self.unitary = lambda angles: build_unitary(self.num_qubits, self.block_type, self.placements, angles)
