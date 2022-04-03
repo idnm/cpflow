@@ -1,3 +1,7 @@
+from fractions import Fraction
+from functools import partial
+import math
+
 from matrix_utils import *
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import Operator
@@ -145,6 +149,7 @@ def convert_to_U(circuit):
     check_approximation(circuit, qc)
     return qc
 
+
 def U_to_ZXZ(gate):
     qc = QuantumCircuit(1)
     qc.append(gate, [0])
@@ -194,6 +199,55 @@ def reduce_angles(circuit, unitary_loss_func, reduce_threshold=1e-5, cp_threshol
     return qc
 
 
+def rationalize_all_rgates(circuit, max_denominator=32, angle_threshold=1e-3):
+    new_data = []
+    for gate, qargs, cargs in circuit.data:
+        if gate.name in ['rx', 'ry', 'rz']:
+            new_gate = rationalize_rgate(gate, max_denominator, angle_threshold)
+        else:
+            new_gate = gate
+        new_data.append((new_gate, qargs, cargs))
+
+    new_circuit = circuit.copy()
+    new_circuit.data = new_data
+
+    check_approximation(circuit, new_circuit)
+
+    return new_circuit
+
+
+def all_rgates_are_rational(circuit, power):
+    """Test if all rotation angles in the circuit are of the form pi*n/k where n is integer and k = 2**power"""
+
+    for gate, qargs, cargs in circuit.data:
+        if gate.name in ['rx', 'ry', 'rz']:
+            if not angle_is_rational(gate.params[0], power):
+                return False
+
+    return True
+
+
+def angle_is_rational(a, power):
+    f = Fraction(a/jnp.pi).limit_denominator(2**power)
+    if jnp.abs(jnp.pi*f - a) < 1e-6 and math.log2(f.denominator).is_integer():
+        return True
+    else:
+        return False
+
+
+def rationalize_rgate(gate, max_denominator, angle_threshold):
+    angle = gate.params[0]
+    rational_angle = jnp.pi * Fraction.from_float(angle / jnp.pi).limit_denominator(max_denominator)
+    if jnp.abs(rational_angle - angle) < angle_threshold:
+        new_angle = rational_angle
+    else:
+        new_angle = angle
+
+    new_gate = gate.copy()
+    new_gate.params = [new_angle]
+    return new_gate
+
+
 def solovay_kitaev(circuit, recursion_degree=0, recursion_depth=5):
     qc = circuit.copy()
     basis_gates = [TGate(), TdgGate(), SGate(), SdgGate(), HGate()]
@@ -205,14 +259,72 @@ def solovay_kitaev(circuit, recursion_degree=0, recursion_depth=5):
     return qc
 
 
-def make_exact(circuit, unitary_loss_func, cp_threshold=0.01, reduce_threshold=1e-5, recursion_degree=0, recursion_depth=5):
+def gate_filter(gate_names, d):
+    gate, qargs, cargs = d
+    if gate.name in gate_names:
+        return True
+    else:
+        return False
 
-    qc = reduce_angles(circuit, unitary_loss_func, reduce_threshold=reduce_threshold, cp_threshold=cp_threshold)
-    qc = solovay_kitaev(qc, recursion_degree=recursion_degree, recursion_depth=recursion_depth)
 
-    check_loss(qc, unitary_loss_func, threshold_loss=reduce_threshold)
+def gates_count(gate_names, circuit):
+    ops = circuit.count_ops()
+    total = 0
+    for gate_name in gate_names:
+        if gate_name in ops:
+            total += ops[gate_name]
+    return total
 
-    return qc
+
+def gates_depth(gate_names, circuit):
+    return circuit.depth(filter_function=partial(gate_filter, gate_names))
+
+
+def refine(
+        circuit,
+        unitary_loss_func,
+        max_denominator=32,
+        angle_threshold=1e-3,
+        cp_threshold=0.01,
+        reduce_threshold=1e-5,
+        recursion_degree=0,
+        recursion_depth=5,
+        verbose=False):
+
+    qc = circuit.copy()
+    refine_type = 'Approximate'
+    t_count = None
+    t_depth = None
+
+    try:
+        qc = reduce_angles(qc, unitary_loss_func, reduce_threshold=reduce_threshold, cp_threshold=cp_threshold)
+        refine_type = 'Approximate'
+    except ValueError as e:
+        if verbose:
+            print(e)
+        return qc, refine_type, t_count, t_depth
+
+    try:
+        qc = rationalize_all_rgates(qc, max_denominator=max_denominator, angle_threshold=angle_threshold)
+        qc = remove_zero_rgates(qc)
+        if 
+        refine_type = 'Rational'
+    except ValueError as e:
+        if verbose:
+            print(e)
+        return qc, refine_type, t_count, t_depth
+
+    try:
+        qc_sk = solovay_kitaev(qc, recursion_degree=recursion_degree, recursion_depth=recursion_depth)
+        t_count = gates_count(['t', 'tdg'], qc_sk)
+        t_depth = gates_depth(['t', 'tdg'], qc_sk)
+        refine_type = 'Clifford+T'
+    except ValueError as e:
+        if verbose:
+            print(e)
+        return qc, refine_type, t_count, t_depth
+
+    return qc, refine_type, t_count, t_depth
 
 
 def lasso_angles(loss_function, angles, eps=1e-5, threshold_loss=1e-6):

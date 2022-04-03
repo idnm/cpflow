@@ -9,6 +9,7 @@
 \usepackage{braket}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage{tikz}
 \hypersetup{
 	colorlinks   = true, %Colours links instead of ugly boxes
 	urlcolor     = blue, %Colour for external hyperlinks
@@ -237,7 +238,9 @@ Large multi-controlled Toffoli gates can be built recursively from the smaller o
 \subsection{Toffoli 3}
 The basic Toffoli gate can be decomposed into 6 $CZ$ gates on the fully connected topology or 8 $CZ$ gates on the chain topology. Using the \cpflow we were able to find many inequivalent decompositions with these optimal \CZ-counts. First, we ran the \textit{adaptive} routine for a 100 score evaluations to identify the best hyperparameters in each case. Results are reported at fig.\ref{fig trials}. Best hyperparameters for each topology are shown in tab.\ref{tab toff3}. Note that at this stage decompositions with the optimal \CZ-count have already been found, but it is instructive to further analyze the performance of the algorithm and generate more decompositions.
 
-To this end we ran the \static routine with optimal hyperparameters and 100 samples for each topology. Third column in tab.\ref{tab toff3} states how many of the initial conditions led to the decompositions with the optimal \CZ-count. For connected topology this is roughly $50\%$, while for chain topology about $10\%$. These figures are to be compared with the success ratios at the respective gate counts \ref{fig local minumums}, which are of order $15\%$ and $3\%$ respectively. The remarkable conclusion is that (at least in this simple example) out strategy our coherent learning of the architecture together with continuous parameters is more efficient than learning continuous parameters alone ... 
+To this end we ran the \static routine with optimal hyperparameters and 100 samples for each topology. Third column in tab.\ref{tab toff3} states how many of the initial conditions led to the decompositions with the optimal \CZ-count. For connected topology this is roughly $50\%$, while for chain topology about $10\%$. These figures are to be compared with the success ratios at the respective gate counts \ref{fig local minumums}, which are of order $15\%$ and $3\%$ respectively. The remarkable conclusion is that (at least in this simple example) out strategy our coherent learning of the architecture together with continuous parameters seems to be unreasonably efficient. With the best hyperparameters the frequency of finding \CZ-count optimal decompositions is greater than the corresponding success ratios.
+
+Let conclude the illustration of the algorithm at work with the following observation. If the regularization weight $r$ is large enough, the regularization term in \eqref{CP loss} effectively captures each of the \CP-angles at the local minimum (0 or $\pi$) that it was originally sampled near. This is similar to ...
 
 
 \begin{figure}
@@ -270,10 +273,64 @@ Chain topology
 		\toprule
 		& best k & best r              & Optimal decompositions &  \\ \midrule
 		Connected & 6      & $0.82\times10^{-3}$ & 49/100                 &  \\
-		Chain     & 14     & $0.96\times10^{-3}$ & 8/100                  &  \\
-		&        &                     &                        &  \\ \bottomrule
+		Chain     & 14     & $0.96\times10^{-3}$ & 8/100                  &  \\ \bottomrule
 	\end{tabular}
 \label{tab toff3}
+\end{table}
+\subsection{Toffoli 4}
+Variational synthesis of the C${}^{3}$X gate on various 4q topologies has been recently addressed in \cite{Nakanishi2021}. Using \cpflow we were able to reproduce all results presented there and achieve a minor improvement for the star-shaped topology, see table \ref{tab toff4}.
+
+\begin{table}[]
+	\begin{tabular}{@{}cccccc@{}}
+		\toprule
+		Topology
+		&\begin{tikzpicture}[scale=0.5]
+		\draw[fill] (0,0) circle [radius=0.1];
+		\draw[fill] (0,1) circle [radius=0.1];
+		\draw[fill] (1,0) circle [radius=0.1];
+		\draw[fill] (1,1) circle [radius=0.1];
+		
+		\draw (0,0) -- (1, 0) -- (1, 0) -- (1, 1) -- (0, 1) -- (0, 0) -- (1, 1);
+		\draw (1, 0) -- (0, 1);
+		\end{tikzpicture} 
+		&\begin{tikzpicture}[scale=0.5]
+		\draw[fill] (0.5,0) circle [radius=0.1];
+		\draw[fill] (0.5,0.5) circle [radius=0.1];
+		\draw[fill] (0,1) circle [radius=0.1];
+		\draw[fill] (1,1) circle [radius=0.1];
+		
+		\draw (0.5, 0) -- (0.5, 0.5) -- (1, 1) -- (0, 1) -- (0.5, 0.5);
+		\end{tikzpicture}
+		&\begin{tikzpicture}[scale=0.5]
+		\draw[fill] (0,0) circle [radius=0.1];
+		\draw[fill] (0,1) circle [radius=0.1];
+		\draw[fill] (1,0) circle [radius=0.1];
+		\draw[fill] (1,1) circle [radius=0.1];
+		
+		\draw (0,0) -- (1, 0) -- (1, 1) -- (0, 1) -- (0, 0);
+		\end{tikzpicture}  
+		&\begin{tikzpicture}[scale=0.5]
+		\draw[fill] (0.5,0) circle [radius=0.1];
+		\draw[fill] (0.5,0.6) circle [radius=0.1];
+		\draw[fill] (0,1) circle [radius=0.1];
+		\draw[fill] (1,1) circle [radius=0.1];
+		
+		\draw (0.5, 0) -- (0.5, 0.6) -- (1, 1);
+		\draw (0.5, 0.6) -- (0, 1);
+		\end{tikzpicture}    
+		& \begin{tikzpicture}[scale=0.5]
+		\draw[fill] (0,0) circle [radius=0.1];
+		\draw[fill] (0,1) circle [radius=0.1];
+		\draw[fill] (1,0) circle [radius=0.1];
+		\draw[fill] (1,1) circle [radius=0.1];
+		
+		\draw (0,1) -- (0, 0) -- (1, 0) -- (1, 1);
+		\end{tikzpicture}   \\ \midrule
+		CZ count & 14 (14)   & 14 (14) & 16 (16) & 16 (17) & 18 (18) \\
+		CZ depth &           &         &         &         & \\ \bottomrule       
+	\end{tabular}
+\caption{Decompositions of 4q Toffoli gate on various topolgies}
+\label{tab toff4}
 \end{table}
 
 

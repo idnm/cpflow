@@ -73,6 +73,7 @@ def qiskit_circ_to_jax_unitary(qc):
 
         return u0.reshape(2 ** num_qubits, 2 ** num_qubits)
 
-    assert cost_HST(u(qc_angles), Operator(qc.reverse_bits()).data) < 1e-6, 'Error in converting from qiskit to jax.'
+    cost = cost_HST(u(qc_angles), Operator(qc.reverse_bits()).data)
+    assert cost < 1e-5, f'Error in converting from qiskit to jax: HST distance {cost} too high.'
 
     return u, qc_angles, wires
