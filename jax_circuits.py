@@ -259,11 +259,20 @@ class Decomposition:
 
         return d
 
-    def refine(self, cp_threshold=0.01, reduce_threshold=1e-5, recursion_degree=0, recursion_depth=5):
+    def refine(
+            self,
+            max_denominator=32,
+            angle_threshold=0.01,
+            cp_threshold=0.01,
+            reduce_threshold=1e-5,
+            recursion_degree=0,
+            recursion_depth=5):
 
         qc, refine_type, t_count, t_depth = refine(
             self.circuit,
             self.unitary_loss_func,
+            max_denominator=max_denominator,
+            angle_threshold=angle_threshold,
             cp_threshold=cp_threshold,
             reduce_threshold=reduce_threshold,
             recursion_degree=recursion_degree,
