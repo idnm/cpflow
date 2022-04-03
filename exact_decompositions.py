@@ -307,7 +307,6 @@ def refine(
     try:
         qc = rationalize_all_rgates(qc, max_denominator=max_denominator, angle_threshold=angle_threshold)
         qc = remove_zero_rgates(qc)
-        if 
         refine_type = 'Rational'
     except ValueError as e:
         if verbose:
