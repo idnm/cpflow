@@ -307,7 +307,8 @@ def refine(
     try:
         qc = rationalize_all_rgates(qc, max_denominator=max_denominator, angle_threshold=angle_threshold)
         qc = remove_zero_rgates(qc)
-        refine_type = 'Rational'
+        if all_rgates_are_rational(qc, int(jnp.log2(max_denominator))):
+            refine_type = 'Rational'
     except ValueError as e:
         if verbose:
             print(e)
@@ -317,6 +318,11 @@ def refine(
         qc_sk = solovay_kitaev(qc, recursion_degree=recursion_degree, recursion_depth=recursion_depth)
         t_count = gates_count(['t', 'tdg'], qc_sk)
         t_depth = gates_depth(['t', 'tdg'], qc_sk)
+
+        qc = reduce_angles(qc_sk, unitary_loss_func, reduce_threshold=reduce_threshold, cp_threshold=cp_threshold)
+        qc = rationalize_all_rgates(qc, max_denominator=max_denominator, angle_threshold=angle_threshold)
+        qc = remove_zero_rgates(qc)
+
         refine_type = 'Clifford+T'
     except ValueError as e:
         if verbose:
