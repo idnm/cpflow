@@ -61,9 +61,9 @@ class EntanglingBlock:
 
         # Apply single-qubit gates.
         qc.rx(angles[0], 0)
-        qc.rz(angles[1], 0)
+        qc.ry(angles[1], 0)
         qc.rx(angles[2], 1)
-        qc.rz(angles[3], 1)
+        qc.ry(angles[3], 1)
 
         return qc
 
@@ -80,9 +80,9 @@ class EntanglingBlock:
             raise Exception("Gate '{}' not yet supported'".format(self.gate_name))
 
         x_rotations = jnp.kron(rx_mat(self.angles[0]), rx_mat(self.angles[2]))
-        z_rotations = jnp.kron(rz_mat(self.angles[1]), rz_mat(self.angles[3]))
+        y_rotations = jnp.kron(ry_mat(self.angles[1]), ry_mat(self.angles[3]))
 
-        return z_rotations @ x_rotations @ entangling_matrix
+        return y_rotations @ x_rotations @ entangling_matrix
 
 
 def split_angles(angles, num_qubits, num_block_angles, layer_len=0, num_layers=0):
