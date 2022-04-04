@@ -3,6 +3,7 @@
 import jax.numpy as jnp
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import Operator
+from qiskit.circuit.library import RXGate, RYGate, RZGate, CPhaseGate, CZGate, CXGate
 
 # Single-qubit pauli gates.
 
@@ -56,6 +57,40 @@ def cp_mat(a):
 
     return control0+control1
 
+
+class Gate:
+    def __init__(self, name, num_qubits, qiskit_gate, jax_matrix):
+        self.name = name
+        self.num_qubits = num_qubits
+        self.qiskit_gate = qiskit_gate
+        self.jax_matrix = jax_matrix
+
+    def jax_tensor(self, angle):
+        return self.jax_matrix(angle).reshape([2] * 2 * self.num_qubits)
+
+    @classmethod
+    def from_name(cls, name):
+        gate_dict = {
+            'rx': [1, RXGate, rx_mat],
+            'ry': [1, RYGate, ry_mat],
+            'rz': [1, RZGate, rz_mat],
+
+            'cx': [2, CXGate, cx_mat],
+            'cz': [2, CZGate, cz_mat],
+            'cp': [2, CPhaseGate, cp_mat],
+        }
+        if name not in gate_dict.keys():
+            raise TypeError(f"Gate '{name}' not implemented.")
+        return cls(name, *gate_dict[name])
+
+
+rx_gate = Gate.from_name('rx')
+ry_gate = Gate.from_name('ry')
+rz_gate = Gate.from_name('rz')
+
+cx_gate = Gate.from_name('cx')
+cz_gate = Gate.from_name('cz')
+cp_gate = Gate.from_name('cp')
 
 # Toffoli gates from qiskit
 qc = QuantumCircuit(3)

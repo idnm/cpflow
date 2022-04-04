@@ -11,6 +11,7 @@ from qiskit.circuit import Parameter
 
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll import scope
+from setuptools.command.rotate import rotate
 
 from tqdm.auto import tqdm
 
@@ -31,60 +32,57 @@ class EntanglingBlock:
         num_angles: total number of angles (parameters) in a block.
     """
 
-    def __init__(self, gate_name, angles):
-        self.gate_name = gate_name
-        self.angles = angles
-
     @staticmethod
-    def num_angles(gate_name):
-        if gate_name == 'cp':
-            return 7
-        else:
-            return 6
+    def get_num_angles(entangling_gate_name, rotation_gates):
+        return 2*len(rotation_gates) + (entangling_gate_name == 'cp')
+
+    def __init__(self, entangling_gate_name, rotation_gates, angles):
+        self.entangling_gate_name = entangling_gate_name
+        self.angles = angles
+        self.rotation_gates = rotation_gates
+
+        self.num_angles = EntanglingBlock.get_num_angles(entangling_gate_name, rotation_gates)
+        self.entangling_gate = Gate.from_name(self.entangling_gate_name)
+        self._up_angles = self.angles[::2]
+        self._down_angles = self.angles[1::2][:len(self._up_angles)]
+        if self.entangling_gate_name == 'cp':
+            self._cp_angle = self.angles[-1]
 
     def circuit(self):
         """Quantum circuit in `qiskit` corresponding to our block."""
 
-        angles = np.array(self.angles)  # convert from JAX array to numpy array if applicable.
-
         qc = QuantumCircuit(2)
 
         # Apply entangling gate
-        if self.gate_name == 'cx':
-            qc.cx(0, 1)
-        elif self.gate_name == 'cz':
-            qc.cz(0, 1)
-        elif self.gate_name == 'cp':
-            qc.cp(angles[6], 0, 1)
-        else:
-            print("Gate '{}' not yet supported'".format(self.gate_name))
+        if self.entangling_gate_name in ['cx', 'cz']:
+            qc.append(self.entangling_gate.qiskit_gate(), [0, 1])
+        elif self.entangling_gate_name == 'cp':
+            qc.append(self.entangling_gate.qiskit_gate(self._cp_angle), [0, 1])
 
         # Apply single-qubit gates.
-        qc.rx(angles[0], 0)
-        qc.ry(angles[1], 0)
-        qc.rz(angles[2], 0)
-        qc.rx(angles[3], 1)
-        qc.ry(angles[4], 1)
-        qc.rz(angles[5], 1)
+        up_angles = np.array(self._up_angles) # convert from JAX array to numpy array if applicable.
+        down_angles = np.array(self._down_angles)
+        for xyz, angle0, angle1 in zip(self.rotation_gates, up_angles, down_angles):
+            gate = Gate.from_name('r'+xyz)
+            qc.append(gate.qiskit_gate(angle0), [0])
+            qc.append(gate.qiskit_gate(angle1), [1])
 
         return qc
 
     def unitary(self):
         """2x2 unitary of the block."""
 
-        if self.gate_name == 'cx':
-            entangling_matrix = cx_mat
-        elif self.gate_name == 'cz':
-            entangling_matrix = cz_mat
-        elif self.gate_name == 'cp':
-            entangling_matrix = cp_mat(self.angles[-1])
-        else:
-            raise Exception("Gate '{}' not yet supported'".format(self.gate_name))
+        if self.entangling_gate_name in ['cx', 'cz']:
+            entagling_matrix = self.entangling_gate.jax_matrix
+        elif self.entangling_gate_name == 'cp':
+            entagling_matrix = self.entangling_gate.jax_matrix(self.angles[-1])
 
-        x_rotations = jnp.kron(rx_mat(self.angles[0]), rx_mat(self.angles[3]))
-        y_rotations = jnp.kron(ry_mat(self.angles[1]), ry_mat(self.angles[4]))
-        z_rotations = jnp.kron(rz_mat(self.angles[2]), rz_mat(self.angles[5]))
-        return z_rotations @ y_rotations @ x_rotations @ entangling_matrix
+        u = entagling_matrix
+        for xyz, angle0, angle1 in zip(self.rotation_gates, self._up_angles, self._down_angles):
+            gate = Gate.from_name('r'+xyz)
+            u = jnp.kron(gate.jax_matrix(angle0), gate.jax_matrix(angle1)) @ u
+
+        return u
 
 
 def split_angles(angles, num_qubits, num_block_angles, layer_len=0, num_layers=0):
@@ -96,7 +94,7 @@ def split_angles(angles, num_qubits, num_block_angles, layer_len=0, num_layers=0
     else:
         layers_angles = block_angles[:layer_len * num_layers].reshape(num_layers, layer_len, num_block_angles)
     free_block_angles = block_angles[layer_len * num_layers:]
-    if num_block_angles == 7:  # CP blocks
+    if num_block_angles % 2 == 1:  # CP blocks
         cp_angles = [b[-1] for b in block_angles]
     else:
         cp_angles = []
@@ -108,12 +106,12 @@ def split_angles(angles, num_qubits, num_block_angles, layer_len=0, num_layers=0
             'cp angles': cp_angles}
 
 
-def build_unitary(num_qubits, block_type, placements, angles):
+def build_unitary(num_qubits, entangling_gate_name, rotation_gates, placements, angles):
     layer, num_layers = placements['layers']
     free_placements = placements['free']
 
     layer_depth = len(layer)
-    num_block_angles = EntanglingBlock.num_angles(block_type)
+    num_block_angles = EntanglingBlock.get_num_angles(entangling_gate_name, rotation_gates)
 
     angles_dict = split_angles(angles, num_qubits, num_block_angles, len(layer), num_layers)
 
@@ -135,7 +133,7 @@ def build_unitary(num_qubits, block_type, placements, angles):
         angles = layers_angles[i]
 
         for a, p in zip(angles, layer):
-            gate = EntanglingBlock(block_type, a).unitary().reshape(2, 2, 2, 2)
+            gate = EntanglingBlock(entangling_gate_name, rotation_gates, a).unitary().reshape(2, 2, 2, 2)
             u = apply_gate_to_tensor(gate, u, p)
 
         return u
@@ -145,7 +143,7 @@ def build_unitary(num_qubits, block_type, placements, angles):
 
     # Add remainder(free) blocks.
     for a, p in zip(free_block_angles, free_placements):
-        gate = EntanglingBlock(block_type, a).unitary().reshape(2, 2, 2, 2)
+        gate = EntanglingBlock(entangling_gate_name, rotation_gates, a).unitary().reshape(2, 2, 2, 2)
         u = apply_gate_to_tensor(gate, u, p)
 
     return u.reshape(2 ** num_qubits, 2 ** num_qubits)
@@ -153,10 +151,11 @@ def build_unitary(num_qubits, block_type, placements, angles):
 
 class Ansatz:
 
-    def __init__(self, num_qubits, block_type, placements):
+    def __init__(self, num_qubits, entangling_gate_name, placements, rotation_gates='xz'):
 
         self.num_qubits = num_qubits
-        self.block_type = block_type
+        self.entangling_gate_name = entangling_gate_name
+        self.rotation_gates = rotation_gates
 
         placements.setdefault('layers', [[], 0])
         placements.setdefault('free', [])
@@ -168,15 +167,20 @@ class Ansatz:
         self.all_placements = self.layer * self.num_layers + self.free_placements
         self.num_blocks = len(self.all_placements)
 
-        num_block_angles = EntanglingBlock.num_angles(block_type)
+        num_block_angles = EntanglingBlock.get_num_angles(entangling_gate_name, rotation_gates)
         self.num_angles = 3 * num_qubits + num_block_angles * len(self.all_placements)
 
-        if self.block_type == 'cp':
+        if self.entangling_gate_name == 'cp':
             sample_angles = jnp.arange(self.num_angles)
-            cp_angles = split_angles(sample_angles, self.num_qubits, 7)['cp angles']
+            cp_angles = split_angles(sample_angles, self.num_qubits, num_block_angles)['cp angles']
             self.cp_mask = jnp.array([1 if a in cp_angles else 0 for a in sample_angles])
 
-        self.unitary = lambda angles: build_unitary(self.num_qubits, self.block_type, self.placements, angles)
+        self.unitary = lambda angles: build_unitary(
+            self.num_qubits,
+            self.entangling_gate_name,
+            self.rotation_gates,
+            self.placements,
+            angles)
 
     def circuit(self, angles=None):
         if angles is None:
@@ -185,7 +189,7 @@ class Ansatz:
         else:
             parametrized = False
 
-        num_block_angles = EntanglingBlock.num_angles(self.block_type)
+        num_block_angles = EntanglingBlock.get_num_angles(self.entangling_gate_name, self.rotation_gates)
         angles_dict = split_angles(angles, self.num_qubits, num_block_angles, len(self.layer), self.num_layers)
 
         surface_angles = angles_dict['surface angles']
@@ -204,7 +208,7 @@ class Ansatz:
 
         # Entangling gates according to placements
         for a, p in zip(block_angles, self.all_placements):
-            qc_block = EntanglingBlock(self.block_type, a).circuit()
+            qc_block = EntanglingBlock(self.entangling_gate_name, self.rotation_gates, a).circuit()
             qc = qc.compose(qc_block, p)
 
         return qc
@@ -414,8 +418,6 @@ class Results:
         plt.colorbar()
         plt.scatter(inf_num_list, inf_r_list, marker='x', color='red')
         plt.scatter([n_best], [r_best], marker='*', facecolors='gold', edgecolors='black', s=[250])
-
-
 
         plt.xlabel('Number of CP gates')
         plt.ylabel('r: regularization weight')
