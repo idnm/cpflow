@@ -323,6 +323,7 @@ class BasicOptions:
     learning_rate_at_verification: float = 0.01
     num_gd_iterations_at_verification: int = 5000
     random_seed: int = 0
+    rotation_gates: str = 'xyz'
 
 
 @dataclass
@@ -467,7 +468,7 @@ class Synthesize:
 
     def generate_raw(self, options, initial_angles_array=None, keep_history=False):
 
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates), options.rotation_gates)
         loss_func = lambda angles: self.unitary_loss_func(anz.unitary(angles))
 
         def regularization_func(angs):
@@ -499,7 +500,7 @@ class Synthesize:
     def evaluate_raw(self, raw_results, options, disable_tqdm=False):
 
         # options = Decompose.updated_options(Decompose.default_static_options, options)
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
+        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates), options.rotation_gates)
 
         below_entry_loss_results = filter_cp_results(
             raw_results,
@@ -561,7 +562,7 @@ class Synthesize:
         if prospective_results:
             print(f'\nFound {len(prospective_results)}. Verifying...')
 
-            anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates))
+            anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates), options.rotation_gates)
             for num_cz_gates, res in tqdm(prospective_results):
 
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
@@ -720,7 +721,7 @@ class Synthesize:
                     f'\nFound no decompositions potentially improving the current best count {current_best_cz}.')
 
             for num_cp_gates, res in results_to_verify:
-                anz = Ansatz(self.num_qubits, 'cp', placements=fill_layers(self.layer, num_cp_gates))
+                anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates), options.rotation_gates)
 
                 success, num_cz_gates, circ, u, best_angs = verify_cp_result(
                     res,

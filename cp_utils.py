@@ -226,7 +226,7 @@ def verify_cp_result(res, anz, unitary_loss_func, options, keep_history=False):
 
     refined_result = mynimize(
         lambda angs: unitary_loss_func(u(angs)),
-        anz.get_num_angles,
+        anz.num_angles,
         method=options.method,
         learning_rate=options.learning_rate_at_verification,
         num_iterations=options.num_gd_iterations_at_verification,
@@ -331,7 +331,7 @@ def cp_decompose(u_target,
             raise Exception("save_to is not provided.")
 
     key, *subkeys = random.split(key, num=num_samples + 1)
-    initial_angles_array = [random_cp_angles(anz.get_num_angles, anz.cp_mask, cp_dist=cp_dist, key=k) for k in subkeys]
+    initial_angles_array = [random_cp_angles(anz.num_angles, anz.cp_mask, cp_dist=cp_dist, key=k) for k in subkeys]
 
     print('\nComputing raw results.')
     raw_results = anz.learn(u_target,
@@ -406,7 +406,7 @@ def cp_ansatz_score(u_target,
 
 
     key, *subkeys = random.split(key, num=num_samples + 1)
-    initial_angles_array = [random_cp_angles(anz.get_num_angles, anz.cp_mask, cp_dist=cp_dist, key=k) for k in subkeys]
+    initial_angles_array = [random_cp_angles(anz.num_angles, anz.cp_mask, cp_dist=cp_dist, key=k) for k in subkeys]
 
     # print('\nComputing raw results.')
     raw_results = anz.learn(u_target,
