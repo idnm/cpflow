@@ -359,8 +359,18 @@ Variational synthesis of the C${}^{3}$X gate on various 4q topologies has been r
 To the best of our knowledge, the best decomposition of \cx{4} on a fully connected topology features $30$ \CZ gates, an upper bound valid for all diagonal gates \cite{Shende2006}. The best result of direct synthesis with \cpflow we observed featured 36 \CZ gates indicating 5q unitaries are significantly harder to address. However, synthesis with topological restrictions is not easily addressed in the analytic framework of \cite{Shende2006} and it is interesting to see if our numerical routine can be useful. First, for a reference point we take qiskit result (60 gates, but what if we start from optimal amount 30 instead of 36?).
 
 
+\begin{figure}
+	\scalebox{1.0}{
+	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
+		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
+		C^{4}X=\qquad\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{2} & \qw & \qw\\
+		\qquad& \targ & \ctrl{1} & \targ & \ctrl{1} & \qw & \qw & \qw\\
+		\qquad& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \gate{\mathrm{\sqrt{X}}} & \qw & \qw\\
+		\\ }}
+\caption{A decomposition of Toffoli 5 gate.}
+\end{figure}
 
- Synthesis of \cx{4} on a chain T
 
 \section{Benchmarks and results}
 \subsection{Clifford+T from database}
