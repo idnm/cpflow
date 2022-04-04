@@ -327,15 +327,40 @@ Variational synthesis of the C${}^{3}$X gate on various 4q topologies has been r
 		
 		\draw (0,1) -- (0, 0) -- (1, 0) -- (1, 1);
 		\end{tikzpicture}   \\ \midrule
-		CZ count & 14 (14)   & 14 (14) & 16 (16) & 16 (17) & 18 (18) \\
-		CZ depth &           &         &         &         & \\ \bottomrule       
+		CZ count & 14  & 14 & 16 & 16 & 18 \\
+		CZ depth & 11  & 13 & 15 & 16 & 14 \\ \bottomrule       
 	\end{tabular}
 \caption{Decompositions of 4q Toffoli gate on various topolgies}
 \label{tab toff4}
 \end{table}
 
+\begin{figure}
+\begin{align*}
+\scalebox{0.65}{
+	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+		& \gate{\mathrm{X}\,(\mathrm{\pi})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \ctrl{2} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{3} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{8}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{2} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{8}})} & \qw & \ctrl{3} & \gate{\mathrm{X}\,(\mathrm{\frac{7\pi}{8}})} & \ctrl{2} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw\\
+		& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{8}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{5\pi}{8}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+		& \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw & \qw & \control\qw & \qw & \qw & \qw & \qw\\
+		& \qw & \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-5\pi}{8}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw\\
+		\\ }}
+\\
+\scalebox{0.65}{
+	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+		& \ctrl{3} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{8}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{8}})} & \ctrl{3} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{8}})} & \ctrl{2} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{3} & \gate{\mathrm{Z}\,(\mathrm{\frac{7\pi}{8}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{5\pi}{8}})} & \ctrl{3} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{8}})} & \qw & \qw\\
+		& \qw & \qw & \qw & \control\qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-7\pi}{8}})} & \qw & \qw & \qw & \qw & \qw & \qw\\
+		& \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{8}})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+		& \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{8}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw\\
+		\\ }}
+\end{align*}	
+\caption{Decomposition of \cx{3} on the star topology with 16 \CZ-gates}
+\label{fig toff4 star}
+\end{figure}
 \subsection{Toffoli 5}
-To the best of our knowledge, the best decomposition of \cx{4}
+To the best of our knowledge, the best decomposition of \cx{4} on a fully connected topology features $30$ \CZ gates, an upper bound valid for all diagonal gates \cite{Shende2006}. The best result of direct synthesis with \cpflow we observed featured 36 \CZ gates indicating 5q unitaries are significantly harder to address. However, synthesis with topological restrictions is not easily addressed in the analytic framework of \cite{Shende2006} and it is interesting to see if our numerical routine can be useful. First, for a reference point we take qiskit result (60 gates, but what if we start from optimal amount 30 instead of 36?).
+
+
+
+ Synthesis of \cx{4} on a chain T
 
 \section{Benchmarks and results}
 \subsection{Clifford+T from database}
