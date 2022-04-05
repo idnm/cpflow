@@ -57,7 +57,7 @@ class EntanglingBlock:
         if self.entangling_gate_name in ['cx', 'cz']:
             qc.append(self.entangling_gate.qiskit_gate(), [0, 1])
         elif self.entangling_gate_name == 'cp':
-            qc.append(self.entangling_gate.qiskit_gate(np.array(self._cp_angle)), [0, 1])
+            qc.append(self.entangling_gate.qiskit_gate(np.array([self._cp_angle])[0]), [0, 1])
 
         # Apply single-qubit gates.
         up_angles = np.array(self._up_angles)  # convert from JAX array to numpy array if applicable.
