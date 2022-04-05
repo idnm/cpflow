@@ -298,6 +298,7 @@ def refine(
 
     try:
         qc = reduce_angles(qc, unitary_loss_func, reduce_threshold=reduce_threshold, cp_threshold=cp_threshold)
+        qc = remove_zero_rgates(qc)
         refine_type = 'Approximate'
     except ValueError as e:
         if verbose:

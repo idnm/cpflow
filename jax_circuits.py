@@ -57,10 +57,10 @@ class EntanglingBlock:
         if self.entangling_gate_name in ['cx', 'cz']:
             qc.append(self.entangling_gate.qiskit_gate(), [0, 1])
         elif self.entangling_gate_name == 'cp':
-            qc.append(self.entangling_gate.qiskit_gate(float(self._cp_angle)), [0, 1])
+            qc.append(self.entangling_gate.qiskit_gate(np.array(self._cp_angle)), [0, 1])
 
         # Apply single-qubit gates.
-        up_angles = np.array(self._up_angles) # convert from JAX array to numpy array if applicable.
+        up_angles = np.array(self._up_angles)  # convert from JAX array to numpy array if applicable.
         down_angles = np.array(self._down_angles)
         for xyz, angle0, angle1 in zip(self.rotation_gates, up_angles, down_angles):
             gate = Gate.from_name('r'+xyz)
@@ -151,7 +151,7 @@ def build_unitary(num_qubits, entangling_gate_name, rotation_gates, placements, 
 
 class Ansatz:
 
-    def __init__(self, num_qubits, entangling_gate_name, placements, rotation_gates='xz'):
+    def __init__(self, num_qubits, entangling_gate_name, placements, rotation_gates='xyz'):
 
         self.num_qubits = num_qubits
         self.entangling_gate_name = entangling_gate_name
