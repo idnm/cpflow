@@ -1,4 +1,4 @@
-\documentclass[amsfonts, amssymb, aps, nofootinbib, twocolumn]{revtex4-2}
+\documentclass[draft, amsfonts, amssymb, aps, nofootinbib, twocolumn]{revtex4-2}
 \usepackage[T1]{fontenc}
 \usepackage{tgtermes}
 \usepackage{amsmath}
@@ -18,14 +18,15 @@
 }
 
 \newcommand{\cpflow}{\textit{cpflow }}
-\newcommand{\static}{\textit{static }}
-\newcommand{\adaptive}{\textit{adaptive }}
 \newcommand{\CZ}{$CZ$}
 \newcommand{\CX}{$CX$}
 \newcommand{\CP}{$CP$}
 \newcommand{\T}{$T$}
-\newcommand{\tgate}[1]{\textcolor{red}{#1}}
+\newcommand{\tgate}[1]{\textcolor{blue}{#1}}
 \newcommand{\cx}[1]{C${}^{#1}$X}
+\newcommand{\cz}[1]{C${}^{#1}$Z}
+\newcommand{\static}{\textit{\textbf{static}}}
+\newcommand{\adaptive}{\textit{\textbf{adaptive}}}
 \begin{document}
 \title{Variational synthesis of quantum circuits by coherent architecture optimization}
 \begin{abstract}
@@ -172,12 +173,12 @@ It is therefore a natural idea to use numeric optimization and heuristic methods
 
 \section{Variational synthesis and its challenges}
 
-\begin{figure}
+\begin{figure*}
 	\includegraphics[width=0.4\textwidth]{figures/3q_success_chart}
 	\includegraphics[width=0.4\textwidth]{figures/4q_success_chart}
 	\caption{Local minimums as a function of circuit complexity. Datapoints for random unitaries are advanced by a half unit along $x$ axis for clarity.}
 	\label{fig local minumums}
-\end{figure}
+\end{figure*}
 
 Decomposition into 2q and 1q gates implies that two problems need to be solved:
 \begin{itemize}
@@ -196,7 +197,7 @@ For example, let $U(a)$ be the unitary matrix of the template circuit from fig.\
 
 We now extend this simple numerical experiment more systematically. Fig.\ref{fig local minumums} charts the success ratios for 3q and 4q circuits as a function of the number of gates. The basic procedure is the same with several additions. First, we used templates with fully connected layers (see fig.\ref{fig layers}) extended to the required number of 2q gates. For each number of 2q gates we take 10 different random parameter assignments $a^*$ and compute success ratios for each of them using 1000 initial conditions, generated uniformly at random. Blue markers represent mean success ratios averaged over 10 target circuits, while error bars quantify the mean standard deviation. Absence of blue markers implies that the empirical success ratio turned out vanishing, i.e. that the global minimum was not reached. For 4q circuits datapoints were only collected for every third gate count.
 
-There are several remarkable features of the graph. First, the success ratio drops very quickly as the 2q gate count increases, reaching values below $10^{-3}$ at 10 \CZ gates for 3q circuits and 15 \CZ gates fro 4q circuits. Next, perhaps surprisingly, the success ratio rises back and gets close to unity as the number of \CZ gates approaches the theoretical lower bound \eqref{TLB}. In fact, this is in agreement with the empirical evidence found in the literature \cite{Madden2021, Rakyta2021, Kiani2020} that near the theoretical lower bound numerical compilation appears to be very efficient. A plausible explanation for this fact \cite{Ge2022} is that when the template is sufficiently expressive, optimization w.r.t. parameters becomes essentially the same as optimization over the unitary matrices themselves. At the same time, cost functions typically considered in quantum computing are simple, often linear or quadratic functions of the unitary matrix elements and hence are not prone to local minimums. Finally, although there is a certain spread of success ratios across different template instances, dependence on the 2q gate count sets the dominating trend.
+There are several remarkable features of the graph. First, the success ratio drops very quickly as the 2q gate count increases, reaching values below $10^{-3}$ at 10 \CZ gates for 3q circuits and 15 \CZ gates fro 4q circuits. Next, perhaps surprisingly, the success ratio rises back to values of order 1 as the number of \CZ gates approaches the theoretical lower bound \eqref{TLB}. In fact, this is in agreement with the empirical evidence found in the literature \cite{Madden2021, Rakyta2021, Kiani2020} that near the theoretical lower bound numerical compilation appears to be very efficient. A plausible explanation for this fact \cite{Ge2022} is that when the template is sufficiently expressive, optimization w.r.t. parameters becomes essentially the same as optimization over the unitary matrices themselves. At the same time, cost functions typically considered in quantum computing are simple, often linear or quadratic functions of the unitary matrix elements and hence are not prone to local minimums. Finally, although there is a certain spread of success ratios across different template instances, dependence on the 2q gate count sets the dominating trend.
 
 This suggests that success ratio is mostly determined by the template, not by the target. To confirm this  intuition  we carried out additional experiments using random unitaries $V$ instead of template instances as targets. The difficulty here is that the true value of the global minimum of $D(U(a), V)$ is not known, but the presence of local minimums is still manifest. We modify definition of the success ratio in this case, by counting as successful all optimization runs that approached sufficiently closely the lowest value of $D$ across all runs for a given target unitary. Note that with this modified definition the success ratio can never be zero (because there is always at least a single run with the lowest value). We see that in the regime when success ratios for random instances are sufficiently high success ratios for random unitaries closely parallel them, both in mean and in deviation. In the regions where success ratios for random instances are very small or vanishing, success ratios for random unitaries are non-zero (they can not be by construction) but are sufficiently close to zero. We expect them to drop further if more samples are accounted for. Overall, our experiments strongly suggest that local minimums are mostly determined by the templates and not by targets.
 
@@ -252,7 +253,7 @@ This scheme can be modified in many ways: by choosing a different regularization
 \item \textit{\textbf{Defining the search space.}} Choose a distribution to draw $k$ and $r$ from. Typically we use uniform distribution for $k$ in some integer range and lognormal distribution for $r$ with mean around $5\times 10^{-4}$ and standard deviation $0.5$.
 \item \textit{\textbf{Evaluating score function.}} Draw a sample $k, r$ from the hyperparmeter distribution according to the Hyperopt algorithm. Execute steps 1 and 2 from the basic routine. Any $CZ$-count is accepted at this stage, i.e. the results are only selected by the value of the original loss function $L(U_{CP}^k(a))$. Let $k_1, k_2,\dots$ be $CZ$ counts of all prospective results selected. We define the score function (reminiscent of the \textit{softmin}) by 
 \begin{align}
--\log_2\frac{1}{N}\sum_{i}2^{-k_i}
+\text{score}=-\log_2\frac{1}{N}\sum_{i}2^{-k_i}
 \end{align}
 where $N$ is the total number of raw samples. The minimum of this function is $k_0$, the $CZ$-count of the best possible decomposition. It can be reached if all raw samples reached the threshold fidelity and have the optimal count $k_0$ when projected to $CZ$-circuits. The maximum is $+\infty$ when none of the raw samples passed the fidelity threshold.
 \item \textit{\textbf{Verifying best decompositions.}} At the previous stage all prospective decompositions are not verified as the verification process is time-consuming is should not significantly alter the score estimation (some of the decompositions may fail to pass the verification, but this is rare). However, if there are prospective decompositions that improve on the current best they are verified and if accepted, the current best is replaced.
@@ -269,28 +270,47 @@ The \textit{static} routine implemented in \cpflow uses the following default sp
 	\item Exact synthesis
 \end{itemize}
 \section{Synthesis of Toffoli gates}
-Toffoli gates are among the most essential building blocks for a great variety of quantum algorithms \cite{}. The basic Toffoli gate, also known as the Controlled-Controlled-NOT or the CCX gate is depicted as follows
-\begin{align}
+The choice of the Toffoli gates as our key benchmark examples is motivated by several considerations. First, the Toffoli gates are among the most essential building blocks for a great variety of quantum algorithms \cite{}. Next, large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can potentially be propagated to the large multi-controlled gates required in useful quantum algorithms. Lastly, Toffoli gates have been studied extensively \cite{Barenco1995, Song2003, Maslov, Shende2009, Schuch} and although deriving rigorous bounds beyond the 3q case is very difficult, the best existing decompositions are likely to indeed be optimal.
+
+The basic Toffoli gate, also known as the Controlled-Controlled-NOT or the \cx{2} gate is depicted as follows
+\begin{align*}
 \scalebox{1.0}{
 	\Qcircuit @C=1.0em @R=0.2em @!R { \\
 		&&&&&\qw&\ctrl{1}&\qw&\qw&\qquad{ }\qquad&& \qw & \ctrl{1} & \qw & \qw \\
-		&CCX&&\qquad&  =\qquad&\qw&\ctrl{1}&\qw&\qw&\qquad=\qquad&	& \qw & \ctrl{1} & \qw & \qw \\
+		&C{}^{2}X&&\qquad&  =\qquad&\qw&\ctrl{1}&\qw&\qw&\qquad=\qquad&	& \qw & \ctrl{1} & \qw & \qw \\
 		&&&&&\qw&\targ&\qw&\qw&\qquad{ }\qquad& & \gate{\mathrm{H}} & \control\qw & \gate{\mathrm{H}} & \qw\\
 		\\ }}
-\end{align}
-The right diagram represents the Toffoli gate as the $CCZ$ gate conjugated by the two Hadamard gates ($HZH=X$). The $CCZ$ gate itself is represented by a diagonal matrix $CCZ=\operatorname{diag}(1,1,1,1,1,1,1,-1)$ and is symmetric with respect to all qubits. Therefore, up to a conjugation by 1q gates the Toffoli gates (C${}^2$X as well as C${}^{n}$X) are also symmetric wrt all qubits. This implies that even if the symmetry between the qubits is broken by e.g. a non-trivial topology, the choice of the target qubit is not relevant for the synthesis problem.
-
-Large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can be propagated to the large multi-controlled gates required in useful quantum algorithms. 
-
-\subsection{Toffoli 3}
-The basic Toffoli gate can be decomposed into 6 $CZ$ gates on the fully connected topology or 8 $CZ$ gates on the chain topology. Using the \cpflow we were able to find many inequivalent decompositions with these optimal \CZ-counts. First, we ran the \textit{adaptive} routine for a 100 score evaluations to identify the best hyperparameters in each case. Results are reported at fig.\ref{fig trials}. Best hyperparameters for each topology are shown in tab.\ref{tab toff3}. Note that at this stage decompositions with the optimal \CZ-count have already been found, but it is instructive to further analyze the performance of the algorithm and generate more decompositions.
-
-To this end we ran the \static routine with optimal hyperparameters and 100 samples for each topology. Third column in tab.\ref{tab toff3} states how many of the initial conditions led to the decompositions with the optimal \CZ-count. For connected topology this is roughly $50\%$, while for chain topology about $10\%$. These figures are to be compared with the success ratios at the respective gate counts \ref{fig local minumums}, which are of order $15\%$ and $3\%$ respectively. The remarkable conclusion is that (at least in this simple example) out strategy our coherent learning of the architecture together with continuous parameters seems to be unreasonably efficient. With the best hyperparameters the frequency of finding \CZ-count optimal decompositions is greater than the corresponding success ratios.
-
-Let conclude the illustration of the algorithm at work with the following observation. If the regularization weight $r$ is large enough, the regularization term in \eqref{CP loss} effectively captures each of the \CP-angles at the local minimum (0 or $\pi$) that it was originally sampled near. This is similar to ...
+\end{align*}
+The right diagram represents the Toffoli gate as the \cz{2} gate conjugated by the two Hadamard gates ($HZH=X$). The \cz{2} gate itself is represented by a diagonal matrix \cz{2}$=\operatorname{diag}(1,1,1,1,1,1,1,-1)$ and is symmetric with respect to all qubits. Therefore, up to a conjugation by 1q gates the Toffoli gates (\cx{2} as well as any \cx{n}) are also symmetric. This implies that even if the symmetry between the qubits is broken by e.g. a non-trivial topology, the choice of the target qubit for the Toffoli gate is not relevant for our synthesis problem.
 
 
-\begin{figure}
+\subsection{3q Toffoli \label{sec toff3}}
+\begin{figure*}
+	\includegraphics[scale=0.5]{figures/toff3_trials_conn}
+	\includegraphics[scale=0.5]{figures/toff3_trials_chain}
+	\caption{Visualization of the hyperparameter optimization during \adaptive synthesis of the 3q Toffoli gate on connected (left panel) and chain (right panel) topologies. Red crosses corresponds to infinite score values and imply that no valid decompositions were found at these points. Gold stars mark the best hyperparameter configurations.}
+	\label{fig trials}	
+\end{figure*}
+In this subsection we use \cpflow to find efficient decompositions of the 3q Toffoli gate and illustrate many important features of the algorithm along the way. 3q Toffoli gate can be decomposed into 6 \CZ gates on the fully connected topology or 8 \CZ gates on the chain topology. Using the \cpflow we were able to find many inequivalent decompositions with these optimal \CZ-counts. First, we ran the \adaptive routine with 100 evaluation steps to identify the best hyperparameters in each case. Results are reported at fig.\ref{fig trials}. Best hyperparameters for each topology are shown in tab.\ref{tab toff3}. 
+
+\begin{table}[]
+	\begin{tabular}{@{}cccccc@{}}
+		\toprule
+		& \shortstack[l]{Best number of\\ $\CP$ gates $k$} && \shortstack[l]{Best regularization\\ weight $r$} &  \shortstack[l]{Optimal \\ decompositions} &  \\ \midrule
+		Connected & 7      && $1.31\times10^{-3}$ & 28/100                 &  \\
+		Chain     & 14     && $0.88\times10^{-3}$ & 19/100                  &  \\ \bottomrule
+	\end{tabular}
+\caption {Synthesis statistics for the 3q Toffoli gate.}
+\label{tab toff3}
+\end{table}
+
+Note that at this stage decompositions with the optimal \CZ-counts have already been found, but it is instructive to further analyze the performance of the algorithm and generate more decompositions. To this end we ran the \static routine with optimal hyperparameters and 100 samples for each topology. Third column in tab.\ref{tab toff3} states how many of the initial conditions led to the decompositions with the optimal \CZ-count. For connected and chain topologies respectively, chances of finding optimal decompositions are roughly $30\%$ and $20\%$ respectively. These figures are to be compared with the success ratios at the corresponding gate counts \ref{fig local minumums}, which are of order $10\%$ and $2\%$ respectively. The remarkable conclusion is that (at least in this simple example) our strategy of coherent learning of the architecture together with continuous parameters seems to be unreasonably efficient. With the best hyperparameters, the frequency of finding \CZ-count optimal decompositions is greater than the mean success ratios for reaching the global minimum for fixed architectures.
+
+Decompositions which are initially generated by \cpflow are approximate and many 1q gates bear little resemblance to standard 1q gates such as $H, X, Y, Z, S, T$  which are expressible as rotation gates angles being rational multiples of $\pi$. We develop a simple procedure that tries to eliminate redundant gates, rationalize remaining ones and if possible expand the circuit into Clifford+T gate set. Details of the procedure are deferred to \ref{app exact}. The procedure is heuristic and does not guarantee elimination of all spurious angles, but often works well in practice. Applying it to the decompositions found at the \static stage we are able to generate 12 Clifford+T decompositions of 3q Toffoli gates for each topology. We then sorted these decompositions according to four metrics : \CZ count, \CZ depth, \T count and \T depth. For both topologies decompositions with the smallest \T  depth were simultaneously optimal with respect to the three remaining metrics. Figure fig.\ref{fig toff3} depicts  the best decompositions that were generated. Note that decomposition on the chain layer has \T depth 3 which may be a new result.
+
+
+\begin{figure*}
+\begin{flushleft}
 	Connected topology
 	\scalebox{0.7}{
 	\Qcircuit @C=1.0em @R=0.4em @!R { \\
@@ -305,29 +325,14 @@ Chain topology
 		& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{4}})}} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\tgate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})}} & \qw & \qw\\
 		& \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \qw & \qw & \control\qw & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\tgate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})}} & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \qw & \qw\\
 		\\ }}
+\end{flushleft}
 \label{fig toff3}
 \caption{Decompositions of Toffoli 3 gate that are likely to be optimal with respect to all four metrics: \CZ-depth, \CZ-count, \T-depth, \T-count. Non-Clifford gates are highlighted.}
-\end{figure}
+\end{figure*}
 
-\begin{figure}
-\includegraphics[scale=0.5]{figures/toff3_trials_conn}
-\includegraphics[scale=0.5]{figures/toff3_trials_chain}
-\caption{Visualization of hyperparameter optimization in synthesis of Toffoli gate on connected (left panel) and chain (right panel) topologies. Red crosses corresponds to infinite score value and imply that no valid decompositions were found at these points. Gold star marks the best hyperparameter configuration.}
-\label{fig trials}	
-\end{figure}
-\begin{table}[]
-	\begin{tabular}{@{}ccccc@{}}
-		\toprule
-		& best k & best r              & Optimal decompositions &  \\ \midrule
-		Connected & 6      & $0.82\times10^{-3}$ & 49/100                 &  \\
-		Chain     & 14     & $0.96\times10^{-3}$ & 8/100                  &  \\ \bottomrule
-	\end{tabular}
-\label{tab toff3}
-\end{table}
-\subsection{Toffoli 4}
-Variational synthesis of the C${}^{3}$X gate on various 4q topologies has been recently addressed in \cite{Nakanishi2021}. Using \cpflow we were able to reproduce all results presented there and achieve a minor improvement for the star-shaped topology, see table \ref{tab toff4}.
 
-\begin{table}[]
+\subsection{4q Toffoli \label{sec toff4}}
+\begin{table}[tp]
 	\begin{tabular}{@{}cccccc@{}}
 		\toprule
 		Topology
@@ -376,11 +381,16 @@ Variational synthesis of the C${}^{3}$X gate on various 4q topologies has been r
 		CZ count & 14  & 14 & 16 & 16 & 18 \\
 		CZ depth & 11  & 13 & 15 & 16 & 14 \\ \bottomrule       
 	\end{tabular}
-\caption{Decompositions of 4q Toffoli gate on various topolgies}
-\label{tab toff4}
+	\caption{Decompositions of 4q Toffoli gate on various topolgies}
+	\label{tab toff4}
 \end{table}
 
-\begin{figure}
+We now proceed to the decomposition of 4q Toffoli gates which are significantly more challenging. Variational synthesis of the 4q Toffoli gate on various 4q topologies has been recently addressed in \cite{Nakanishi2021}. Remarkably, the approach taken there was that of an exhaustive search over all architectures. It is interesting to note that for exhaustive search connectivity restrictions actually simplify the problem. Using \cpflow we were able to reproduce all results presented in \cite{Nakanishi2021}, see table \ref{tab toff4}. Moreover, for the star-shaped topology we achieved a minor improvement reducing the \CZ count from 17 to 16. The corresponding circuit is depicted at fig.\ref{fig toff4 star}. Note that we did not look for decompositions minimizing \CZ depth, but simply report \CZ depths of the first \CZ count optimal decompositions found during the search.
+
+In all except for the fully connected topology, decompositions were discovered by the \adaptive algorithm with the full range of template depth for 4q unitaries (0, 61), 500 hundred samples at each hyperparameter configuration and 50 hyperparameter evaluations. The clock time in each of those case was less than an hour on our server \ref{server}. Interestingly, the fully connected topology turned out t
+
+
+\begin{figure*}
 \begin{align*}
 \scalebox{0.65}{
 	\Qcircuit @C=1.0em @R=0.2em @!R { \\
@@ -398,9 +408,9 @@ Variational synthesis of the C${}^{3}$X gate on various 4q topologies has been r
 		& \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{8}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw\\
 		\\ }}
 \end{align*}	
-\caption{Decomposition of \cx{3} on the star topology with 16 \CZ-gates}
+\caption{Decomposition of the 4q Toffoli gate on the star topology with 16 \CZ-gates}
 \label{fig toff4 star}
-\end{figure}
+\end{figure*}
 \subsection{Toffoli 5}
 To the best of our knowledge, the best decomposition of \cx{4} on a fully connected topology features $30$ \CZ gates, an upper bound valid for all diagonal gates \cite{Shende2006}. The best result of direct synthesis with \cpflow we observed featured 36 \CZ gates indicating 5q unitaries are significantly harder to address. However, synthesis with topological restrictions is not easily addressed in the analytic framework of \cite{Shende2006} and it is interesting to see if our numerical routine can be useful. First, for a reference point we take qiskit result (60 gates, but what if we start from optimal amount 30 instead of 36?).
 
