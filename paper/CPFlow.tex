@@ -17,16 +17,17 @@
 	citecolor   = red %Colour of citations
 }
 
-\newcommand{\cpflow}{\textit{cpflow }}
-\newcommand{\CZ}{$CZ$}
-\newcommand{\CX}{$CX$}
-\newcommand{\CP}{$CP$}
-\newcommand{\T}{$T$}
+\newcommand{\CZ}{CZ }
+\newcommand{\CX}{CX }
+\newcommand{\CP}{CP }
+\newcommand{\T}{T }
 \newcommand{\tgate}[1]{\textcolor{blue}{#1}}
 \newcommand{\cx}[1]{C${}^{#1}$X}
 \newcommand{\cz}[1]{C${}^{#1}$Z}
-\newcommand{\static}{\textit{\textbf{static}}}
-\newcommand{\adaptive}{\textit{\textbf{adaptive}}}
+\newcommand{\cpflow}{\textrm {cpflow }}
+\newcommand{\static}{\textsc{static }}
+\newcommand{\adaptive}{\textsc{adaptive }}
+\newcommand{\param}[1]{\texttt{#1}}
 \begin{document}
 \title{Variational synthesis of quantum circuits by coherent architecture optimization}
 \begin{abstract}
@@ -58,7 +59,7 @@ Variational unitary synthesis seeks to find the best circuit constructions and i
 \end{itemize}
 
 \begin{align}
-d(U,V)=1-\frac1{4^n}|\operatorname{Tr}{U^\dagger V}|^2 \ . \label{d hst}
+D(U,V)=1-\frac1{4^n}|\operatorname{Tr}{U^\dagger V}|^2 \ . \label{D hst}
 \end{align}
 
 \begin{align}
@@ -239,38 +240,58 @@ The loss function directly addressed by CPFlow is given by
 \end{align}
 The first term is simply the value of the loss function at the given unitary. The second term is the regularization term summing the $CP$-penalties for all $CP$-angles in the circuit. The number of 2q gates $k$ and the overall regularization weight $r$ are two of the most important hyperparameters of the model.
 
-Three main stages of the algorithm are as follows.
-
+Three main stages of the algorithm are described below. Precise details are given in sec.\ref{sec details}.
+\\[6pt]
+\hrule
+\hrule
+\vspace{6pt}
+{\large\textbf{\qquad Static synthesis}}
+\vspace{6pt}
+\hrule
 \begin{enumerate}
-\item \textit{\textbf{ Raw sampling.}} Loss function \eqref{CP loss} is minimized starting from many initial conditions. Both the $CP$-angles and angles of 1q gates are selected uniformly and independently at random\footnote{Distribution of $CP$ angles could be changed.}. 
-\item \textit{\textbf{Selecting prospective results.}} Results of the first step are selected based on two criteria (i) the original loss function $L(U^k_{CP}(a^*))$ must be below a given threshold (typically we use $10^{-4}$) and (ii) the number of gates $\sum_{a_i\in CP}G(a_i)$ is below a specified value. Condition (i) means we only accept circuits that are close enough to the global minimum while (ii) filters out decompositions with too high $CZ$ count.
-\item \textit{\textbf{Verification.}} Circuits selected at the previous step are first projected from $CP$ to $CZ$ circuits $U_{CP}^k(a)\to U_{CZ}^{k'}(a')$ by rounding off values of $CP$ gates that are sufficiently close to $0$ or $2\pi$ and substituting other $CP$ gates with their 2-CZ decompositions. 1q angles $a'$ are mostly inherited from $a$ except when a decomposition procedure was used. Next, the loss function $L(U_{CZ}^{k'}(a)$ (without the regularization term) is optimized starting from initial angles $a=a'$. The verification is considered successful if the projected $CZ$ circuit reaches a more stringent loss threshold (typically we use $10^{-6}$).
+\item \textit{\textbf{ Raw sampling.}} Loss function \eqref{CP loss} is minimized starting from many initial conditions (\param{num\_samples}). For each sample both the \CP angles and angles of 1q gates are generated uniformly and independently at random. 
+\item \textit{\textbf{Selecting prospective results.}} Results of the first step are filtered based on two criteria (i) the original loss function $L(U^k_{CP})$ must be below an  given threshold (\param{entry\_loss}) and (ii) the number of \CZ gates in a projected \CP circuit is below a specified value (\param{accepted\_num\_cz\_gates}). Condition (i) means we only accept circuits that are close enough to the global minimum while (ii) rejects decompositions with too high \CZ count. Projection from \CP to \CZ circuits $U_{CP}^k(a)\to U_{CZ}^{k'}(a')$ is peformed by rounding off angles of \CP gates that are sufficiently close (within \param{threshold\_cp}) to $0$ or $\pi$ and substituting other \CP gates with their 2-\CZ decompositions. 
+\item \textit{\textbf{Verification.}} At this stage the projected circuits contain only \CZ gates and the regularization term is removed. For each prospective \CZ circuit the original loss function $L(U_{CZ}^{k'}(a)$ is further optimized starting from initial angles $a'$ inherited from the \CP circuit. The verification is considered successful if the \CZ circuit reaches a more stringent loss threshold (\param{target\_loss}). 
 \end{enumerate}
+\hrule
+\hrule
+\vspace{20pt}
 
-This scheme can be modified in many ways: by choosing a different regularization function, using non-uniform sampling of initial angles, altering details of the gradient based optimizer to name a few. We have mostly experimented with varying two hyperparameters that are evidently crucial, the number of $CP$ gates $k$ and the regularization weight $r$. Heuristically, we find that a reasonable number of $CP$ gates is about twice as much as the expected $CZ$-count of the optimal solution and the value of $r$ for loss functions normalized so that $0\le L(U) \le 1$ is of order $r=5\times 10^{-4}$. To make better choices of hyperparameters on a case by case basis we use Bayesian tuning algorithm provided by Hyperopt package \cite{hyperopt, ?}. Tuning of hyperparameters is significantly hindered by the fact that the loss function is stochastic. Taking sufficiently many samples to reliably estimate the quality of a hyperparameter configuration may cost too much computational resources, while not taking enough the acquired data too noisy to be useful. On the positive side the goal of the algorithm is not to find the best hyperparameters, but rather to find the best decompositions, which can occur (although less likely) for suboptimal hyperparameters as well. The routine including hyperparameter tuning can be summarized as follows.
+This basic scheme can be modified in many ways: by choosing a different regularization function, different sampling of the initial angles or altering the details of the gradient based optimizer to name a few. We have mostly experimented with varying two hyperparameters that are evidently crucial, the number of $CP$ gates $k$ and the regularization weight $r$. Heuristically, we find that a reasonable number of $CP$ gates is usually between $k_0$ and $2k_0$ where $k_0$ is the expected optimal \CZ count of the decomposition. A performant choice for the regularization weight $r$ for loss functions normalized so that $0\le L(U) \le 1$ is $r=5\times 10^{-4}$. There could be exceptions to both these rules of thumb. To make better choices of hyperparameters on a case by case basis we use Bayesian tuning algorithm provided by Hyperopt package \cite{hyperopt}.
 
+Tuning of hyperparameters is significantly hindered by the fact that the loss function is stochastic. Taking sufficiently many samples to reliably estimate the quality of a hyperparameter configuration may cost too much computational resources, while not taking enough can make the acquired data too noisy to be useful. On the positive side the goal of the algorithm is not to find the best hyperparameters, but rather to find the best decompositions which are routinely found with suboptimal configurations as well. The routine including hyperparameter tuning can be summarized as follows.
+\\[6pt]
+\hrule
+\hrule
+\vspace{6pt}
+{\large\textbf{\qquad Adaptive synthesis}}
+\vspace{6pt}
+\hrule
 \begin{enumerate}
 \item \textit{\textbf{Defining the search space.}} Choose a distribution to draw $k$ and $r$ from. Typically we use uniform distribution for $k$ in some integer range and lognormal distribution for $r$ with mean around $5\times 10^{-4}$ and standard deviation $0.5$.
 \item \textit{\textbf{Evaluating score function.}} Draw a sample $k, r$ from the hyperparmeter distribution according to the Hyperopt algorithm. Execute steps 1 and 2 from the basic routine. Any $CZ$-count is accepted at this stage, i.e. the results are only selected by the value of the original loss function $L(U_{CP}^k(a))$. Let $k_1, k_2,\dots$ be $CZ$ counts of all prospective results selected. We define the score function (reminiscent of the \textit{softmin}) by 
 \begin{align}
-\text{score}=-\log_2\frac{1}{N}\sum_{i}2^{-k_i}
+\text{score}=-\log_2\frac{1}{N}\sum_{i}2^{-k_i} \label{score}
 \end{align}
 where $N$ is the total number of raw samples. The minimum of this function is $k_0$, the $CZ$-count of the best possible decomposition. It can be reached if all raw samples reached the threshold fidelity and have the optimal count $k_0$ when projected to $CZ$-circuits. The maximum is $+\infty$ when none of the raw samples passed the fidelity threshold.
 \item \textit{\textbf{Verifying best decompositions.}} At the previous stage all prospective decompositions are not verified as the verification process is time-consuming is should not significantly alter the score estimation (some of the decompositions may fail to pass the verification, but this is rare). However, if there are prospective decompositions that improve on the current best they are verified and if accepted, the current best is replaced.
 
 \item \textit{\textbf{Repeat.}} Repeat steps 2 and 3 until either the maximum number of score evaluations is reached or a decomposition with the desired number of gates is found.
 \end{enumerate}
-\subsection{Technical details}
-The \textit{static} routine implemented in \cpflow uses the following default specifications (all could be customized by the user). At the raw sampling stage the optimization of the loss function \eqref{CP loss} is performed using ADAM\cite{} optimizer with learning rate $0.1$ and 2000 iterations. At the selection stage for each sample the best configuration of angles $a^*$ is chosen corresponding to the minimum of the regularized loss function \eqref{CP loss} across all iterations. If the primary loss function $L(U_{CP}^k(a^*))$ is below $10^{-4}$ threshold and the $CP$ circuit is projected to the $CZ$ circuit $U_{CP}^k(a^*)\to U_{CZ}^{k'}(a')$. Projection is performed as follows. $CP$-gates with angles lying withing the threshold distance (0.2 by default) away from $0$ or $\pi$ are replaced by identity and $CZ$ gates respectively.  $CP$-gates that were not replaced at the previous stage are decomposed into 2-$CZ$ decomposition using standard methods. If the 2q gate count $k'$ of the resulting $CZ$-circuit is within the accepted range the circuit is deemed prospective. At the verification stage the original loss function $L(U_{CZ}^{k'}(a))$ is further optimized with the ADAM optimizer, possibly with a smaller learning rate (0.01) and for larger number of iterations (5000). Importantly, the new optimization starts with the initial angles $a'$ obtained after projecting the $CP$ circuit. If the new optimization pass reaches a more stringent threshold ($10^{-6}$ by default) the verification is considered successful and the resulting circuit is added to the collection of decompositions.
+\hrule
+\hrule
+\subsection{Technical details \label{sec details}}
+The \static routine implemented in \cpflow proceeds as follows.
+First \param{num\_samples} of initial angles combinations are generated uniformly at random. Learning at the raw sampling stage proceeds with the \param{ADAM} optimizer with \param{learning\_rate} $0.1$ ran for \param{num\_gd\_iterations} (2000 by default).
+At the selection stage for each sample the best configuration of angles $a^*$ is chosen corresponding to the minimum of the regularized loss function \eqref{CP loss} across all iterations. If the primary loss function at this configuration of angles $L(U_{CP}^k(a^*))$ is below the \param{entry\_loss} threshold ($10^{-3}$ by default) the \CP circuit is projected to the \CZ circuit $U_{CP}^k(a^*)\to U_{CZ}^{k'}(a')$. Projection is performed as follows. \CP gates with angles lying withing the \param{cp threshold}  (0.2 by default) away from $0$ or $\pi$ are replaced by identity and \CZ gates respectively.  \CP gates that were not replaced at the previous stage are decomposed into 2-\CZ decomposition using standard methods. If the 2q gate count $k'$ of the resulting \CZ circuit is within the accepted range the circuit is deemed prospective.
 
+At the verification stage the original loss function $L(U_{CZ}^{k'}(a))$ is further optimized with the \param{ADAM} optimizer with a smaller \param{learning\_rate\_at\_verification} ($0.01$ by default) ran for an increased number of iterations \param{num\_gd\_iterations\_at\_verificatoin} (5000 by default). Importantly, the new optimization starts with the initial angles $a'$ obtained after projecting the \CP circuit. If the new optimization pass reaches a more stringent \param{target\_loss} threshold ($10^{-6}$ by default) the verification is considered successful and the resulting circuit is added to the collection of decompositions. 
 
+The parameters specified above work well with the Hilbert-Schmidt loss function \eqref{D hst} in a sense that most prospective decompositions pass at the verification stage. For other normalizations/shapes of the loss function different parameter specifications might be required.
 
-\begin{itemize}
-	\item Better than random search
-	\item Exact synthesis
-\end{itemize}
+The \adaptive search basically consists of the several rounds of the \static routine. At each round the score function \eqref{score}  is computed from the prospective results. If there is a prospective result that improves the current best decomposition it is verified and added to the decomposition pull if successful. Otherwise the verification stage is omitted and a new \static round with altered hyperparameters is ran. The total number of rounds is controlled by \param{max\_eval} (100 by default). For each round hyperparameters are chosen by the Hyperopt's implementation of the tree-structured Parzen Estimator algorithm \cite{hyperopt} based on previous score evaluations and input parameter distributions specified by the user. We use uniform distribution for the number of gates $k$ in the range between \param{min\_num\_cp\_gates} and \param{max\_num\_cp\_gates}. For the regularization weight $r$ we use lognormal distribution with default values \param{r\_mean}=$5.5\times10^{-4}$ and \param{r\_variance}=0.5. Note that by default that we keep the first 20 parameter choices in Hyperopt are intended to sample broadly from the search space and do not depend on the previous score evaluations (only on input distributions), the actual optimization starts at further steps. However, with a good choice of the initial hyperparameters optimal or near optimal decompositions are often found by \cpflow at the first several evaluations.
 \section{Synthesis of Toffoli gates}
-The choice of the Toffoli gates as our key benchmark examples is motivated by several considerations. First, the Toffoli gates are among the most essential building blocks for a great variety of quantum algorithms \cite{}. Next, large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can potentially be propagated to the large multi-controlled gates required in useful quantum algorithms. Lastly, Toffoli gates have been studied extensively \cite{Barenco1995, Song2003, Maslov, Shende2009, Schuch} and although deriving rigorous bounds beyond the 3q case is very difficult, the best existing decompositions are likely to indeed be optimal.
+We now put the \cpflow algorithm to work. We choose synthesis of Toffoli gates as our key benchmark examples motivated by several considerations. First, the Toffoli gates are among the most essential building blocks for a great variety of quantum algorithms \cite{}. Next, large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can potentially be propagated to the large multi-controlled gates required in useful quantum algorithms. Lastly, Toffoli gates have been studied extensively \cite{Barenco1995, Song2003, Maslov, Shende2009, Schuch} and although deriving rigorous bounds beyond the 3q case is very difficult, the best existing decompositions are likely to indeed be optimal.
 
 The basic Toffoli gate, also known as the Controlled-Controlled-NOT or the \cx{2} gate is depicted as follows
 \begin{align*}
@@ -327,7 +348,7 @@ Chain topology
 		\\ }}
 \end{flushleft}
 \label{fig toff3}
-\caption{Decompositions of Toffoli 3 gate that are likely to be optimal with respect to all four metrics: \CZ-depth, \CZ-count, \T-depth, \T-count. Non-Clifford gates are highlighted.}
+\caption{Decompositions of the 3q Toffoli gate that are likely to be optimal with respect to all four metrics: \CZ-depth, \CZ-count, \T-depth, \T-count. Non-Clifford gates are highlighted.}
 \end{figure*}
 
 
@@ -387,7 +408,11 @@ Chain topology
 
 We now proceed to the decomposition of 4q Toffoli gates which are significantly more challenging. Variational synthesis of the 4q Toffoli gate on various 4q topologies has been recently addressed in \cite{Nakanishi2021}. Remarkably, the approach taken there was that of an exhaustive search over all architectures. It is interesting to note that for exhaustive search connectivity restrictions actually simplify the problem. Using \cpflow we were able to reproduce all results presented in \cite{Nakanishi2021}, see table \ref{tab toff4}. Moreover, for the star-shaped topology we achieved a minor improvement reducing the \CZ count from 17 to 16. The corresponding circuit is depicted at fig.\ref{fig toff4 star}. Note that we did not look for decompositions minimizing \CZ depth, but simply report \CZ depths of the first \CZ count optimal decompositions found during the search.
 
-In all except for the fully connected topology, decompositions were discovered by the \adaptive algorithm with the full range of template depth for 4q unitaries (0, 61), 500 hundred samples at each hyperparameter configuration and 50 hyperparameter evaluations. The clock time in each of those case was less than an hour on our server \ref{server}. Interestingly, the fully connected topology turned out t
+In all except for the fully connected topology, decompositions were discovered by the \adaptive algorithm with the full range of template depth for 4q unitaries (0, 61), 500 hundred samples at each hyperparameter configuration and 50 hyperparameter evaluations. The clock time taken by the search for each topology took about 40 minutes on our server \ref{server}. In contrast, the optimal decomposition on the fully connected topology only appeared after about 200 hyperparameter evaluations and took about 2 hours.
+
+There are two puzzling observations at this point. First, why did the exhaustive search approach of ref.\cite{Nakanishi2021} overlooked the 16 \CZ gates decomposition on the start topology? Second,  why did the fully connected topology turned out to be the most difficult for our algorithm?  We believe that both effects are caused by the interplay of local minimums and parametrization. 
+
+
 
 
 \begin{figure*}
@@ -412,29 +437,40 @@ In all except for the fully connected topology, decompositions were discovered b
 \label{fig toff4 star}
 \end{figure*}
 \subsection{Toffoli 5}
-To the best of our knowledge, the best decomposition of \cx{4} on a fully connected topology features $30$ \CZ gates, an upper bound valid for all diagonal gates \cite{Shende2006}. The best result of direct synthesis with \cpflow we observed featured 36 \CZ gates indicating 5q unitaries are significantly harder to address. However, synthesis with topological restrictions is not easily addressed in the analytic framework of \cite{Shende2006} and it is interesting to see if our numerical routine can be useful. First, for a reference point we take qiskit result (60 gates, but what if we start from optimal amount 30 instead of 36?).
+To our knowledge, the best decomposition of the 5q Toffoli gate on a fully connected topology without ancilla qubits features $30$ \CZ gates, an upper bound valid for all diagonal gates \cite{Shende2006}. The best result of direct synthesis with \cpflow running for several hours that we observed featured 36 \CZ gates indicating that 5q unitaries are significantly harder to address. However, synthesis with topological restrictions also poses significant challenges to the mulpilexing decomposition framework of \cite{Shende2006}. It is thus still interesting to see if our numerical routine can be useful. 
 
+To this end we consider compilation of 5q Toffoli gate on the chain topology. As a reference point we take the best compilation out of 1000 runs of the qiskit transpiler with \param{optimization\_level} set to 3 that yields a 61 \CZ count decomposition \footnote{Note that the transpillation process in qiskit genrally yields circuits which only equal to the target unitaries up to possible permutations of qubits. As restoring the original permutation might be an expensive operation in terms of the \CZ count the transpilation results should really be considered as a lower bound.}. The best results of direct synthesis with \cpflow yielded a decomposition with 69 \CZ gates. As we now show, by using a combination of the analytic and numerical techniques this this result can be improved to 48 \CZ gates. 
 
-\begin{figure}
-	\scalebox{1.0}{
-	\Qcircuit @C=1.0em @R=0.2em @!R { \\
+We first observe that the optimal 30 \CZ gate decomposition of the 5q Toffoli gate on a fully connected topology can be obtained from the left circuit depicted at fig.\eqref{fig toff5}. Triply controlled $\sqrt{\text{X}}$ gate is a diagonal gate up to conjugation by the Hadamard gates and hence can be decomposed into 14 \CZ gates, just as the standard 4q Toffoli gate. Singly controlled $\sqrt{\text{X}}$ can be decomposed into 2 \CZ gates each. Finally the boxed 4q Toffoli gates can be replaced by their relative phase counterparts \cite{Maslov} which have \CZ count just 6. In total this gives 30 \CZ gates, the optimal amount. 
+
+We now try to adapt this decomposition to the chain topology. Right circuit on fig.\ref{fig toff5} shows that by inserting four additional $\CX$ gates (each pair originates from a SWAP gate, the two closest $\CX$ gates cancel each other) around triply controlled $\sqrt{\text{X}}$ we can place all 4q gates on the first four qubits. Next, we use \cpflow to decompose $\sqrt{\text{X}}$ and relative phase \cx{3} gates on a chain topology. We found a 18 \CZ decomposition of the C${}^{3}\sqrt{\text{X}}$, the same gate count that is needed for decomposition of the \cx{3} gate on a chain topology \ref{tab toff4}. For the relative phase \cx{3} gates we found 11 \CZ decompositions. This yields the decomposition of the 5q Toffoli gate on the chain topology with $48=2\times 11+18+2\times4$ \CZ gates in total. We are not aware of other existing methods could improve on this count.
+
+\begin{figure*}
+	\begin{align}
+	\Qcircuit @C=1.0em @R=0.2em @!R {
 		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
 		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
 		C^{4}X=\qquad\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{2} & \qw & \qw\\
 		\qquad& \targ & \ctrl{1} & \targ & \ctrl{1} & \qw & \qw & \qw\\
-		\qquad& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \gate{\mathrm{\sqrt{X}}} & \qw & \qw\\
-		\\ }}
-\caption{A decomposition of Toffoli 5 gate.}
-\end{figure}
+		\qquad& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \gate{\mathrm{\sqrt{X}}} & \qw & \qw \gategroup{1}{2}{4}{2}{1em}{--}
+		\gategroup{1}{4}{4}{4}{1em}{--}
+	}\raisebox{-4em}{\qquad=\qquad}
+	\Qcircuit @C=1.0em @R=0.2em @!R {
+		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
+		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
+		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
+		& \targ & \ctrl{1} & \targ & \ctrl{1} & \targ & \ctrl{1} & \gate{\mathrm{\sqrt{X}}} & \ctrl{1} & \targ & \qw & \qw\\
+		& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \ctrl{-1} & \targ & \qw & \targ & \ctrl{-1} & \qw & \qw 
+		\gategroup{1}{2}{4}{2}{1em}{--}
+		\gategroup{1}{4}{4}{4}{1em}{--}
+	}
+	\end{align}	 
+	\caption{A decomposition of the 5q Toffoli gate.}
+	\label{fig toff5}
+\end{figure*}
 
+\section{Further benchmarks}
 
-\section{Benchmarks and results}
-\subsection{Clifford+T from database}
-\subsection{State prep for error correction}
-\section{Synthesis of special gates}
-\subsection{Toffoli 3 on chain up to SWAP}
-\subsection{Toffoli 4 on all topologies including new record at T-shaped}
-\subsection{Toffoli 5 already difficult, can be done separating into parts}
 
 \bibliography{/home/idnm/Dropbox/hep/Sheets/library.bib, bibfile.bib}
 \end{document}
