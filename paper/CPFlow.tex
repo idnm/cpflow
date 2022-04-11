@@ -501,10 +501,38 @@ We now try to adapt this decomposition to the chain topology. Right circuit on f
 \end{figure*}
 
 \section{Further benchmarks}
-We now also test the performance of \package{CPFlow} on a range of standard benchmark circuits \cite{Zulehner2019, ibm_qx}. In a recent paper \cite{Rakyta2022} a thorough benchmarking was performed comparing packages \package{SQUANDER}, \package{QFast}, \package{QSearch} and \package{Qiskit} transpiler. The \package{SQUANDER} reliably outperformed other packages in almost every single example. From each of the tables 1, 3 and 4 presented in \cite{Rakyta2022} we pick 5 circuits with the highest \CZ count found by \package{SQUANDER}, as these are likely to be the most challenging and hence the most informative. We processed these circuits with \cpflow, results are reported in tab.\ref{tab bench}.
+\begin{table*}[]
+	\begin{tabular}{@{}ccccc@{}}
+		\toprule
+		Circuit               & CPFlow  & SQUANDER & QSearch & QFast+Qiskit+SQUANDER \\ \midrule
+		\multicolumn{5}{c}{Connected, lower complexity}                              \\ \midrule
+		4gt5\_76              & 21      & 24       & -       & -                     \\
+		one-two-three-v2\_100 & 28      & 37       & 43      & -                     \\
+		alu-v3\_34            & 14      & 25       & 27      & -                     \\
+		alu-v4\_36            & 30      & 40       & -       & -                     \\
+		4gt13\_92             & 17      & 24       & -       & -                     \\ \midrule
+		\multicolumn{5}{c}{Chain, lower complexity}                                  \\ \midrule
+		4gt13\_91             & 26(/30) & 26       & 35      & -                     \\
+		4gt5\_76              & -1      & 26       & 51      & -                     \\
+		alu-v0\_26            & 28      & 32       & -       & -                     \\
+		alu-v3\_35            & 24      & 26       & 34      & -                     \\
+		4mod5-v1\_24          & 29      & 31       & 44      & -                     \\ \midrule
+		\multicolumn{5}{c}{Connected, higher complexity}                             \\ \midrule
+		4gt10-v1\_81          & 39(/36) & -        & -       & 39                    \\
+		one-two-three-v1\_99  & -1      & -        & -       & 45                    \\
+		one-two-three-v0\_98  & -1      & -        & -       & 61                    \\
+		aj-e11\_165           & 24      & -        & -       & 36                    \\
+		alu-v2\_32            & 30      & -        & -       & 41                   
+	\end{tabular}
+\end{table*}
 
-\section{Discussion}
-Two main contributions of the present paper is ...
+Following \cite{Rakyta2022} we test the performance of \package{CPFlow} on a range of standard benchmark circuits from the ibm\_qx database \cite{Zulehner2019, ibm_qx}. In \cite{Rakyta2022} an extensive comparison between packages \package{SQUANDER}, \package{QFast}, \package{QSearch} was performed. The \package{SQUANDER} reliably outperformed other packages in almost every single example. From each of the tables 1, 3 and 4 presented in \cite{Rakyta2022} we pick 5 circuits with the highest \CZ count found by \package{SQUANDER}, as these are likely to be the most challenging and hence the most informative (for the same reason we skipped table 2, which mostly contains much simpler circuits). All selected examples are 5q circuits. We processed these circuits with \cpflow, results are reported in tab.\ref{tab bench}.
+
+Results for the connected circuits of the lower complexity show a significant compression averaging to approximately 25\% compared to the \package{SQUANDER} results. In contrast, for circuits of similar complexity on the chain topology the difference between \package{CPFlow} and \package{SQUANDER} is less noticeable, averaging to $xx$\%. It would be interesting to understand the role of topology in either approach in more detail. Finally, circuits of greater complexity on a connected topology...
+
+
+\section{Summary and outlook}
+In this paper we presented a new approach to the problem of variational synthesis into CNOT/\CZ+1q gate set. We identified the problem of local minimums as a crucial yet underappreciated obstacle to the variational synthesis. We also proposed the use of the parametric 2q gates to unify the architecture search with the continuous optimization of 1q gates into a single coherent optimization and demonstrated its efficiency.
 \subsection*{Acknowledgments}
 
 \appendix
