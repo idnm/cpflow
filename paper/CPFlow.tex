@@ -1,4 +1,4 @@
-\documentclass[draft, amsfonts, amssymb, aps, nofootinbib, twocolumn]{revtex4-2}
+\documentclass[amsfonts, amssymb, aps, nofootinbib, twocolumn]{revtex4-2}
 \usepackage[T1]{fontenc}
 \usepackage{tgtermes}
 \usepackage{amsmath}
@@ -292,7 +292,7 @@ The parameters specified above work well with the Hilbert-Schmidt loss function 
 
 The \adaptive search basically consists of the several rounds of the \static routine. At each round the score function \eqref{score}  is computed from the prospective results. If there is a prospective result that improves the current best decomposition it is verified and added to the decomposition pull if successful. Otherwise the verification stage is omitted and a new \static round with altered hyperparameters is ran. The total number of rounds is controlled by \param{max\_eval} (100 by default). For each round hyperparameters are chosen by the Hyperopt's implementation of the tree-structured Parzen Estimator algorithm \cite{hyperopt} based on previous score evaluations and input parameter distributions specified by the user. We use uniform distribution for the number of gates $k$ in the range between \param{min\_num\_cp\_gates} and \param{max\_num\_cp\_gates}. For the regularization weight $r$ we use lognormal distribution with default values \param{r\_mean}=$5.5\times10^{-4}$ and \param{r\_variance}=0.5. Note that by default that we keep the first 20 parameter choices in Hyperopt are intended to sample broadly from the search space and do not depend on the previous score evaluations (only on input distributions), the actual optimization starts at further steps. However, with a good choice of the initial hyperparameters optimal or near optimal decompositions are often found by \cpflow at the first several evaluations.
 \subsection*{Computational setup. \label{server}}
-\cpflow is written entirely in Python with the computational efficiency enabled by the \package{JAX}\cite{jax2018github} interfacing the \package{XLA}\cite{}. Computations were performed on server with a 12-core Intel Core i9-10920x and 32 GB of memory.
+\cpflow is written entirely in Python with the computational efficiency enabled by the \package{JAX} library \cite{jax2018github}. One advantage of \cpflow is that the computations are highly parallelizable. Numerical experiments reported in this paper  were performed on a server equipped with a 16 GB GPU NVIDIA Quadro RTX 5000. A single \static routine with 1000 samples for 4q and 5q unitaries took several minutes in our setup, while a typical \adaptive routine with 100 evaluations using 1000 samples each took several hours. 
 \section{Synthesis of Toffoli gates}
 We now put the \cpflow algorithm to work. We choose synthesis of Toffoli gates as our key benchmark examples motivated by several considerations. First, the Toffoli gates are among the most essential building blocks for a great variety of quantum algorithms \cite{}. Next, large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can potentially be propagated to the large multi-controlled gates required in useful quantum algorithms. Lastly, Toffoli gates have been studied extensively \cite{Barenco1995, Song2003, Maslov, Shende2009, Schuch} and although deriving rigorous bounds beyond the 3q case is very difficult, the best existing decompositions are likely to indeed be optimal.
 
@@ -503,8 +503,8 @@ We now try to adapt this decomposition to the chain topology. Right circuit on f
 \section{Further benchmarks}
 \begin{table*}[]
 	\begin{tabular}{@{}ccccc@{}}
-		\toprule
-		Circuit               & CPFlow  & SQUANDER & QSearch & QFast+Qiskit+SQUANDER \\ \midrule
+		\toprule\toprule
+		Circuit               & CPFlow \qquad & SQUANDER \qquad & QSearch \qquad & QFast+Qiskit+SQUANDER \qquad \\ \midrule\midrule
 		\multicolumn{5}{c}{Connected, lower complexity}                              \\ \midrule
 		4gt5\_76              & 21      & 24       & -       & -                     \\
 		one-two-three-v2\_100 & 28      & 37       & 43      & -                     \\
@@ -532,7 +532,15 @@ Results for the connected circuits of the lower complexity show a significant co
 
 
 \section{Summary and outlook}
-In this paper we presented a new approach to the problem of variational synthesis into CNOT/\CZ+1q gate set. We identified the problem of local minimums as a crucial yet underappreciated obstacle to the variational synthesis. We also proposed the use of the parametric 2q gates to unify the architecture search with the continuous optimization of 1q gates into a single coherent optimization and demonstrated its efficiency.
+In this paper we presented a new approach to the variational synthesis into CNOT/\CZ+1q gate set. We identified the problem of local minimums as a crucial yet underappreciated obstacle that needs to be addressed. In the absence of an efficient way to avoid local minimums we have made an extensive exploration of the initial conditions space an integral part of our approach. We also proposed to use parametric 2q gates as a way to unify the architecture search with the continuous optimization of 1q gates into a single coherent optimization and demonstrated its efficiency. A recent work based on a similar idea \cite{Rakyta2022} also showed significant improvement over more standard discrete architecture search \cite{Smith2021}.
+
+While capable to generate many interesting results our approach has its limitations. The first is rather fundamental and common to all similar schemes. Since the input circuit is represented by means of the corresponding unitary matrix, only small scale circuits that are easy to simulate classically can be addressed. This however does not preclude using variational synthesis to optimize smaller building blocks of large scale useful quantum algorithms \cite{Younis2021}. Exploring this direction is an important and practically relevant avenue for future work.
+
+Scaling up the variational approach within the classically accessible regime appears to be mostly limited by the circuit complexity rather than the qubit count, e.g. it seems to be more difficult to efficiently compile a 4q circuit that requires many 2q gates than it is to compile a 5q circuit that can be represented using only a small amount of 2q gates. Importantly, the challenges associated with the higher complexity are not caused only by the combinatorial growth of the possible architectures but also by the proliferation of the local minimums in the loss landscape. Our empirical results (cf fig.\ref{fig local minumums}) indicate that already for 4q circuits in the range from 12 to 50 2q gates the probability of successful continuous optimization is less than 0.1\% even for a correctly chosen architecture. This probability depends on numerous factors including details of the optimization procedure, distribution of the initial conditions and parametrization of the loss landscape. Detailed understanding of these mechanisms may lead to a dramatic improvement in variational compilers efficiency.
+
+There is also another interesting possibility to enhance variational synthesis of high-complexity unitaries. If the unitary originates from a known quantum circuit, it could be possible to use this information to ones advantage. For example, splitting the original circuit in parts each having lower complexity and synthesising them separately may lead to better results. Another proposal is to use the original circuit as the starting template for the variational compression \cite{Rakyta2022}. Eventually, the viability and resource allowance of the variational synthesis must be justified by the payoff if provides for useful applications.
+
+
 \subsection*{Acknowledgments}
 
 \appendix
