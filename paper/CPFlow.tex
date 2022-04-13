@@ -3,6 +3,7 @@
 \usepackage{tgtermes}
 \usepackage{amsmath}
 \usepackage{empheq}
+\usepackage{enumitem}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage[braket, qm]{qcircuit}
@@ -18,7 +19,7 @@
 }
 
 \newcommand{\CZ}{CZ }
-\newcommand{\CX}{CX }
+\newcommand{\CX}{CNOT }
 \newcommand{\CP}{CP }
 \newcommand{\T}{T }
 \newcommand{\tgate}[1]{\textcolor{blue}{#1}}
@@ -32,53 +33,29 @@
 \begin{document}
 \title{Variational synthesis of quantum circuits by coherent architecture optimization}
 \begin{abstract}
-We consider the problem of the variational quantum circuit synthesis into a gate set consisting of 2q \CZ  gate and arbitrary 1q gates with the primary target being minimization of the \CZ-count (or equivalently the CNOT-count). First we note that along with the architecture search, a problem of clear combinatorial origin, optimization over 1q gates can also be a crucial roadblock due to the omnipresence of local minimums (well known in the context of variational quantum algorithms but apparently underappreciated in the context of variational compiling). Taking the issue seriously we make extensive search over the initial conditions an essential part of our approach. 
+We consider the problem of the variational quantum circuit synthesis into a gate set consisting of the \CX gate and arbitrary 1q gates with the primary target being the minimization of the \CX count. First we note that along with the discrete architecture search, a clear combinatorial challenge, optimization over 1q gates can also be a crucial roadblock due to the omnipresence of local minimums (well known in the context of variational quantum algorithms but apparently underappreciated in the context of variational compiling). Taking the issue seriously we make extensive search over the initial conditions an essential part of our approach. 
 
-Another key idea is to use parametrized 2q \CP gate that can interpolate between the identity gate and the \CZ gate and allows to reformulate the discrete architecture search as a continuous optimization problem which can be executed simultaneously with optimization of 1q gate parameters. This coherent optimization of the architecture and 1q gates appears to work surprisingly well in practice, sometimes even outperforming optimization over 1q gates alone (for fixed optimal architecture).
+Another key idea we propose is to use parametrized 2q \CP gates, which can interpolate between the identity gate and the \CX gate, and allow to reformulate the discrete architecture search as a continuous optimization problem, which can be executed jointly with the optimization over 1q gates. This coherent optimization of the architecture together with 1q gates appears to work surprisingly well in practice, sometimes even outperforming optimization over 1q gates alone (for a fixed optimal architecture).
 
-As applications we derive 8-\CX and \T-depth 3 decomposition of the 3q Toffoli gate on the nearest-neighbor topology, rediscover known optimal decompositions of the 4q Toffoli gate on all 4q topologies including a minor 1\CZ-gate improvement on the star-shaped topology, and propose decomposition of the 5q Toffoli gate on the nearest neighbor topology with 48\CZ-gates. We also benchmark performance of our approach on a standard library of 5q quantum circuits showing that in most cases it reliably outperforms existing software. The algorithm developed in this work is available as a python package \cpflow. 
+As applications we derive 8 \CX and \T depth 3 decomposition of the 3q Toffoli gate on the nearest-neighbor topology, rediscover known best decompositions of the 4q Toffoli gate on all 4q topologies including a  1 \CX gate improvement on the star-shaped topology, and propose decomposition of the 5q Toffoli gate on the nearest neighbor topology with 48 \CX gates. We also benchmark performance of our approach on a number of 5q quantum circuits from the ibm\_qx\_mapping database showing that in many cases it reliably outperforms existing software. The algorithm developed in this work is available as a Python package \cpflow \cite{}. 
 \end{abstract}
 \maketitle	
 \tableofcontents
 \section{Introduction}
-The circuit synthesis problem amounts to finding the most efficient circuits optimizing a given loss function. Typical applications include minimizing fidelity with respect to the target unitary (compilation) or maximizing the overlap with the target state (state preparation). Efficiency of the decomposition usually means having the smallest possible number or depth of 2q gates, but other metrics such as the magic gate count are possible. We consider the problem of the variational synthesis into the gate set consisting of a single 2q gate (\CZ or \CX) and arbitrary 1q gates with the primary efficiency goal being minimization of the 2q gate count. It is natural to divide the problem into two parts (i) discrete optimization or architecture search, looking for best placements of 2q gates and (ii) continuous optimization of the 1q gate parameters for a given circuit architecture. The difficulty associated with the architecture search has combinatorial origin and is manifest. The difficulty of the continuous optimization is however also essential as is known in the context of variational quantum optimization but apparently under appreciated in the context of variational compiling.
+While many quantum algorithms such prime factoring \cite{Shor1997}, unstructured search \cite{Grover1997} or linear equation solver \cite{Harrow2009} promise game-changing speed ups over classical, the current state of the technology does not yet allow for a decisive demonstration with useful applications, although it might be on the verge (see e.g. here for a recent review \cite{Fedorov2022}). There are plenty of factors limiting performance of the current quantum devices, such as initialization and readout errors, loss of coherence over time and errors in gate operations. In the current NISQ era \cite{Preskill2018} most gate-based quantum protocols are constructed out of 1q and 2q gates with the latter being significantly more error-prone across all leading platforms. Hence, minimization of the 2q gate count is one of the key objectives that can improve performance of the near-term algorithms. On the other hand, in the fault-tolerant future a different type of resource (e.g. the \T gate count) is likely to be the most expensive.
 
-For small-scale quantum circuits the main hindrance to continuous optimization is the proliferation of local minima. We first show that in many cases of interest the continuous optimization succeeds only for a small fraction of initial conditions. Next, we introduce a new approach to variational compilation. By using parametrized 2q gates the discrete architecture search can be reformulated as a continuous search and performed simultaneously with optimization of 1q gates. This coherent optimization of the architecture and 1q gates appears to work surprisingly well in practice, sometimes even exceeding the efficiently of optimizing 1q gates alone (for a fixed 2q gates architecture). Appreciating the difficulty associated with the local minimums we also make sure to perform extensive scanning thorough the space of initial. We 
+At the high level quantum algorithms are usually described using primitives such as large multi-controlled gates or quantum Fourier transform that aren't directly accessible on the current devices. The usual compiling routines \cite{Qiskit, Sivarajah2021} include decomposing algorithmic primitives into native gates (which is always possible \cite{Barenco1995}), routing stage to comply with the possible connectivity restrictions of the target chip, and local simplifications of the resulting circuits. Using special datastructures for representing and transforming circuits allows to carry out the compilation process without the need to simulate any part of the circuit. This makes the approach extremely scalable, allowing to compile and optimize circuits with hundreds of qubits. The downside is that the resulting decompositions may be significantly less efficient than possible. A complementary approach is to work directly with the unitary matrix of the circuit thus eliminating any potential redundancies or inefficiencies in the original gate-based description. This is only feasible for small scale circuits as the size of the state space and the corresponding unitary matrices scales exponentially (even for a small number of qubits there may be other limiting factors such as circuit complexity, as we emphasize in this work). Although there could be direct applications to enhancing performance of the NISQ algorithms, we expect that the use highly optimized small scale circuits as building blocks of large scale algorithms to be the most promising possibility.
 
+The unitary synthesis problem amounts to finding the most efficient circuits optimizing a given loss function. Typical applications include minimizing fidelity with respect to the target unitary (compilation) or maximizing the overlap with the target state (state preparation). We consider the problem of the variational synthesis into the gate set consisting of a single 2q gate (\CZ or \CX) and arbitrary 1q gates. The primary optimization target is the amount of \CX gates, although indirectly we also address \CX depth and even \T count and \T depth. It is natural to divide the problem into two parts:
+\begin{enumerate}[label=(\roman*), nosep]
+	\item Discrete optimization or architecture search, looking for best placements of 2q gates.
+	\item Continuous optimization of 1q gate parameters for a given architecture.
+\end{enumerate}
+The difficulty associated with the architecture search has combinatorial origin and is manifest. The difficulty of the continuous optimization is however also essential, as is known in the context of variational quantum algorithms, but apparently underappreciated in the context of variational compiling. We zoom in on this issue in section sec.\ref{sec local minimums}. Another cornerstone idea of our approach is to use parametrized 2q gates as a means to reduce discrete architecture search to another continuous optimization that can be performed simultaneously and coherently with learning the angles 1q gates. We introduce the \cpflow algorithm in sec.\ref{sec cpflow}. In sec.\ref{sec toffoli} we first illustrate all central features of the \cpflow on the example of the 3q Toffoli gate and then go beyond this toy example to synthesize efficient (and likely novel) decompositions on constrained topologies in the 4q and 5q case. In sec.\ref{sec benchmark} we provide further benchmarks showcasing that \cpflow is very efficient in compilation of small scale circuits with moderate complexity but also outline its limitations. Sec.\ref{sec last} concludes with the summary and outlook.
 
-Next, we introduce a new approach resting on the two main ideas
+\textbf{\textit{Related work}}. The idea to use computer assisted search and numerical optimization for circuit synthesis goes back a long way \cite{Divincenzo1994} and continues to the present day with advances due to both algorithm design and growth of raw computational power. Possible frameworks include purely discrete search over a finite gate set \cite{Nagarajan2021}, a natural separation into discrete architecture search and continuous optimization \cite{Nam2018, Khatri2019, Smith2021} and a hybrid approach with part of the architecture search outsourced to a version of continuous optimization \cite{Younis2021, Rakyta2022}. The scheme developed in \cite{Rakyta2022} is in many respects similar to the one proposed in this paper, and similarly to our work, was originally motivated by the impressive success of variational compiling of random unitaries (maximum complexity circuits) \cite{Kiani2020, Madden2021, Rakyta2021}. 
 
-We consider the problem of the variational circuit synthesis, seeking to find the most efficient quantum circuits minimizing some loss function, such as fidelity with respect the target unitary in the compilation problem or overlap with the target state in the state preparation problem. Usually the number or depth of 2q gates is the measure 
-
-
-
-Variational unitary synthesis seeks to find the best circuit constructions and is useful across a range of tasks such as circuit compilation, quantum simulation, quantum machine learning. 
-\begin{itemize}
-	\item Compilation -- translate from high-level algorithm to hardware instructions
-	\item Relation to hardware efficient variational algorithms
-	
-\end{itemize}
-
-\begin{align}
-D(U,V)=1-\frac1{4^n}|\operatorname{Tr}{U^\dagger V}|^2 \ . \label{D hst}
-\end{align}
-
-\begin{align}
-\scalebox{1.0}{
-	\Qcircuit @C=1.0em @R=0.8em @!R {
-	 & \ctrl{2} & \qw \\
-		CZ=\qquad\qquad& &\qquad\qquad\qquad\qquad\quad	= {\begin{pmatrix}1&0&0&0\\0&1&0&0\\0&0&1&0\\0&0&0&-1\end{pmatrix}}		\\
-		& \control\qw & \qw \\
-		\\ }} \label{def CZ}
-	\\
-\scalebox{1.0}{
-	\Qcircuit @C=1.0em @R=0.8em @!R { \\
-		& \ctrl{2} & \dstick{\hspace{2.0em}\mathrm{P}\,(\mathrm{a})} \qw \\
-		CP(a)=\qquad\qquad& &\qquad\qquad\qquad\qquad\qquad\qquad\qquad	= {\begin{pmatrix}1&0&0&0\\0&1&0&0\\0&0&1&0\\0&0&0&e^{i\pi a}\end{pmatrix}}\\
-		& \control \qw & \qw\\
-		\\ }} \label{def CP}
-\end{align}
-
+\section{Background and notation}
 \subsection{Template circuits}
 The prevalent approach in the literature \cite{Khatri2019, Madden2021, Rakyta2021, Nakanishi2021, Rakyta2022} that we will follow is to construct the template circuits out of two-qubit blocks repeated in a regular manner. The two types of entangling blocks we will use are CZ- and CP-blocks depicted at fig.\ref{fig blocks}. They only differ by the type of the entangling gates used. We will explain the choice of 1q gates shortly.
 \begin{figure}
@@ -173,7 +150,7 @@ So far our discussion and the bound \eqref{TLB} addressed generic or random unit
 
 It is therefore a natural idea to use numeric optimization and heuristic methods in the search of efficient decompositions. This strategy is known as the variational compiling and have been explored in a range of works \cite{}. In the next section we review the variational compiling and associated challenges.
 
-\section{Variational synthesis and its challenges}
+\section{Variational synthesis and its challenges \label{sec local minimums}}
 
 \begin{figure*}
 	\includegraphics[width=0.4\textwidth]{figures/3q_success_chart}
@@ -206,7 +183,7 @@ This suggests that success ratio is mostly determined by the template, not by th
 Of course, success ratio is not only a function of the loss landscape but also of the optimization algorithm and the distribution of the initial conditions. There are a number of proposals to alleviate the problem of local minimums by the choice of optimizer \cite{Wierichs2020, Rivera-Dean2021}, but in our experiments none performed sufficiently better than simple ADAM\cite{adam}-based optimization to justify additional computational resources that are typically required by higher-order methods such as the natural gradient \cite{Stokes2020} or imaginary time evolution \cite{Jones2018a}. A recent empirical comparison of various optimization methods for quantum variational algorithms \cite{Lockwood2022} also suggests that the ADAM algorithm can be a simple and efficient choice.
 
 In turn, our own experiments suggest that parametrization and/or distribution of the initial parameters can make a big difference. As explained in \ref{sec tlb} template structure illustrated at fig.\ref{fig template example} features redundant 1q gates. In any entangling block two rotation gates can be removed without compromising circuit expressivity, i.e. without any shrinking in the space of all unitaries obtainable from the template. However, performance of the templates with the minimal number of 1q gates appears to be worse on average (though there are counter examples, see sec.\ref{sec toff4}). This can be due to the fact that overparmetrization favorably deforms the loss landscape and/or because random uniform initialization of the angles produces a different distribution of the initial unitaries. In the present study we do not attempt to disentangle the two possible effects and leave this important question for future work. Unless stated otherwise, reported results correspond to the 'XYZ' templates as per fig.\ref{fig template example}.
-\section{The CPFlow algorithm}
+\section{The CPFlow algorithm \label{sec cpflow}}
 \subsection{Motivation and overview}
 In the context of variational synthesis results of the previous section suggest that solving the continuous optimization problem may be just as difficult as solving the discrete architecture search: even if the structure of the template is a perfect match for the target unitary, finding the suitable angles may be very challenging. In the absence of an efficient way to solve the latter problem in our approach we choose the brute force route of trying many initial conditions. 
 \begin{figure*}
@@ -293,7 +270,7 @@ The parameters specified above work well with the Hilbert-Schmidt loss function 
 The \adaptive search basically consists of the several rounds of the \static routine. At each round the score function \eqref{score}  is computed from the prospective results. If there is a prospective result that improves the current best decomposition it is verified and added to the decomposition pull if successful. Otherwise the verification stage is omitted and a new \static round with altered hyperparameters is ran. The total number of rounds is controlled by \param{max\_eval} (100 by default). For each round hyperparameters are chosen by the Hyperopt's implementation of the tree-structured Parzen Estimator algorithm \cite{hyperopt} based on previous score evaluations and input parameter distributions specified by the user. We use uniform distribution for the number of gates $k$ in the range between \param{min\_num\_cp\_gates} and \param{max\_num\_cp\_gates}. For the regularization weight $r$ we use lognormal distribution with default values \param{r\_mean}=$5.5\times10^{-4}$ and \param{r\_variance}=0.5. Note that by default that we keep the first 20 parameter choices in Hyperopt are intended to sample broadly from the search space and do not depend on the previous score evaluations (only on input distributions), the actual optimization starts at further steps. However, with a good choice of the initial hyperparameters optimal or near optimal decompositions are often found by \cpflow at the first several evaluations.
 \subsection*{Computational setup. \label{server}}
 \cpflow is written entirely in Python with the computational efficiency enabled by the \package{JAX} library \cite{jax2018github}. One advantage of \cpflow is that the computations are highly parallelizable. Numerical experiments reported in this paper  were performed on a server equipped with a 16 GB GPU NVIDIA Quadro RTX 5000. A single \static routine with 1000 samples for 4q and 5q unitaries took several minutes in our setup, while a typical \adaptive routine with 100 evaluations using 1000 samples each took several hours. 
-\section{Synthesis of Toffoli gates}
+\section{Synthesis of Toffoli gates \label{sec toffoli}}
 We now put the \cpflow algorithm to work. We choose synthesis of Toffoli gates as our key benchmark examples motivated by several considerations. First, the Toffoli gates are among the most essential building blocks for a great variety of quantum algorithms \cite{}. Next, large multi-controlled Toffoli gates can be built recursively from the smaller ones \ref{}, hence optimization of the small-size Toffoli gates can potentially be propagated to the large multi-controlled gates required in useful quantum algorithms. Lastly, Toffoli gates have been studied extensively \cite{Barenco1995, Song2003, Maslov, Shende2009, Schuch} and although deriving rigorous bounds beyond the 3q case is very difficult, the best existing decompositions are likely to indeed be optimal.
 
 The basic Toffoli gate, also known as the Controlled-Controlled-NOT or the \cx{2} gate is depicted as follows
@@ -500,7 +477,7 @@ We now try to adapt this decomposition to the chain topology. Right circuit on f
 	\label{fig toff5}
 \end{figure*}
 
-\section{Further benchmarks}
+\section{Further benchmarks \label{sec benchmark}}
 \begin{table*}[]
 	\begin{tabular}{@{}ccccc@{}}
 		\toprule\toprule
@@ -531,7 +508,7 @@ Following \cite{Rakyta2022} we test the performance of \package{CPFlow} on a ran
 Results for the connected circuits of the lower complexity show a significant compression averaging to approximately 25\% compared to the \package{SQUANDER} results. In contrast, for circuits of similar complexity on the chain topology the difference between \package{CPFlow} and \package{SQUANDER} is less noticeable, averaging to $xx$\%. It would be interesting to understand the role of topology in either approach in more detail. Finally, circuits of greater complexity on a connected topology...
 
 
-\section{Summary and outlook}
+\section{Summary and outlook \label{sec last}}
 In this paper we presented a new approach to the variational synthesis into CNOT/\CZ+1q gate set. We identified the problem of local minimums as a crucial yet underappreciated obstacle that needs to be addressed. In the absence of an efficient way to avoid local minimums we have made an extensive exploration of the initial conditions space an integral part of our approach. We also proposed to use parametric 2q gates as a way to unify the architecture search with the continuous optimization of 1q gates into a single coherent optimization and demonstrated its efficiency. A recent work based on a similar idea \cite{Rakyta2022} also showed significant improvement over more standard discrete architecture search \cite{Smith2021}.
 
 While capable to generate many interesting results our approach has its limitations. The first is rather fundamental and common to all similar schemes. Since the input circuit is represented by means of the corresponding unitary matrix, only small scale circuits that are easy to simulate classically can be addressed. This however does not preclude using variational synthesis to optimize smaller building blocks of large scale useful quantum algorithms \cite{Younis2021}. Exploring this direction is an important and practically relevant avenue for future work.
@@ -592,5 +569,6 @@ Typically all the terms in the rhs are non-vanishing and different choices of $a
 \label{fig ref circuit}
 \end{figure*}
 
+\bibliographystyle{/home/idnm/Dropbox/hep/Sheets/utcaps_edited}
 \bibliography{/home/idnm/Dropbox/hep/Sheets/library.bib, bibfile.bib}
 \end{document}
