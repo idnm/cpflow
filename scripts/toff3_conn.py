@@ -1,12 +1,8 @@
 import sys
 sys.path.append('/home/idnm/Programming projects/jax_circuits')
 
-from jax_circuits import *
-from cp_utils import *
-from topology import *
-from matrix_utils import *
-from scipy.stats import unitary_group
-
+from cpflow.jax_circuits import *
+from cpflow.matrix_utils import *
 
 layer = [[0,1]]
 u_target = jnp.kron(y_mat, x_mat)

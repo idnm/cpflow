@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/home/idnm/Programming projects/jax_circuits/')
 
-from jax_circuits import *
+from cpflow.jax_circuits import *
 
 options = AdaptiveOptions(
     min_num_cp_gates=20,
