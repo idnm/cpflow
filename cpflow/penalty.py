@@ -1,6 +1,6 @@
+"""Penalty function and regularization."""
+
 import jax.numpy as jnp
-from jax import vmap
-from functools import partial
 
 
 def cp_penalty_trig(a, height):

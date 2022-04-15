@@ -1,20 +1,22 @@
+"""Procedures to refine approximate circuits."""
+
+import math
 from fractions import Fraction
 from functools import partial
-import math
 
-from matrix_utils import *
+from jax import jit
 from qiskit import QuantumCircuit, transpile
-from qiskit.quantum_info import Operator
 from qiskit.circuit.library import *
+from qiskit.quantum_info import OneQubitEulerDecomposer
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.passes import Optimize1qGates
-from trigonometric_utils import *
-from optimization import mynimize_repeated
-from cp_utils import constrained_function
-from circuit_assembly import qiskit_circ_to_jax_unitary
 from qiskit.transpiler.passes import SolovayKitaevDecomposition
-from qiskit.quantum_info import OneQubitEulerDecomposer
-from jax import jit
+
+from circuit_assembly import qiskit_circ_to_jax_unitary
+from cp_utils import constrained_function
+from matrix_utils import *
+from optimization import mynimize_repeated
+from trigonometric_utils import *
 
 
 def check_approximation(circuit, new_circuit, loss=1e-5):

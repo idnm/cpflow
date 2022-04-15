@@ -1,14 +1,14 @@
-"""Module in infancy."""
+"""Routines for efficient multi-start optimization."""
 
 from functools import partial
 
 import jax
 import optax
-from jax import jit, random, value_and_grad, hessian, jvp, grad
+from jax import jit, value_and_grad, hessian, jvp, grad
 
 from matrix_utils import *
-from trigonometric_utils import *
 from penalty import *
+from trigonometric_utils import *
 
 
 @partial(jit, static_argnums=(0, 1, 4))

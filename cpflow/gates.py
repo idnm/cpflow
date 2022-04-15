@@ -1,9 +1,9 @@
-""""Matrix representations of some quantum gates."""
+""""Some quantum gates with attributes."""
 
 import jax.numpy as jnp
 from qiskit import QuantumCircuit
-from qiskit.quantum_info import Operator
 from qiskit.circuit.library import RXGate, RYGate, RZGate, CPhaseGate, CZGate, CXGate
+from qiskit.quantum_info import Operator
 
 # Single-qubit pauli gates.
 

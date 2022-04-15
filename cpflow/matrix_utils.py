@@ -1,9 +1,12 @@
-import jax.numpy as jnp
-from jax import grad, jacfwd
+"""Matrix manipulations."""
+
 from itertools import permutations
+
+import jax.numpy as jnp
+import pandas
+from jax import jacfwd
 from qiskit.circuit.library import Permutation
 from qiskit.quantum_info import Operator
-import pandas
 
 
 def theoretical_lower_bound(n):

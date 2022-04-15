@@ -1,7 +1,7 @@
-"""Module in infancy state."""
+"""Auxiliary routines for sequential angle optimization."""
 
-from jax import lax, vmap, random
 import jax.numpy as jnp
+from jax import lax, vmap, random
 
 
 def min_angle(F):

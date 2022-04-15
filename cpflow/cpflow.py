@@ -1,26 +1,24 @@
-import pickle
+"""Variational synthesis of quantum circuits with coherent multi-start optimization."""
+
+__version__ = '0.1.0'
+
 import os
 from dataclasses import dataclass, asdict
 
 import dill
-import numpy as np
 import matplotlib.pyplot as plt
-
-from qiskit import transpile
-from qiskit.circuit import Parameter
-
+import numpy as np
 from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
 from hyperopt.pyll import scope
-from setuptools.command.rotate import rotate
-
+from qiskit.circuit import Parameter
 from tqdm.auto import tqdm
 
-from cp_utils import random_cp_angles, filter_cp_results, verify_cp_result
 from circuit_assembly import *
+from cp_utils import random_cp_angles, filter_cp_results, verify_cp_result
+from exact_decompositions import refine, cp_to_cz_circuit, convert_to_ZXZ, gates_count, gates_depth
 from optimization import *
 from penalty import *
 from topology import *
-from exact_decompositions import refine, cp_to_cz_circuit, convert_to_ZXZ, gates_count, gates_depth
 
 
 class EntanglingBlock:

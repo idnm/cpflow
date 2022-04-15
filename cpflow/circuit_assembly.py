@@ -1,3 +1,5 @@
+"""Assembling circuits and unitaries from building blocks."""
+
 from gates import *
 from matrix_utils import cost_HST
 
@@ -14,7 +16,7 @@ def gate_transposition(placement):
 def transposition(n_qubits, placement):
     """Return a transposition that relabels tensor axes correctly.
     Example (from the figure above): n=6, placement=[1, 3] gives [2, 0, 3, 1, 4, 5].
-    Twiseted: n=6, placement=[3, 1] gives [2, 1, 3, 0, 4, 5]."""
+    Twisted: n=6, placement=[3, 1] gives [2, 1, 3, 0, 4, 5]."""
 
     gate_width = len(placement)
 

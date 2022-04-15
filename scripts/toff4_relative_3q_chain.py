@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/home/rqc-qit-0/nnemkov/jc_module')
 # sys.path.append('/home/idnm/Programming projects/jax_circuits/')
-from cpflow.jax_circuits import *
+from cpflow.cpflow import *
 
 unitary_loss_f = lambda u: disc_modulo_diagonal(u_toff4, u, 4, [3])
 decomposer = Synthesize(connected_layer(4), unitary_loss_func=unitary_loss_f, label='relative_toff4_3q_conn')

@@ -1,5 +1,7 @@
-from jax import random
+"""Constructing layers complying with topological restrictions."""
+
 import jax.numpy as jnp
+from jax import random
 
 
 def connected_layer(num_qubits):
