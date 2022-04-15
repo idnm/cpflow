@@ -1,11 +1,23 @@
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
-[project]
+[tool.poetry]
 name = "cpflow"
-authors = [{name = "Nikita Nemkov", email = "nnemkov@gmail.com"}]
-dynamic = ["version", "description"]
+version = "0.1.0"
+description = "Variational synthesis of quantum circuits with coherent multi-start optimization"
+authors = ["Nikita Nemkov"]
 
-[project.urls]
-Home = "https://github.com/idnm/cpflow"
+[tool.poetry.dependencies]
+python = "^3.7"
+numpy = "^1.22.3"
+jax = "^0.3.6"
+jaxlib = "^0.3.5"
+qiskit = "^0.36.0"
+dill = "^0.3.4"
+hyperopt = "^0.2.7"
+tqdm = "^4.64.0"
+pandas = "^1.4.2"
+optax = "^0.1.2"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
