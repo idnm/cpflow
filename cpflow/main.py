@@ -1,6 +1,5 @@
-"""Variational synthesis of quantum circuits with coherent multi-start optimization."""
+"""Main classes and routines exposed to the user."""
 
-__version__ = '0.1.0'
 
 import os
 from dataclasses import dataclass, asdict
