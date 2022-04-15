@@ -32,7 +32,7 @@
 \newcommand{\adaptive}{\textsc{adaptive }}
 \newcommand{\param}[1]{\texttt{#1}}
 \begin{document}
-\title{Efficient variational synthesis of quantum circuits with coherent multistart optimization}
+\title{Efficient variational synthesis of quantum circuits with coherent multi-start optimization}
 \begin{abstract}
 We consider the problem of the variational quantum circuit synthesis into a gate set consisting of the \CX gate and arbitrary 1q gates with the primary target being the minimization of the \CX count. First we note that along with the discrete architecture search, a clear combinatorial challenge, optimization over 1q gates can also be a crucial roadblock due to the omnipresence of local minimums (well known in the context of variational quantum algorithms but apparently underappreciated in the context of variational compiling). Taking the issue seriously we make extensive search over the initial conditions an essential part of our approach. 
 
@@ -307,7 +307,7 @@ At the verification stage the original loss function $L(U_{CZ}^{k'}(a))$ is furt
 The parameters specified above work well with the Hilbert-Schmidt loss function \eqref{D hst} in a sense that the majority of prospective decompositions pass at the verification stage. For other normalizations/shapes of the loss function different parameter specifications might be required.
 
 The \adaptive search basically consists of several \static rounds. At each round the score function \eqref{score}  is computed from the prospective results. If there is a prospective result that improves the current best decomposition it is verified and added to the decomposition pull if successful. Otherwise, the verification stage is omitted and a new \static round with altered hyperparameters is initiated. The total number of rounds is controlled by \param{max\_eval} (100 by default). For each round hyperparameters are chosen by the \package{Hyperopt} implementation of the tree-structured Parzen Estimator algorithm \cite{hyperopt} based on the previous score evaluations and input parameter distributions specified by the user. We use uniform distribution for the number of gates $k$ in the range between \param{min\_num\_cp\_gates} and \param{max\_num\_cp\_gates}. For the regularization weight $r$ we use lognormal distribution with default values \param{r\_mean}=$5.5\times10^{-4}$ and \param{r\_variance}=0.5. Note that by the default that we keep, the first 20 parameter choices in Hyperopt are intended to sample broadly from the search space and do not depend on the previous score evaluations (only on input distributions), the actual optimization starts at further steps. However, with a good choice of the initial distributions optimal or near optimal decompositions are often found by \cpflow within first several evaluations.
-\subsection{Computational setup. \label{server}}
+\subsection{Computational setup \label{server}}
 \cpflow is written entirely in Python with the computational efficiency enabled by the \package{JAX} library \cite{jax2018github}. One advantage of \cpflow is that the computations are highly parallelizable as the core of both basic routines consists in performing independent optimizations starting from different initial conditions. We also rely on \package{Qiskit} \cite{Qiskit} for visualization, validation, and post-processing. Numerical experiments reported in this paper  were carried out on a server equipped with a 16 GB NVIDIA Quadro RTX 5000 GPU. A single \static routine with 1000 samples for 4q and 5q unitaries took several minutes in our setup.  Correspondingly, a typical \adaptive routine with 100 evaluations using 1000 samples each took several hours. 
 \section{Synthesis of Toffoli gates \label{sec toffoli}}
 \begin{figure*}
@@ -586,7 +586,7 @@ There is also another interesting possibility to enhance variational synthesis o
 			& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{1.489})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw}
 		\end{multline*}
 		
-		(b) Circuit with reduced angles.
+		(b) Circuit with reduced angles
 		
 		\scalebox{0.6}{
 			\Qcircuit @C=1.0em @R=0.2em @!R { \\
@@ -595,7 +595,7 @@ There is also another interesting possibility to enhance variational synthesis o
 				& \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{2.356})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{2.356})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{0.7853})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{-0.7855})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw}}
 		\vspace{2em}
 		
-		(c) Rationalized circuit.
+		(c) Rationalized circuit
 		
 		\scalebox{0.7}{
 			\Qcircuit @C=1.0em @R=0.2em @!R { \\
