@@ -6,9 +6,9 @@ import jax
 import optax
 from jax import jit, value_and_grad, hessian, jvp, grad
 
-from matrix_utils import *
-from penalty import *
-from trigonometric_utils import *
+from cpflow.matrix_utils import *
+from cpflow.penalty import *
+from cpflow.trigonometric_utils import *
 
 
 @partial(jit, static_argnums=(0, 1, 4))

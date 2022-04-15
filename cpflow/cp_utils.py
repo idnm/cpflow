@@ -5,9 +5,9 @@ from functools import partial
 import numpy as np
 from jax import random, jit, ops, vmap
 
-from optimization import mynimize
-from penalty import *
-from trigonometric_utils import random_angles
+from cpflow.optimization import mynimize
+from cpflow.penalty import *
+from cpflow.trigonometric_utils import random_angles
 
 
 def random_cp_angles(num_angles, cp_mask, cp_dist='uniform', key=random.PRNGKey(0)):

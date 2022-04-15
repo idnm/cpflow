@@ -3,7 +3,7 @@ from scipy.stats import unitary_group
 import sys
 # sys.path.append('/home/rqc-qit-0/nnemkov/jc_module')
 sys.path.append('/home/idnm/Programming projects/jax_circuits/')
-from cpflow.cpflow import *
+from cpflow.main import *
 
 
 def success_ratio(num_qubits, num_cz_gates, target_type, num_samples, random_seed):

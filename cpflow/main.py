@@ -13,12 +13,12 @@ from hyperopt.pyll import scope
 from qiskit.circuit import Parameter
 from tqdm.auto import tqdm
 
-from circuit_assembly import *
-from cp_utils import random_cp_angles, filter_cp_results, verify_cp_result
-from exact_decompositions import refine, cp_to_cz_circuit, convert_to_ZXZ, gates_count, gates_depth
-from optimization import *
-from penalty import *
-from topology import *
+from cpflow.circuit_assembly import *
+from cpflow.cp_utils import random_cp_angles, filter_cp_results, verify_cp_result
+from cpflow.exact_decompositions import refine, cp_to_cz_circuit, convert_to_ZXZ, gates_count, gates_depth
+from cpflow.optimization import *
+from cpflow.penalty import *
+from cpflow.topology import *
 
 
 class EntanglingBlock:

@@ -7,7 +7,7 @@ u_target = Operator(qc.reverse_bits()).data
 
 import sys
 sys.path.append('/home/rqc-qit-0/nnemkov/jc_module')
-from cpflow.cpflow import *
+from cpflow.main import *
 
 layer = chain_layer(5)
 decomposer = Synthesize(layer, target_unitary=u_target)

@@ -1,7 +1,7 @@
 """Assembling circuits and unitaries from building blocks."""
 
-from gates import *
-from matrix_utils import cost_HST
+from cpflow.gates import *
+from cpflow.matrix_utils import cost_HST
 
 
 def gate_transposition(placement):

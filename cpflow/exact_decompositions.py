@@ -12,11 +12,11 @@ from qiskit.transpiler import PassManager
 from qiskit.transpiler.passes import Optimize1qGates
 from qiskit.transpiler.passes import SolovayKitaevDecomposition
 
-from circuit_assembly import qiskit_circ_to_jax_unitary
-from cp_utils import constrained_function
-from matrix_utils import *
-from optimization import mynimize_repeated
-from trigonometric_utils import *
+from cpflow.circuit_assembly import qiskit_circ_to_jax_unitary
+from cpflow.cp_utils import constrained_function
+from cpflow.matrix_utils import *
+from cpflow.optimization import mynimize_repeated
+from cpflow.trigonometric_utils import *
 
 
 def check_approximation(circuit, new_circuit, loss=1e-5):

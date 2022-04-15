@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/home/idnm/Programming projects/jax_circuits')
 
-from cpflow.cpflow import *
+from cpflow.main import *
 from cpflow.matrix_utils import *
 
 layer = [[0,1]]
