@@ -5,18 +5,20 @@ description = "Variational synthesis of quantum circuits with coherent multi-sta
 authors = ["Nikita Nemkov"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
-numpy = "^1.22.3"
+python = "^3.8"
+numpy = "^1.21.5"
 jax = "^0.3.6"
 jaxlib = "^0.3.5"
 qiskit = "^0.36.0"
 dill = "^0.3.4"
 hyperopt = "^0.2.7"
 tqdm = "^4.64.0"
-pandas = "^1.4.2"
 optax = "^0.1.2"
+matplotlib = "^3.5.1"
+#requests = { git = "https://github.com/LNoorl/qiskit-terra.git@feature/sk-pass" }
 
 [tool.poetry.dev-dependencies]
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -3,7 +3,6 @@
 from itertools import permutations
 
 import jax.numpy as jnp
-import pandas
 from jax import jacfwd
 from qiskit.circuit.library import Permutation
 from qiskit.quantum_info import Operator
@@ -214,15 +213,6 @@ def disc_modulo_diagonal(u_target, u, num_qubits, wires):
     arbitrary transormations not touching `wires`. Otherwise returns a positive number that quantifies the deviation from the scenario."""
 
     return tensor_diagonal_loss((u @ u_target).conj().T, num_qubits, wires)
-
-
-def pp_matrix(m, r=None):
-    """Pretty print array using pandas dataframe."""
-    if r:
-        m = jnp.around(m, r)
-    M = pandas.DataFrame(m)
-    M.columns = ['']*M.shape[1]
-    print(M.to_string(index=False))
 
 
 # To get an idea of how tensor losses work try to run something like
