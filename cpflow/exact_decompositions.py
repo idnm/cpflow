@@ -10,7 +10,12 @@ from qiskit.circuit.library import *
 from qiskit.quantum_info import OneQubitEulerDecomposer
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.passes import Optimize1qGates
-from qiskit.transpiler.passes import SolovayKitaevDecomposition
+
+try:
+    from qiskit.transpiler.passes import SolovayKitaevDecomposition
+    skd_available = True
+except ImportError:
+    skd_available = False
 
 from cpflow.circuit_assembly import qiskit_circ_to_jax_unitary
 from cpflow.cp_utils import constrained_function
@@ -317,20 +322,21 @@ def refine(
             print(e)
         return qc, refine_type, t_count, t_depth
 
-    try:
-        qc_sk = solovay_kitaev(qc, recursion_degree=recursion_degree, recursion_depth=recursion_depth)
-        t_count = gates_count(['t', 'tdg'], qc_sk)
-        t_depth = gates_depth(['t', 'tdg'], qc_sk)
+    if skd_available:
+        try:
+            qc_sk = solovay_kitaev(qc, recursion_degree=recursion_degree, recursion_depth=recursion_depth)
+            t_count = gates_count(['t', 'tdg'], qc_sk)
+            t_depth = gates_depth(['t', 'tdg'], qc_sk)
 
-        qc = reduce_angles(qc_sk, unitary_loss_func, reduce_threshold=reduce_threshold, cp_threshold=cp_threshold)
-        qc = rationalize_all_rgates(qc, max_denominator=max_denominator, angle_threshold=angle_threshold)
-        qc = remove_zero_rgates(qc)
+            qc = reduce_angles(qc_sk, unitary_loss_func, reduce_threshold=reduce_threshold, cp_threshold=cp_threshold)
+            qc = rationalize_all_rgates(qc, max_denominator=max_denominator, angle_threshold=angle_threshold)
+            qc = remove_zero_rgates(qc)
 
-        refine_type = 'Clifford+T'
-    except ValueError as e:
-        if verbose:
-            print(e)
-        return qc, refine_type, t_count, t_depth
+            refine_type = 'Clifford+T'
+        except ValueError as e:
+            if verbose:
+                print(e)
+            return qc, refine_type, t_count, t_depth
 
     return qc, refine_type, t_count, t_depth
 
