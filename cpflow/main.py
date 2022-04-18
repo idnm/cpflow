@@ -513,7 +513,9 @@ class Synthesize:
     def _initialize_results(self, save_results, save_to):
         results = Results(self.unitary_loss_func, self.layer, label=self.label)
         if save_results:
-            assert self.label or save_to, 'To save results either `label` or `save_to` must be provided.'
+            assert self.label or save_to, \
+                'To save results on a disk either `label` or `save_to` must be provided. ' \
+                'If you insist on not saving the results call the decomposition routine with `save_results=False` flag.'
             if save_to:
                 results.save_to = save_to
 
