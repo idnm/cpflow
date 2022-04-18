@@ -86,8 +86,9 @@ def insert_params(params, insertion_params, insertion_indices, jax_numpy=True):
     params_indices = [i for i in range(total_params) if i not in insertion_indices]
     if jax_numpy:
         res = jnp.zeros(total_params)
-        res = ops.index_update(res, jnp.array(params_indices), params)
-        res = ops.index_update(res, jnp.array(insertion_indices), insertion_params)
+
+        res = res.at[jnp.array(params_indices)].set(params)
+        res = res.at[jnp.array(insertion_indices)].set(insertion_params)
         return res
     else:
         res = np.zeros(total_params)
