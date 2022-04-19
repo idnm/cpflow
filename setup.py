@@ -13,7 +13,7 @@ setup(
     author_email='nnemkov@gmail.com',
     description='Variational synthesis of quantum circuits',
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type='text/markdown',
 
 
     install_requires=[

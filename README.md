@@ -1,16 +1,21 @@
 ## CPFlow
-`CPFlow` package is an implementation of the synthesis algorithms for quantum circuits described in ...
+Implementation of the synthesis algorithms for quantum circuits described in ... Distributed under the MIT licence.
+
 ## Installation
 `CPFlow` is available via `pip`.  It is highly recommended to install the package in a new virtual environment.
+
 ```sh
 pip install cpflow
 ```
+
 A feature that allows to decompose sythesized circuits into Clifford+T basis requires yet experimental `qiskit` branch that can be installed through
+
 ```sh
 pip install git+https://github.com/LNoorl/qiskit-terra@d2e0dc1185ccc3b0c9957e3d7d9bc610dede29d4
 ```
+
 ## Basic example
-Decomposing the CCZ gate with linear qubit connectivity 0-1-2. Can be run in python console but indeded for use with Jupyter notebooks.
+Decomposing the CCZ gate with linear qubit connectivity 0-1-2. Can be executed in python console but intended for use with Jupyter notebooks.
 
 ```python
 import numpy as np
@@ -28,9 +33,9 @@ d.refine()
 print(d)
 d.circuit.draw()
 ```
-Output
+Output:
 
-```python
+```sh
 < ccz_chain| Rational | loss: 1.1920928955078125e-07  | CZ count: 8 | CZ depth: 8  >
 ```
 ![image](https://user-images.githubusercontent.com/13020565/163995526-8ff39d97-f34a-4f0f-b723-8bb54803b500.png)
@@ -38,6 +43,3 @@ Output
 
 ## More features
 For further examples see link_to_notebook. For motivation and background see the original paper link_to_paper.
-
-## LICENSE
-MIT
