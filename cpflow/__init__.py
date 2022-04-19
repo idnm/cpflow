@@ -3,4 +3,9 @@
 __version__ = '0.1.0'
 
 
-from cpflow.main import Results, Decomposition, Synthesize, StaticOptions, AdaptiveOptions, Ansatz
+from cpflow.main import Results
+from cpflow.main import Decomposition
+from cpflow.main import Synthesize
+from cpflow.main import StaticOptions
+from cpflow.main import AdaptiveOptions
+from cpflow.main import Ansatz

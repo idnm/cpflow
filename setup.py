@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='cpflow',
-    version='0.1.0',
+    version='0.0.1',
     packages=['cpflow'],
     url='https://github.com/idnm/cpflow',
     license='MIT',
@@ -20,10 +20,12 @@ setup(
         'jax>=0.3.0, <0.3.5',
         'jaxlib>=0.3.0, <0.3.5',
         'dill>=0.3.4',
-        'matplotlib>=3.5.1',
+        'matplotlib>=3.2.2',
         'hyperopt>=0.2.7',
         'qiskit>=0.20.0',
-        'optax==0.1.1'
+        'optax==0.1.1',
+        'chex==0.1.0',
+        'pylatexenc>=2.10'
     ]
 
 )
