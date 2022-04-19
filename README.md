@@ -33,7 +33,7 @@ Output
 ```python
 < ccz_chain| Rational | loss: 1.1920928955078125e-07  | CZ count: 8 | CZ depth: 8  >
 ```
-figure!
+![image](https://user-images.githubusercontent.com/13020565/163995526-8ff39d97-f34a-4f0f-b723-8bb54803b500.png)
 
 ## More features
 For further examples see link_to_notebook. For motivation and background see the original paper link_to_paper.
