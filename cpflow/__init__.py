@@ -1,6 +1,6 @@
 """Variational synthesis of quantum circuits with coherent multi-start optimization."""
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 from cpflow.main import Results
 from cpflow.main import Decomposition
