@@ -22,7 +22,7 @@ setup(
         'dill>=0.3.4',
         'matplotlib>=3.2.2',
         'hyperopt>=0.2.7',
-        'qiskit==0.20.0',
+        'qiskit>=0.20.0',
         'optax==0.1.1',
         'chex==0.1.0',
         'pylatexenc>=2.10'
