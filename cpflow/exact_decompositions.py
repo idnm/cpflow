@@ -18,6 +18,7 @@ except ImportError:
     skd_available = False
     print('WARNING: the SolovayKitaevDecomposition plugin from dev version of qiskit is not installed.')
     print('To intall it run "pip install git+https://github.com/LNoorl/qiskit-terra@d2e0dc1185ccc3b0c9957e3d7d9bc610dede29d4" ')
+    print('You might also need to install the Rust compiler https://www.rust-lang.org/tools/install .')
 
 from cpflow.circuit_assembly import qiskit_circ_to_jax_unitary
 from cpflow.cp_utils import constrained_function
