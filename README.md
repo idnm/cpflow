@@ -42,4 +42,4 @@ Output:
 
 
 ## More features
-For further examples see link_to_notebook. For motivation and background see the original paper link_to_paper.
+For further examples we encourage to explore a [tutorial notebook](https://github.com/idnm/cpflow/blob/master/CPFlow_tutorial.ipynb) interactively. For motivation and background see the original paper link_to_paper.

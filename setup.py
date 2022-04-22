@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='cpflow',
-    version='0.0.2',
+    # version='0.0.3',
     packages=['cpflow'],
     url='https://github.com/idnm/cpflow',
     license='MIT',
