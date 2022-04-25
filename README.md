@@ -26,9 +26,9 @@ layer = [[0, 1], [1, 2]]  # Linear connectivity
 decomposer = Synthesize(layer, target_unitary=u_target, label='ccz_chain')
 options = StaticOptions(num_cp_gates=12, accepted_num_cz_gates=10, num_samples=10)
 
-results = decomposer.static(options)
+results = decomposer.static(options) # Takes several minutes
 
-d = results.decompositions[3]  # This turned out to be the best decomposition.
+d = results.decompositions[3]  # This turned out to be the best decomposition for refinement.
 d.refine()
 print(d)
 d.circuit.draw()
@@ -36,10 +36,9 @@ d.circuit.draw()
 Output:
 
 ```sh
-< ccz_chain| Rational | loss: 1.1920928955078125e-07  | CZ count: 8 | CZ depth: 8  >
+< ccz_chain| Clifford+T | loss: 0.0  | CZ count: 8 | CZ depth: 8  | T count: 7 | T depth: 5 >
 ```
-![image](https://user-images.githubusercontent.com/13020565/163995526-8ff39d97-f34a-4f0f-b723-8bb54803b500.png)
-
+![image](https://user-images.githubusercontent.com/13020565/165085291-f566108b-66bf-4dc8-a9c9-dcd771ea64b8.png)
 
 ## More features
 For further examples we encourage to explore a [tutorial notebook](https://github.com/idnm/cpflow/blob/master/CPFlow_tutorial.ipynb) interactively. For motivation and background see the original paper link_to_paper.
