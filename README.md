@@ -1,5 +1,11 @@
 ## CPFlow
-Implementation of the synthesis algorithms for quantum circuits described in ... Distributed under the MIT licence.
+CPFlow uses variational synthesis to find quantum circuits consisting of CNOTs+arbitrary 1q gates that simultaneously
+- Minimize a given loss function L(U), where U is the unitary of the circuit.
+- Do it with as few CNOT gates as possible.
+
+Indirectly the circuits can also be optimized for CNOT depth and even T count or T depth in some cases. Typical loss functions L(U) correspond to a compilation and a state preparation problem, but arbitrary well-defined loss functions can be handled as well. The cornerstone objective is to obtain as short circtuis as possible, possibly at the cost of a longer search time.
+
+CPFlow implements the synthesis algorithms  described in ... . It is distributed under the MIT licence.
 
 ## Installation
 `CPFlow` is available via `pip`.  It is highly recommended to install the package in a new virtual environment.
@@ -26,7 +32,7 @@ layer = [[0, 1], [1, 2]]  # Linear connectivity
 decomposer = Synthesize(layer, target_unitary=u_target, label='ccz_chain')
 options = StaticOptions(num_cp_gates=12, accepted_num_cz_gates=10, num_samples=10)
 
-results = decomposer.static(options) # Takes several minutes
+results = decomposer.static(options) # Should take from one to five minutes.
 
 d = results.decompositions[3]  # This turned out to be the best decomposition for refinement.
 d.refine()
