@@ -1,4 +1,4 @@
-\documentclass[twocolumn, amsfonts, amssymb, aps, nofootinbib]{revtex4-2}
+\documentclass[draft, twocolumn, amsfonts, amssymb, aps, nofootinbib]{revtex4-2}
 \usepackage[T1]{fontenc}
 \usepackage{tgtermes}
 \usepackage{amsmath}
@@ -54,8 +54,8 @@
 \affiliation{National University of Science and Technology ``MISIS”, Moscow 119049, Russia}
 
 \begin{abstract}
-We consider the problem of the variational quantum circuit synthesis into a gate set consisting of the \CX gate and arbitrary single-qubit (1q) gates with the primary target being the minimization of the \CX count. First we note that along with the discrete architecture search, \comment{that suffers from the combinatorial explosion of complexity} \st{a clear combinatorial challenge}, optimization over 1q gates can also be a crucial roadblock due to the omnipresence of local minimums (well known in the context of variational quantum algorithms but apparently underappreciated in the context of the variational compiling). Taking the issue seriously, we make an extensive search over the initial conditions an essential part of our approach.
-Another key idea we propose is to use parametrized two-qubit (2q) controlled phase gates, which can interpolate between the identity gate and the \CX gate, and allow \st{reformulating} \comment{continuous relaxation of} the discrete architecture search \st{as a continuous optimization problem}, which can be executed jointly with the optimization over 1q gates. This coherent optimization of the architecture together with 1q gates appears to work surprisingly well in practice, sometimes even outperforming optimization over 1q gates alone (for fixed optimal architectures).
+We consider the problem of the variational quantum circuit synthesis into a gate set consisting of the \CX gate and arbitrary single-qubit (1q) gates with the primary target being the minimization of the \CX count. First we note that along with the discrete architecture search suffering from the combinatorial explosion of complexity, optimization over 1q gates can also be a crucial roadblock due to the omnipresence of local minimums (well known in the context of variational quantum algorithms but apparently underappreciated in the context of the variational compiling). Taking the issue seriously, we make an extensive search over the initial conditions an essential part of our approach.
+Another key idea we propose is to use parametrized two-qubit (2q) controlled phase gates, which can interpolate between the identity gate and the \CX gate, and allow a continuous relaxation of the discrete architecture search, which can be executed jointly with the optimization over 1q gates. This coherent optimization of the architecture together with 1q gates appears to work surprisingly well in practice, sometimes even outperforming optimization over 1q gates alone (for fixed optimal architectures).
 As illustrative examples and applications we derive 8 \CX and \T depth 3 decomposition of the 3q Toffoli gate on the nearest-neighbor topology, rediscover known best decompositions of the 4q Toffoli gate on all 4q topologies including a  1 \CX gate improvement on the star-shaped topology, and propose decomposition of the 5q Toffoli gate on the nearest-neighbor topology with 48 \CX gates. We also benchmark the performance of our approach on a number of 5q quantum circuits from the ibm\_qx\_mapping database showing that it is highly competitive with the existing software. The algorithm developed in this work is available as a Python package \cpflow.
 \end{abstract}
 
@@ -100,18 +100,18 @@ The unitary synthesis problem amounts to finding the most efficient circuits opt
 	\item Discrete optimization or architecture search, looking for best placements of 2q gates.
 	\item Continuous optimization of 1q gate parameters for a given architecture.
 \end{enumerate}
-The difficulty associated with the architecture search has combinatorial origin and is manifest. The difficulty of the continuous optimization is however also essential, as is known in the context of variational quantum algorithms, but apparently underappreciated in the context of the variational compiling. After fixing our notation and giving a brief introduction in Sec.~\ref{sec gates}, we zoom in on this issue in Sec.~\ref{sec local minimums}. Another cornerstone idea of our approach is to use parametrized 2q gates as a means to \st{reduce} \comment{relax} the discrete architecture search to another continuous optimization, that can be performed simultaneously and coherently with the optimization over 1q gates. We introduce the \cpflow algorithm in Sec.~\ref{sec cpflow}. In Sec.~\ref{sec toffoli} we first illustrate all central features of \cpflow using the 3q Toffoli gate as an example, and then go beyond this toy case to synthesize efficient (and likely novel) decompositions of the 4q and 5q Toffoli gates on constrained topologies. In Sec.~\ref{sec benchmark}, we provide further benchmarks showcasing that \cpflow is very efficient in compilation of small scale circuits with moderate complexity but also outline its limitations. Sec.~\ref{sec last} concludes with the summary and outlook.
+The difficulty associated with the architecture search has combinatorial origin and is manifest. The difficulty of the continuous optimization is however also essential, as is known in the context of variational quantum algorithms, but apparently underappreciated in the context of the variational compiling. After fixing our notation and giving a brief introduction in Sec.~\ref{sec gates}, we zoom in on this issue in Sec.~\ref{sec local minimums}. Another cornerstone idea of our approach is to use parametrized 2q gates as a means to relax the discrete architecture search to another continuous optimization, that can be performed simultaneously and coherently with the optimization over 1q gates. We introduce the \cpflow algorithm in Sec.~\ref{sec cpflow}. In Sec.~\ref{sec toffoli} we first illustrate all central features of \cpflow using the 3q Toffoli gate as an example, and then go beyond this toy case to synthesize efficient (and likely novel) decompositions of the 4q and 5q Toffoli gates on constrained topologies. In Sec.~\ref{sec benchmark}, we provide further benchmarks showcasing that \cpflow is very efficient in compilation of small scale circuits with moderate complexity but also outline its limitations. Sec.~\ref{sec last} concludes with the summary and outlook.
 
 \textbf{\textit{Related work}}. The idea to use computer assisted search and numerical optimization for circuit synthesis goes back a long way~\cite{Divincenzo1994} and continues to the present day with advances due to both algorithm design and growth of raw computational power. Possible frameworks include purely discrete search over a finite gate set~\cite{Nagarajan2021}, a natural separation into discrete architecture search and continuous optimization~\cite{Nam2018, Khatri2019, Smith2021}, and a hybrid approach with part of the architecture search outsourced to a version of continuous optimization~\cite{Younis2021, Rakyta2022}. The scheme developed in Ref.~\cite{Rakyta2022} is in many respects similar to the one proposed in this paper, and similarly to our work, was originally motivated by the impressive success of variational compiling of random unitaries~\cite{Kiani2020, Madden2021, Rakyta2021}, which can be thought of as the circuits with maximal complexity.
 
 \section{Background and notation \label{sec gates}}
 \subsection{Quantum circuits and quantum gates}
 Quantum circuits are usually drawn as diagrams similar to Fig.~\ref{fig template example}. Horizontal wires correspond to qubits, boxes and vertical connections to quantum gates. Each quantum gate can be though of as a unitary matrix. The ones we use in this paper are summarized in Fig.~\ref{fig gates}. An important detail is that \CZ and \CX gates are equivalent up to a conjugation by the 1q Hadamard gate and hence completely equivalent for the purpose of the variational compiling that we consider. We often mention \CX gates in more general discussions, as is more standard, but refer to \CZ gates when the technical details are important.
-The state space associated to $n$ qubits has dimension $2^n$, the unitary matrices acting on this space have dimension $2^n\times 2^n$. Unitary matrix of a quantum circuit can be constructed by an appropriate tensor product of all the gates involved. The overall complex phase of the unitary matrix is inconsequential and can be fixed in any convenient way. The space of quantum circuits on $n$ qubits is hence equivalent to the special unitary group $SU(2^n)$. A natural measure of distance between the two unitary matrices is the Hilbert-Schmidt \comment{induced distance}\st{cost}
+The state space associated to $n$ qubits has dimension $2^n$, the unitary matrices acting on this space have dimension $2^n\times 2^n$. Unitary matrix of a quantum circuit can be constructed by an appropriate tensor product of all the gates involved. The overall complex phase of the unitary matrix is inconsequential and can be fixed in any convenient way. The space of quantum circuits on $n$ qubits is hence equivalent to the special unitary group $SU(2^n)$. A natural measure of fidelity between two unitary matrices is the Hilbert-Schmidt induced distance
 \begin{align}
 D(U, V)=1-\frac{|\operatorname{Tr}U^\dagger V|^2}{4^n} \ . \label{D hst}
 \end{align}
-It is normalized to lie between 0 and 1 with the minimum being reached iff $U$ and $V$ differ by a global phase.
+It is normalized to take values between 0 and 1 with the minimum being reached iff $U$ and $V$ differ by a global phase.
 
 \begin{figure}
 	\begin{flushleft}
@@ -215,7 +215,7 @@ So far our discussion and the bound~\eqref{TLB} addressed generic or random unit
 \end{figure*}
 
 
-As mentioned in the introduction, it is natural to split the variational compiling into the discrete architecture search and the continuous optimization of 1q gates. While the difficulty of the architecture search \st{has a combinatorial origin and hardly needs explaining} \comment{is caused by the combinatorial explosion of complexity making the overall problem close to intractable}, the difficulty of continuous optimization also can not be ignored, \comment{since it is a non-convex optimization problem that can not be resolved with mathematical guaranties and in practice may suffer from the range of problems including local minimums, plateaus and saddle points}. Mathematically, the problem of the variational synthesis is very similar to the classical optimization loop in quantum variational algorithms~\cite{McClean2016}, especially their hardware-efficient~\cite{Kandala2017} and adaptive~\cite{Tang2021} forms. Here, the two key obstacles are the \textit{barren plateaus} and \textit{local minimums}. The barren plateaus~\cite{McClean2018} manifest as negligible gradients in large areas of the loss landscape and are usually associated with a high number of qubits or parameters. In our experiments with small-scale quantum circuits we did not find them to be relevant. On the other hand, the problem of local minimums alone is sufficient to render training of the variational algorithms NP-hard~\cite{Bittel2021}. As our numerical experiments suggest, local minimums constitute a real hindrance to the variational compiling.
+As mentioned in the introduction, it is natural to split the variational compiling into the discrete architecture search and the continuous optimization of 1q gates. The difficulty of the architecture search is manifest and caused by the combinatorial explosion of complexity making the problem very challenging. At the same time, the difficulty of continuous optimization also can not be ignored being a non-convex problem that can not be solved with guaranties and in practice may suffer from the range of problems including local minimums, plateaus and saddle points. Mathematically, the problem of the variational synthesis is very similar to the classical optimization loop in quantum variational algorithms~\cite{McClean2016}, especially their hardware-efficient~\cite{Kandala2017} and adaptive~\cite{Tang2021} forms. Here, the two key obstacles are the \textit{barren plateaus} and \textit{local minimums}. The barren plateaus~\cite{McClean2018} manifest as negligible gradients in large areas of the loss landscape and are usually associated with a high number of qubits or parameters. In our experiments with small-scale quantum circuits we did not find them to be relevant. On the other hand, the problem of local minimums alone is sufficient to render training of the variational algorithms NP-hard~\cite{Bittel2021}. As our numerical experiments suggest, local minimums constitute a real hindrance to the variational compiling.
 
 We will quantify the challenges associated with local minimums by the empirical success ratio
 \begin{align}
@@ -250,7 +250,7 @@ In the context of variational synthesis results of the previous section suggest 
 	\label{fig cp template}
 \end{figure*}
 
-A second main idea that we rely is \st{to reformulate} \comment{the relaxation of} the discrete architecture search as a continuous \comment{optimization} problem as well. For illustration, consider the circuit at Fig.~\ref{fig cp template}. Here the 2q gates are the controlled phase gates \eqref{fig gates}, which interpolate between the identity gate $\text{\textsf{CP}}(0)=\mathbb{I}$ and the \CZ gate $\text{\textsf{CP}}(\pi)=\text{\textsf{CZ}}$. For generic values of the angle a single $\text{\textsf{CP}}(a)$ gate can be decomposed into 2 \CZ gates (plus 1q gates). Therefore, different values of parameters in \CP gates in the template \eqref{fig cp template} effectively capture several different templates with the 2q \CZ gates and training templates with the \CP blocks can encompass both the architecture search and the tuning of continuous parameters, moreover performed in a coherent manner.
+A second main idea that we rely is the relaxation of the discrete architecture search as yet another continuous optimization. For illustration, consider the circuit at Fig.~\ref{fig cp template}. Here the 2q gates are the controlled phase gates \eqref{fig gates}, which interpolate between the identity gate $\text{\textsf{CP}}(0)=\mathbb{I}$ and the \CZ gate $\text{\textsf{CP}}(\pi)=\text{\textsf{CZ}}$. For generic values of the angle a single $\text{\textsf{CP}}(a)$ gate can be decomposed into 2 \CZ gates (plus 1q gates). Therefore, different values of parameters in \CP gates in the template \eqref{fig cp template} effectively capture several different templates with the 2q \CZ gates and training templates with the \CP blocks can encompass both the architecture search and the tuning of continuous parameters, moreover performed in a coherent manner.
 
 We can anticipate, however, that training \CP templates directly will result in most \CP gates having generic angles and hence effectively doubling the \CZ count of the original template. To address this issue we introduce an additional \textit{penalty term} to the loss function that is intended to drive all \CP angles to either $0$ or $\pi$. The shape of the penalty function that we use is presented at Fig.~\ref{fig penalty}.
 
@@ -260,7 +260,7 @@ We can anticipate, however, that training \CP templates directly will result in 
 	\label{fig penalty}
 \end{figure}
 
-This penalty is intended to drive all \CP angles during the optimization to either $0$ or $\pi$ and hence to reduce the \CZ count of the resulting circuit. Moreover, at values $a=0,\frac12\pi, \frac32\pi, 2\pi$ the regularization term faithfully captures the \CZ cost of the \CP gate. We choose a simple linear interpolation between these values because \st{linear penalty functions are known to introduce sparcity}~\cite{tibshirani1996regression, donoho2006most, candes2006robust, candes2011robust}\st{ in neural networks, although better options may exist.} \comment{piecewise-linear penalty functions are known to lead to the discrete decision making in certain cases of continuous relaxation of discrete optimization problems such as sparcification of machine learning models}~\cite{tibshirani1996regression} \comment{compressed sencing}~\cite{donoho2006most, candes2006robust}\comment{, Robust Principal Component Analysis}~\cite{candes2011robust} \comment{to name a few.} For numerical stability small plateaus near the reference values are added (empirically we find that \CP angles often relax near $\frac12\pi, \frac32\pi$ as well).
+This penalty is intended to drive all \CP angles during the optimization to either $0$ or $\pi$ and hence to reduce the \CZ count of the resulting circuit. Moreover, at values $a=0,\frac12\pi, \frac32\pi, 2\pi$ the regularization term faithfully captures the \CZ cost of the \CP gate. We choose a simple linear interpolation between these values because piecewise-linear penalty functions are known to lead to the discrete decision making in certain cases of continuous relaxation of discrete optimization problems such as sparcification of machine learning models~\cite{tibshirani1996regression}, compressed sensing~\cite{donoho2006most, candes2006robust}, and robust PCA~\cite{candes2011robust} to name a few. For numerical stability small plateaus near the reference values are added (empirically we find that \CP angles often relax near $\frac12\pi, \frac32\pi$ as well).
 
 An obvious problem with this regularization function is the presence of the local minimum at $a=\pi$. In fact, enumerating all local minimums associated with the regularization terms of a \CP template is equivalent to the discrete search through all \CZ templates that it can reduce to. However, our empirical results suggest that simultaneous optimization over \CP and 1q angles is a very efficient strategy if the overall weight of the regularization term is chosen properly. If it is too small, the regularization term has little effect and the resulting decompositions tend to have a high \CZ count. When the weight is too high, the \CP angles effectively get captured by the closest local minimum and the flexibility of our strategy is lost. In fact, optimization with a high regularization weight could be considered a version of a random search over the architectures (if the initial \CP angles are chosen randomly) and performs significantly worse than optimization with a properly tuned regularization weight.
 
@@ -589,39 +589,31 @@ While capable of generating many interesting results our method has its limitati
 Scaling up the variational approach within the classically accessible regime appears to be mostly limited by the circuit complexity rather than the qubit count, e.g. it seems to be more difficult to efficiently compile a 4q circuit that requires many 2q gates than it is to compile a 5q circuit that can be represented using only a small amount of 2q gates. Importantly, the challenges associated with the higher complexity are not caused only by the combinatorial growth of the possible architectures alone but also by the proliferation of the local minimums in the loss landscape. Our empirical results (cf Fig.~\ref{fig local minimums}) indicate that already for 4q circuits in the range from 12 to 50 2q gates the probability of a successful continuous optimization is less than 0.1\% even for a correctly chosen architecture. This probability depends on numerous factors including details of the optimization procedure, distribution of the initial conditions and parametrization of the loss landscape. Detailed understanding of these mechanisms may lead to a dramatic improvement in variational compilers efficiency.
 
 There are numerous further possibilities to  enhance variational synthesis of high-complexity unitaries. For example, if the unitary originates from a known quantum circuit, it could be possible to use this information to ones advantage. Splitting the original circuit in parts each having lower complexity and synthesising them separately may lead to better results. Another proposal is to use the original circuit as the starting template for the variational compression~\cite{Rakyta2022}. A recent work \cite{Grimsley2022} has shown that modifying template architectures on the go can help to reduce both global minimums and barren plateaus. It would be interesting to see if some of the circuits generated by CPFlow, which have efficient gate count but insufficient fidelity can serve as a useful starting point for the "burrowing" procedure suggested in \cite{Grimsley2022}. Eventually, the viability and resource allowance of the variational synthesis must be justified by the payoff if provides for useful applications.
-
-\subsection*{Acknowledgments}
-We would like to thank A.~Nikolaeva, P.~Rakyta and Z.~Zimborás for  stimulating discussions, L.~Madden and O.~Lockwood for their considerate feedback on the draft, and V.~Dubinin for the help with numerics.
-
-This work was supported by the Russian Science Foundation grant 19-71-10091 (the study of efficient variational synthesis of quantum circuits in Secs.~\ref{sec local minimums}, \ref{sec cpflow}, and \ref{sec toffoli}) and Russian Roadmap on Quantum Computing (the development of the algorithm and benchmarks in Sec.~\ref{sec benchmark}).
-\appendix
-\section{Circuit refinement \label{app exact}}
-
 \begin{figure*}
 	\begin{flushleft}
 		(a) Original circuit
 		\begin{multline*}
-		\Qcircuit @C=1.0em @R=0.2em @!R { \\
-			& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{0})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-2.356})} & \gate{\mathrm{X}\,(\mathrm{1.257e-05})} & \gate{\mathrm{Z}\,(\mathrm{4.511})} & \qw & \qw\\
-			& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{0.7854})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \gate{\mathrm{Z}\,(\mathrm{3.685})} & \qw & \qw\\
-			& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{1.489})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw}\\
-		\Qcircuit @C=1.0em @R=0.2em @!R { \\
-			& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{0})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-2.356})} & \gate{\mathrm{X}\,(\mathrm{1.257e-05})} & \gate{\mathrm{Z}\,(\mathrm{4.511})} & \qw & \qw\\
-			& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{0.7854})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \gate{\mathrm{Z}\,(\mathrm{3.685})} & \qw & \qw\\
-			& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{1.489})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw}
+			\Qcircuit @C=1.0em @R=0.2em @!R { \\
+				& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{0})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-2.356})} & \gate{\mathrm{X}\,(\mathrm{1.257e-05})} & \gate{\mathrm{Z}\,(\mathrm{4.511})} & \qw & \qw\\
+				& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{0.7854})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \gate{\mathrm{Z}\,(\mathrm{3.685})} & \qw & \qw\\
+				& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{1.489})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw}\\
+			\Qcircuit @C=1.0em @R=0.2em @!R { \\
+				& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{0})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{-2.356})} & \gate{\mathrm{X}\,(\mathrm{1.257e-05})} & \gate{\mathrm{Z}\,(\mathrm{4.511})} & \qw & \qw\\
+				& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{0.7854})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \gate{\mathrm{Z}\,(\mathrm{3.685})} & \qw & \qw\\
+				& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{1.489})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw}
 		\end{multline*}
-
+		
 		(b) Circuit with reduced angles
-
+		
 		\scalebox{0.6}{
 			\Qcircuit @C=1.0em @R=0.2em @!R { \\
 				& \gate{\mathrm{X}\,(\mathrm{3.142})} & \ctrl{2} & \qw & \qw & \qw & \qw & \qw & \ctrl{2} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{0.7852})} & \qw & \qw & \qw & \qw\\
 				& \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{3.141})} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-1.571})} & \gate{\mathrm{X}\,(\mathrm{0.7854})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-1.571})} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \gate{\mathrm{Z}\,(\mathrm{-2.357})} & \qw & \qw\\
 				& \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{2.356})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{2.356})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{0.7853})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{-0.7855})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw}}
 		\vspace{2em}
-
+		
 		(c) Rationalized circuit
-
+		
 		\scalebox{0.7}{
 			\Qcircuit @C=1.0em @R=0.2em @!R { \\
 				& \gate{\mathrm{X}\,(\mathrm{\pi})} & \ctrl{2} & \qw & \qw & \qw & \qw & \qw & \ctrl{2} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})} & \qw & \qw & \qw & \qw\\
@@ -631,6 +623,56 @@ This work was supported by the Russian Science Foundation grant 19-71-10091 (the
 	\caption{Refinement of the approximate decomposition of the 3q Toffoli gate into an exact result.}
 	\label{fig ref circuit}
 \end{figure*}
+\subsection*{Acknowledgments}
+We would like to thank A.~Nikolaeva, P.~Rakyta and Z.~Zimborás for  stimulating discussions, L.~Madden and O.~Lockwood for their considerate feedback on the draft, and V.~Dubinin for the help with numerics.
+
+This work was supported by the Russian Science Foundation grant 19-71-10091 (the study of efficient variational synthesis of quantum circuits in Secs.~\ref{sec local minimums}, \ref{sec cpflow}, and \ref{sec toffoli}) and Russian Roadmap on Quantum Computing (the development of the algorithm and benchmarks in Sec.~\ref{sec benchmark}).
+\appendix
+\begin{figure*}
+	\scalebox{0.65}{
+		\Qcircuit @C=1.0em @R=0.2em @!R { \\
+			& \qw & \qw & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+			& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{3\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \qw\\
+			& \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \qw & \qw\\
+			& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \qw & \control\qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \qw & \qw\\
+			\\ }
+	}
+	\caption{A decomposition of the relative phase 4q Toffoli gate on the chain topology with 11 \CZ gates.}
+	\label{fig toff4 sqrt}
+\end{figure*}
+
+
+\begin{figure*}
+	\begin{multline}
+		\scalebox{0.65}{
+			\Qcircuit @C=1.0em @R=0.2em @!R { \\
+				& \gate{\mathrm{X}\,(\mathrm{\pi})} & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw\\
+				& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw\\
+				& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{7\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{16}})} & \qw & \qw & \qw & \qw\\
+				& \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+				\\ }}\\
+		\scalebox{0.65}{
+			\Qcircuit @C=1.0em @R=0.2em @!R { \\
+				& \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw\\
+				& \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \qw & \qw\\
+				& \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{15\pi}{16}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{9\pi}{16}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{15\pi}{16}})} & \control\qw & \qw & \qw\\
+				& \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-7\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \qw & \qw & \qw & \qw\\
+				\\ }
+		}\\
+		\scalebox{0.65}{
+			\Qcircuit @C=1.0em @R=0.2em @!R { \\
+				& \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{16}})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+				& \gate{\mathrm{Z}\,(\mathrm{\frac{-7\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-15\pi}{16}})} & \qw & \qw & \qw & \qw & \qw & \qw\\
+				& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{7\pi}{16}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-7\pi}{16}})} & \qw & \qw\\
+				& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-9\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \qw & \qw\\
+				\\ }
+		}
+	\end{multline}
+	\caption{A decomposition of \textsf{C}${}^3\sqrt{\text{\textsf{X}}}$ gate on the chain 4q topology with 18 \CZ gates.}
+	\label{fig relative toff4}
+\end{figure*}
+
+\section{Circuit refinement \label{app exact}}
 Quantum circuits that result from numerical optimization performed by \cpflow typically have many redundant 1q gates, see Fig.~\ref{fig ref circuit}(a) for an example.We propose a simple refinement procedure that helps to find a simpler representation for such circuits.
 
 First, we test if an angle $a$ can be set to 0 without affecting the loss function. For instance, in the state preparation problem the initial round of $R_Z$ gates has no effect when applied to the all-zero state and hence can be simply omitted.
@@ -651,60 +693,15 @@ Typically all terms in this expression are non-vanishing and different choices o
 
 Finally, we check if the resulting angles of the 1q gates can be approximated by the rational multiples of $\pi$ without compromising the accuracy of the loss function $L(U)$ (in fact the accuracy is often improved at step), see Fig.~\ref{fig ref circuit}(c).
 
-
 The steps outlined above are heuristic and do not always lead to expected results, but often work well in practice. All circuits reported in this paper were obtained automatically in this fashion. Heuristically we find that when decompositions are close to optimal the refinement procedure works best. Possibly this can be attributed to the fact that extra gates allow for more complicated redundancies in the circuit that are not accounted for by our simple steps. Also, the procedure works best when the loss function is the most restrictive as in the compilation problem, when only the global phase of the unitary is not defined. When the loss function is more permissive, such as in state preparation, further steps usually need to be taken to eliminate all redundant gates.
 
-\begin{figure*}
-	\scalebox{0.65}{
-		\Qcircuit @C=1.0em @R=0.2em @!R { \\
-			& \qw & \qw & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
-			& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{3\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \qw\\
-			& \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \qw & \qw\\
-			& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \qw & \control\qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-3\pi}{4}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{4}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{3\pi}{4}})} & \qw & \qw\\
-			\\ }
-	}
-\caption{A decomposition of the relative phase 4q Toffoli gate on the chain topology with 11 \CZ gates.}
-\label{fig toff4 sqrt}
-\end{figure*}
-
-
-\begin{figure*}
-	\begin{multline}
-	\scalebox{0.65}{
-		\Qcircuit @C=1.0em @R=0.2em @!R { \\
-			& \gate{\mathrm{X}\,(\mathrm{\pi})} & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw\\
-			& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw\\
-			& \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{7\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{16}})} & \qw & \qw & \qw & \qw\\
-			& \qw & \qw & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
-			\\ }}\\
-	\scalebox{0.65}{
-		\Qcircuit @C=1.0em @R=0.2em @!R { \\
-			& \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \qw & \qw & \qw & \qw\\
-			& \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \qw & \qw\\
-			& \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{15\pi}{16}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{9\pi}{16}})} & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\frac{15\pi}{16}})} & \control\qw & \qw & \qw\\
-			& \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-7\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \qw & \qw & \qw & \qw\\
-			\\ }
-	}\\
-	\scalebox{0.65}{
-		\Qcircuit @C=1.0em @R=0.2em @!R { \\
-			& \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{16}})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
-			& \gate{\mathrm{Z}\,(\mathrm{\frac{-7\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{\pi})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-15\pi}{16}})} & \qw & \qw & \qw & \qw & \qw & \qw\\
-			& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{7\pi}{16}})} & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-7\pi}{16}})} & \qw & \qw\\
-			& \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\pi})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \qw & \qw & \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{\frac{-9\pi}{16}})} & \gate{\mathrm{X}\,(\mathrm{\frac{\pi}{2}})} & \gate{\mathrm{Z}\,(\mathrm{\frac{-\pi}{2}})} & \qw & \qw\\
-			\\ }
-	}
-	\end{multline}
-	\caption{A decomposition of \textsf{C}${}^3\sqrt{\text{\textsf{X}}}$ gate on the chain 4q topology with 18 \CZ gates.}
-	\label{fig relative toff4}
-\end{figure*}
-
-\section{4q gates featuring in decomposition of 5q Toffoli gate \label{app 5q}}
+\section{4q gates featuring in the decomposition of the 5q Toffoli gate \label{app 5q}}
 In Sec.~\ref{sec toff5} we constructed a decomposition of the 5q Toffoli gate on the chain topology with 48 \CZ gates. This decomposition used efficient representations for the square root of the 4q Toffoli gate \textsf{C}${}^3\sqrt{\text{\textsf{X}}}$ and a relative-phase 4q Toffoli gate on the chain 4q topology. Decomposition of \textsf{C}${}^3\sqrt{\text{\textsf{X}}}$ with 18 \CZ gates can be found using standard methodology described in Sec.\ref{sec toff4}. The resulting circuit is depicted at Fig.~\ref{fig toff4 sqrt}. To find a relative-phase Toffoli gate one needs to use a non-standard loss function. By definition \cite{Maslov}, $U$ is a relative phase Toffoli gate if $U=VD$, where $V$ is the unitary matrix of the Toffoli gate and $D$ is a diagonal unitary matrix. To construct the corresponding loss function we can use the fact that the sum $\sum_i|D_{ii}|^2$ for a unitary matrix $D$ has the maximum value $2^n$ iff $D$ is diagonal. Hence, the following loss reaches its minimum iff $U$ is a relative phase Toffoli gate
 \begin{align}
 L(U)=1-\frac{\operatorname{Tr}\left|UV^\dagger\right|^2}{2^n}=1-\frac{\sum_{i, j}\left|U_{ij}V^*_{ji}\right|^2}{2^n}
 \end{align}
 With this loss function and standard parameter specifications for the 4q circuits used in this work \cpflow generated a relative phase 4q Toffoli gate on the chain topology with 11 \CZ gates. The circuit is shown at Fig.\ref{fig relative toff4}.
 
-\bibliography{bibfile.bib, library.bib}
+\bibliography{bibfile.bib, /home/idnm/Dropbox/hep/Sheets/library.bib}
 
 \end{document}
