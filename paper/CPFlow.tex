@@ -1,4 +1,4 @@
-\documentclass[draft, twocolumn, amsfonts, amssymb, aps, nofootinbib]{revtex4-2}
+\documentclass[twocolumn, amsfonts, amssymb, aps, nofootinbib]{revtex4-2}
 \usepackage[T1]{fontenc}
 \usepackage{tgtermes}
 \usepackage{amsmath}
@@ -602,18 +602,18 @@ There are numerous further possibilities to  enhance variational synthesis of hi
 				& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{0.7854})} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{2}})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \gate{\mathrm{Z}\,(\mathrm{3.685})} & \qw & \qw\\
 				& \gate{\mathrm{Z}\,(\mathrm{0})} & \gate{\mathrm{X}\,(\mathrm{1.489})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw}
 		\end{multline*}
-		
+
 		(b) Circuit with reduced angles
-		
+
 		\scalebox{0.6}{
 			\Qcircuit @C=1.0em @R=0.2em @!R { \\
 				& \gate{\mathrm{X}\,(\mathrm{3.142})} & \ctrl{2} & \qw & \qw & \qw & \qw & \qw & \ctrl{2} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{0.7852})} & \qw & \qw & \qw & \qw\\
 				& \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{3.141})} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-1.571})} & \gate{\mathrm{X}\,(\mathrm{0.7854})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-1.571})} & \gate{\mathrm{X}\,(\mathrm{1.571})} & \gate{\mathrm{Z}\,(\mathrm{-2.357})} & \qw & \qw\\
 				& \qw & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{2.356})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{2.356})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-\pi})} & \gate{\mathrm{X}\,(\mathrm{0.7853})} & \control\qw & \gate{\mathrm{Z}\,(\mathrm{-3.142})} & \gate{\mathrm{X}\,(\mathrm{-0.7855})} & \gate{\mathrm{Z}\,(\mathrm{3.142})} & \qw & \qw & \qw & \qw & \qw & \qw & \qw}}
 		\vspace{2em}
-		
+
 		(c) Rationalized circuit
-		
+
 		\scalebox{0.7}{
 			\Qcircuit @C=1.0em @R=0.2em @!R { \\
 				& \gate{\mathrm{X}\,(\mathrm{\pi})} & \ctrl{2} & \qw & \qw & \qw & \qw & \qw & \ctrl{2} & \qw & \qw & \qw & \qw & \ctrl{1} & \gate{\mathrm{X}\,(\mathrm{-\pi})} & \qw & \ctrl{1} & \gate{\mathrm{Z}\,(\mathrm{\frac{\pi}{4}})} & \qw & \qw & \qw & \qw\\
@@ -624,9 +624,10 @@ There are numerous further possibilities to  enhance variational synthesis of hi
 	\label{fig ref circuit}
 \end{figure*}
 \subsection*{Acknowledgments}
-We would like to thank A.~Nikolaeva, P.~Rakyta and Z.~Zimborás for  stimulating discussions, L.~Madden and O.~Lockwood for their considerate feedback on the draft, and V.~Dubinin for the help with numerics.
-
-This work was supported by the Russian Science Foundation grant 19-71-10091 (the study of efficient variational synthesis of quantum circuits in Secs.~\ref{sec local minimums}, \ref{sec cpflow}, and \ref{sec toffoli}) and Russian Roadmap on Quantum Computing (the development of the algorithm and benchmarks in Sec.~\ref{sec benchmark}).
+We would like to thank A.~Nikolaeva, P.~Rakyta, and Z.~Zimborás for  stimulating discussions, L.~Madden and O.~Lockwood for their considerate feedback on the draft, and V.~Dubinin for the help with numerics.
+This work was supported by
+%the Russian Science Foundation grant 19-71-10091 (the study of efficient variational synthesis of quantum circuits in Secs.~\ref{sec local minimums}, \ref{sec cpflow}, and \ref{sec toffoli}) and
+the Russian Roadmap on Quantum Computing (the development of the algorithm and benchmarks in Sec.~\ref{sec benchmark}; Contract No. 868-1.3-15/15-2021, October 5, 2021).
 \appendix
 \begin{figure*}
 	\scalebox{0.65}{
@@ -702,6 +703,6 @@ L(U)=1-\frac{\operatorname{Tr}\left|UV^\dagger\right|^2}{2^n}=1-\frac{\sum_{i, j
 \end{align}
 With this loss function and standard parameter specifications for the 4q circuits used in this work \cpflow generated a relative phase 4q Toffoli gate on the chain topology with 11 \CZ gates. The circuit is shown at Fig.\ref{fig relative toff4}.
 
-\bibliography{bibfile.bib, /home/idnm/Dropbox/hep/Sheets/library.bib}
+\bibliography{bibfile.bib, library.bib}
 
 \end{document}
