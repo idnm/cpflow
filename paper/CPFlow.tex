@@ -1,4 +1,5 @@
 \documentclass[twocolumn, amsfonts, amssymb, aps, nofootinbib]{revtex4-2}
+\raggedbottom
 \usepackage[T1]{fontenc}
 \usepackage{tgtermes}
 \usepackage{amsmath}
@@ -87,7 +88,7 @@ As illustrative examples and applications we derive 8 \CX and \T depth 3 decompo
 		& \gate{\mathrm{R_\sigma}\,(\mathrm{a})} & \qw
 	} = e^{-i \sigma a/2},\qquad \sigma \in \{ X, Y, Z \},\qquad X=\begin{pmatrix}0&1\\1&0\end{pmatrix},\quad Y=\begin{pmatrix}0&-i\\i&0\end{pmatrix},\quad Z=\begin{pmatrix}1&0\\0&-1\end{pmatrix}
 	\end{gather*}
-	\caption{Diagrammatic notation and matrix representation for gates used in this work. When drawing large circuits we will often abbreviate rotation gates $R_\sigma(a)$ by $\sigma(a)$ for clarity.}
+	\caption{Diagrammatic notation and matrix representation for gates used in this work. When drawing large circuits we will often abbreviate rotation gates $R_\sigma(a)$ by $\sigma(a)$ to lighten the notation.}
 	\label{fig gates}
 \end{figure*}
 
@@ -100,14 +101,14 @@ The unitary synthesis problem amounts to finding the most efficient circuits opt
 	\item Discrete optimization or architecture search, looking for best placements of 2q gates.
 	\item Continuous optimization of 1q gate parameters for a given architecture.
 \end{enumerate}
-The difficulty associated with the architecture search has combinatorial origin and is manifest. The difficulty of the continuous optimization is however also essential, as is known in the context of variational quantum algorithms, but apparently underappreciated in the context of the variational compiling. After fixing our notation and giving a brief introduction in Sec.~\ref{sec gates}, we zoom in on this issue in Sec.~\ref{sec local minimums}. Another cornerstone idea of our approach is to use parametrized 2q gates as a means to relax the discrete architecture search to another continuous optimization, that can be performed simultaneously and coherently with the optimization over 1q gates. We introduce the \cpflow algorithm in Sec.~\ref{sec cpflow}. In Sec.~\ref{sec toffoli} we first illustrate all central features of \cpflow using the 3q Toffoli gate as an example, and then go beyond this toy case to synthesize efficient (and likely novel) decompositions of the 4q and 5q Toffoli gates on constrained topologies. In Sec.~\ref{sec benchmark}, we provide further benchmarks showcasing that \cpflow is very efficient in compilation of small scale circuits with moderate complexity but also outline its limitations. Sec.~\ref{sec last} concludes with the summary and outlook.
+The difficulty associated with the architecture search has combinatorial origin and is manifest. The difficulty of the continuous optimization is however also essential, as is known in the context of variational quantum algorithms, but apparently underappreciated in the context of the variational compiling. After fixing our notation and giving a brief introduction in Sec.~\ref{sec gates}, we zoom in on this issue in Sec.~\ref{sec local minimums}. Results of this analysis may be of independent interest. Another cornerstone idea of our approach is to use parametrized 2q gates as a means to relax the discrete architecture search to another continuous optimization, that can be performed simultaneously and coherently with the optimization over 1q gates. We introduce the \cpflow algorithm in Sec.~\ref{sec cpflow}. In Sec.~\ref{sec toffoli} we first illustrate all central features of \cpflow using the 3q Toffoli gate as an example, and then go beyond this toy case to synthesize efficient (and likely novel) decompositions of the 4q and 5q Toffoli gates on constrained topologies. In Sec.~\ref{sec benchmark}, we provide further benchmarks showcasing that \cpflow is very efficient in compilation of small scale circuits with moderate complexity but also outline its limitations. Sec.~\ref{sec last} concludes with the summary and outlook.
 
-The idea to use computer assisted search and numerical optimization for circuit synthesis goes back a long way~\cite{Divincenzo1994} and continues to the present day with advances due to both algorithm design and growth of raw computational power. Possible frameworks include purely discrete search over a finite gate set~\cite{Nagarajan2021}, a natural separation into discrete architecture search and continuous optimization~\cite{Nam2018, Khatri2019, Smith2021}, and a hybrid approach with part of the architecture search outsourced to a version of continuous optimization~\cite{Younis2021, Rakyta2022}. The scheme developed in Ref.~\cite{Rakyta2022} is in many respects similar to the one proposed in this paper, and similarly to our work, was originally motivated by the impressive success of variational compiling of random unitaries~\cite{Kiani2020, Madden2021, Rakyta2021}, which can be thought of as the circuits with maximal complexity.
+The idea to use computer assisted search and numerical optimization for circuit synthesis goes back a long way~\cite{Divincenzo1994} and continues to the present day with advances due to both algorithm design and growth of raw computational power. Possible frameworks include purely discrete search over a finite gate set~\cite{Nagarajan2021}, a natural separation into discrete architecture search and continuous optimization~\cite{Nam2018, Khatri2019, Smith2021}, and a hybrid approach with part of the architecture search outsourced to a version of continuous optimization~\cite{Younis2021, Rakyta2022}. The scheme developed in Ref.~\cite{Rakyta2022} is in many respects similar to the one proposed in this paper, and similarly to our work, was originally motivated by the impressive success of variational compiling of random unitaries~\cite{Kiani2020, Madden2021, Rakyta2021}, which can be thought of as the circuits with maximal complexity. In this work, we address circuits of intermediate complexity, which appear to be a much more challenging target.
 
 \section{Background and notation \label{sec gates}}
 \subsection{Quantum circuits and quantum gates}
 Quantum circuits are usually drawn as diagrams similar to Fig.~\ref{fig template example}. Horizontal wires correspond to qubits, boxes and vertical connections to quantum gates. Each quantum gate can be though of as a unitary matrix. The ones we use in this paper are summarized in Fig.~\ref{fig gates}. An important detail is that \CZ and \CX gates are equivalent up to a conjugation by the 1q Hadamard gate and hence completely equivalent for the purpose of the variational compiling that we consider. We often mention \CX gates in more general discussions, as is more standard, but refer to \CZ gates when the technical details are important.
-The state space associated to $n$ qubits has dimension $2^n$, the unitary matrices acting on this space have dimension $2^n\times 2^n$. Unitary matrix of a quantum circuit can be constructed by an appropriate tensor product of all the gates involved. The overall complex phase of the unitary matrix is inconsequential and can be fixed in any convenient way. The space of quantum circuits on $n$ qubits is hence equivalent to the special unitary group $SU(2^n)$. A natural measure of fidelity between two unitary matrices is the Hilbert-Schmidt induced distance
+The state space associated to $n$ qubits has dimension $2^n$, the unitary matrices acting on this space have dimension $2^n\times 2^n$. Unitary matrix of a quantum circuit can be constructed by an appropriate tensor product of all the gates involved. The overall complex phase of the unitary matrix is inconsequential and can be fixed in any convenient way. The space of quantum circuits on $n$ qubits is hence equivalent to the special unitary group $SU(2^n)$. A natural measure of fidelity between two unitary matrices is the distance induced from the Hilbert-Schmidt norm
 \begin{align}
 D(U, V)=1-\frac{|\operatorname{Tr}U^\dagger V|^2}{4^n} \ . \label{D hst}
 \end{align}
@@ -256,7 +257,7 @@ We can anticipate, however, that training \CP templates directly will result in 
 
 \begin{figure}[h]
 	\includegraphics[width=0.3\textwidth]{figures/penalty}
-	\caption{Penalty function for angles of the \CP-gates. For clarity of the figure, width of plateaus near $0,\frac12\pi, \frac32\pi, 2\pi$ is exaggerated.}
+	\caption{Penalty function for angles of the \CP gates. For clarity of the figure, width of plateaus near $0,\frac12\pi, \frac32\pi, 2\pi$ is exaggerated.}
 	\label{fig penalty}
 \end{figure}
 
@@ -473,35 +474,12 @@ Decompositions which are initially generated by \cpflow are approximate and many
 	\label{tab toff4}
 \end{table}
 
-\begin{figure*}
-	\begin{align*}
-	\Qcircuit @C=1.0em @R=0.2em @!R {
-		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
-		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
-		C^{4}X=\qquad\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{2} & \qw & \qw\\
-		\qquad& \targ & \ctrl{1} & \targ & \ctrl{1} & \qw & \qw & \qw\\
-		\qquad& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \gate{\mathrm{\sqrt{X}}} & \qw & \qw \gategroup{1}{2}{4}{2}{1em}{--}
-		\gategroup{1}{4}{4}{4}{1em}{--}
-	}\raisebox{-4em}{\qquad=\qquad}
-	\Qcircuit @C=1.0em @R=0.2em @!R {
-		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
-		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
-		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
-		& \targ & \ctrl{1} & \targ & \ctrl{1} & \targ & \ctrl{1} & \gate{\mathrm{\sqrt{X}}} & \ctrl{1} & \targ & \qw & \qw\\
-		& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \ctrl{-1} & \targ & \qw & \targ & \ctrl{-1} & \qw & \qw
-		\gategroup{1}{2}{4}{2}{1em}{--}
-		\gategroup{1}{4}{4}{4}{1em}{--}
-	}
-	\end{align*}
-	\caption{A decomposition of the 5q Toffoli gate.}
-	\label{fig toff5}
-\end{figure*}
 
 We now proceed to the decomposition of the 4q Toffoli gates which are significantly more challenging. Variational synthesis of the 4q Toffoli gate on various 4q topologies has been recently addressed in Ref.~\cite{Nakanishi2021}. Remarkably, the approach taken there was that of an exhaustive search over all architectures. It is interesting to note that for exhaustive search connectivity restrictions actually simplify the problem. Using \cpflow we were able to reproduce all results presented in Ref.~\cite{Nakanishi2021}, see Table~\ref{tab toff4}. Moreover, for the star-shaped topology we achieved a minor improvement reducing the \CZ count from 17 to 16. The corresponding circuit is depicted at Fig.~\ref{fig toff4 star}. Note that we did not look for decompositions minimizing \CZ depth, but simply report \CZ depths of the first \CZ count optimal decompositions found during the search.
 
 In all except for the fully connected topology, decompositions were discovered by the \adaptive algorithm with the full range of template depth for 4q unitaries (0, 61), 500 hundred samples at each hyperparameter configuration and 50 hyperparameter evaluations. The clock time taken by the search for each topology took about 40 minutes on our server \ref{server}. In contrast, the optimal decomposition on the fully connected topology only appeared after about 200 hyperparameter evaluations and took about 2 hours.
 
-One might wonder why did the exhaustive search approach of Ref.~\cite{Nakanishi2021} overlooked the decomposition on the star topology with 16 \CZ gates. A plausible cause might again be due to the local minimums. Table~\ref{tab toff4 sr} shows empirical success ratios for the optimal circuits found by \cpflow on the fully connected and star topologies with two different choices of 1q gates: XYZ and XZ. First thing to note is that the the success ratio for the star topology and XZ structure of 1q gates is only about $2\%$. Work~\cite{Nakanishi2021} indeed used the XZ ansatz albeit with a different optimization procedure~\cite{Nakanishi2020}. We find it likely that the appropriate architecture was missed simply due insufficient amount of trials. The problem of local minimums in fact renders even the exhaustive search over the architectures insufficient to confidently  prove optimality of decompositions. Another interesting observation is that for a connected circuit the success ratios of XYZ and XZ templates differ by an order of magnitude. This highlights the importance of the potential importance of the parametrization and/or initial sampling.
+One might wonder why did the exhaustive search approach of Ref.~\cite{Nakanishi2021} overlooked the decomposition on the star topology with 16 \CZ gates. A plausible cause might again be due to the local minimums. Table~\ref{tab toff4 sr} shows empirical success ratios for the optimal circuits found by \cpflow on the fully connected and star topologies with two different choices of 1q gates: XYZ and XZ. First thing to note is that the the success ratio for the star topology and XZ structure of 1q gates is only about $2\%$. Work~\cite{Nakanishi2021} indeed used the XZ ansatz albeit with a different optimization procedure~\cite{Nakanishi2020}. We find it likely that the appropriate architecture was missed simply due insufficient amount of trials. The problem of local minimums in fact renders even the exhaustive search over the architectures insufficient to confidently  prove optimality of decompositions. Another interesting observation is that for a connected circuit the success ratios of XYZ and XZ templates differ by an order of magnitude. This highlights the importance of the parametrization and/or initial sampling.
 
 \begin{table}[]
 	\begin{tabular}{@{}cccccc@{}}
@@ -531,6 +509,39 @@ One might wonder why did the exhaustive search approach of Ref.~\cite{Nakanishi2
 \label{tab toff4 sr}
 \end{table}
 
+\begin{figure*}
+	\begin{align*}
+	\Qcircuit @C=1.0em @R=0.2em @!R {
+		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
+		\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{1} & \qw & \qw\\
+		C^{4}X=\qquad\qquad& \ctrl{1} & \qw & \ctrl{1} & \qw & \ctrl{2} & \qw & \qw\\
+		\qquad& \targ & \ctrl{1} & \targ & \ctrl{1} & \qw & \qw & \qw\\
+		\qquad& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \gate{\mathrm{\sqrt{X}}} & \qw & \qw \gategroup{1}{2}{4}{2}{1em}{--}
+		\gategroup{1}{4}{4}{4}{1em}{--}
+	}\raisebox{-4em}{\qquad=\qquad}
+	\Qcircuit @C=1.0em @R=0.2em @!R {
+		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
+		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
+		& \ctrl{1} & \qw & \ctrl{1} & \qw & \qw & \qw & \ctrl{1} & \qw & \qw & \qw & \qw\\
+		& \targ & \ctrl{1} & \targ & \ctrl{1} & \targ & \ctrl{1} & \gate{\mathrm{\sqrt{X}}} & \ctrl{1} & \targ & \qw & \qw\\
+		& \qw & \gate{\mathrm{\sqrt{X}^\dagger}} & \qw & \gate{\mathrm{\sqrt{X}}} & \ctrl{-1} & \targ & \qw & \targ & \ctrl{-1} & \qw & \qw
+		\gategroup{1}{2}{4}{2}{1em}{--}
+		\gategroup{1}{4}{4}{4}{1em}{--}
+	}
+	\end{align*}
+	\caption{A decomposition of the 5q Toffoli gate.}
+	\label{fig toff5}
+\end{figure*}
+
+\subsection{5q Toffoli \label{sec toff5}}
+
+To our knowledge, the best decomposition of the 5q Toffoli gate on the fully connected topology without ancilla qubits features $30$ \CZ gates, an upper bound valid for all diagonal gates~\cite{Shende2006}. The best result of direct synthesis with \cpflow running for several hours that we observed featured 36 \CZ gates indicating that 5q unitaries with sufficiently many gates are significantly harder to address. However, synthesis with topological restrictions also poses significant challenges to the demultiplexing framework of Ref.~\cite{Shende2006}. It is thus interesting to see if our numerical routine can be useful.
+
+To this end we consider the compilation of the 5q Toffoli gate on the chain topology. As a reference point we take the best result achieved by the \package{Qiskit} transpiler out of 1000 runs with \param{optimization\_level} set to 3, that yielded a decomposition with 61 \CZ gates.\footnote{Note that the transpilation process in \package{Qiskit} generally yields circuits which are only equal to the target unitary up to a possible permutations of qubits. As restoring the original permutation might be an expensive operation in terms of the \CZ count, the transpilation results should be considered as a lower bound.} The best results of direct synthesis with \cpflow yielded a decomposition with 69 \CZ gates. As we now show, by using a combination of the analytic and numerical techniques this this result can be improved to 48 \CZ gates.
+
+Our strategy is to reduce synthesis of the 5q Toffoli gate to the synthesis of several 4q blocks. We first observe that the optimal 30 \CZ gate decomposition of the 5q Toffoli gate on a fully connected topology can be obtained from the left circuit depicted at Fig.~\ref{fig toff5}. Triply controlled $\sqrt{\text{X}}$ gate is a diagonal gate up to conjugation by the Hadamard gates and hence can be decomposed into 14 \CZ gates, just as the standard 4q Toffoli gate. Singly controlled $\sqrt{\text{X}}$ gates can be decomposed into 2 \CZ gates each. Finally, the boxed 4q Toffoli gates can be replaced by their relative phase counterparts~\cite{Maslov}, each requiring only 6 \CZ gates. In total this gives 30 \CZ gates, the best known amount.
+
+We now try to adapt this decomposition to the chain topology. Right circuit on Fig.~\ref{fig toff5} shows that by inserting four additional \CX gates (each pair originates from a SWAP gate, the two closest \CX gates cancel each other) around the triply controlled $\sqrt{\text{X}}$ gate we can place all 4q gates on the first four qubits. Next, we use \cpflow to decompose C${}^{3}\sqrt{\text{X}}$ and relative phase \cx{3} gates on the chain topology. We found a decomposition of C${}^{3}\sqrt{\text{X}}$ with 18 \CZ gates, the same gate count that is needed for decomposing of the \cx{3} gate on a chain topology \ref{tab toff4}. For the relative phase \cx{3} gate we found a decomposition with 11 \CZ gates. Details and corresponding circuit diagrams are delegated to app.\ref{app 5q}. In the end this yields a decomposition of the 5q Toffoli gate on the chain topology with $48=2\times 11+18+2\times4$ \CZ gates in total. We are not aware of other methods improving this count.
 
 
 \begin{table*}[]
@@ -560,15 +571,6 @@ One might wonder why did the exhaustive search approach of Ref.~\cite{Nakanishi2
 	}
 	\label{tab bench}
 \end{table*}
-\subsection{5q Toffoli \label{sec toff5}}
-
-To our knowledge, the best decomposition of the 5q Toffoli gate on the fully connected topology without ancilla qubits features $30$ \CZ gates, an upper bound valid for all diagonal gates~\cite{Shende2006}. The best result of direct synthesis with \cpflow running for several hours that we observed featured 36 \CZ gates indicating that 5q unitaries with sufficiently many gates are significantly harder to address. However, synthesis with topological restrictions also poses significant challenges to the demultiplexing framework of Ref.~\cite{Shende2006}. It is thus interesting to see if our numerical routine can be useful.
-
-To this end we consider the compilation of the 5q Toffoli gate on the chain topology. As a reference point we take the best result achieved by the \package{Qiskit} transpiler out of 1000 runs with \param{optimization\_level} set to 3, that yielded a decomposition with 61 \CZ gates.\footnote{Note that the transpilation process in \package{Qiskit} generally yields circuits which are only equal to the target unitary up to a possible permutations of qubits. As restoring the original permutation might be an expensive operation in terms of the \CZ count, the transpilation results should be considered as a lower bound.} The best results of direct synthesis with \cpflow yielded a decomposition with 69 \CZ gates. As we now show, by using a combination of the analytic and numerical techniques this this result can be improved to 48 \CZ gates.
-
-Our strategy is to reduce synthesis of the 5q Toffoli gate to the synthesis of several 4q blocks. We first observe that the optimal 30 \CZ gate decomposition of the 5q Toffoli gate on a fully connected topology can be obtained from the left circuit depicted at Fig.~\ref{fig toff5}. Triply controlled $\sqrt{\text{X}}$ gate is a diagonal gate up to conjugation by the Hadamard gates and hence can be decomposed into 14 \CZ gates, just as the standard 4q Toffoli gate. Singly controlled $\sqrt{\text{X}}$ gates can be decomposed into 2 \CZ gates each. Finally, the boxed 4q Toffoli gates can be replaced by their relative phase counterparts~\cite{Maslov}, each requiring only 6 \CZ gates. In total this gives 30 \CZ gates, the best known amount.
-
-We now try to adapt this decomposition to the chain topology. Right circuit on Fig.~\ref{fig toff5} shows that by inserting four additional \CX gates (each pair originates from a SWAP gate, the two closest \CX gates cancel each other) around the triply controlled $\sqrt{\text{X}}$ gate we can place all 4q gates on the first four qubits. Next, we use \cpflow to decompose C${}^{3}\sqrt{\text{X}}$ and relative phase \cx{3} gates on the chain topology. We found a decomposition of C${}^{3}\sqrt{\text{X}}$ with 18 \CZ gates, the same gate count that is needed for decomposing of the \cx{3} gate on a chain topology \ref{tab toff4}. For the relative phase \cx{3} gate we found a decomposition with 11 \CZ gates. Details and corresponding circuit diagrams are delegated to app.\ref{app 5q}. In the end this yields a decomposition of the 5q Toffoli gate on the chain topology with $48=2\times 11+18+2\times4$ \CZ gates in total. We are not aware of other methods improving this count.
 
 \section{Further benchmarks \label{sec benchmark}}
 
@@ -692,7 +694,7 @@ or, equivalently, as
 \end{multline}
 Typically all terms in this expression are non-vanishing and different choices of $a_1$ and $a_2$ correspond to different unitaries (up to discrete redundancies). It may happen, however, that either the unitary $U$ itself or the loss function of interest $L(U)$ does not contain terms with $a_1+a_2$ or $a_1-a_2$. For instance, for the two consecutive $R_X$ rotations $R_X(a_1)R_X(a_2)$ only the terms that depend on the sum of angles are present in \eqref{a12}. Hence, for every pair of angles (it is usually sufficient to only consider angles of gates acting on the same qubit) we check if $L(U(0, a_2\pm a_1))=L(U(a_1, a_2))$  and if such pair is found, the first angle is set to 0 and the second angle is adjusted accordingly. Results of this step are illustrated at Fig.~\ref{fig ref circuit}(b).
 
-Finally, we check if the resulting angles of the 1q gates can be approximated by the rational multiples of $\pi$ without compromising the accuracy of the loss function $L(U)$ (in fact the accuracy is often improved at step), see Fig.~\ref{fig ref circuit}(c).
+Finally, we check if the resulting angles of the 1q gates can be approximated by the rational multiples of $\pi$ without compromising the accuracy of the loss function $L(U)$ (in fact the accuracy is often improved at this step), see Fig.~\ref{fig ref circuit}(c).
 
 The steps outlined above are heuristic and do not always lead to expected results, but often work well in practice. All circuits reported in this paper were obtained automatically in this fashion. Heuristically we find that when decompositions are close to optimal the refinement procedure works best. Possibly this can be attributed to the fact that extra gates allow for more complicated redundancies in the circuit that are not accounted for by our simple steps. Also, the procedure works best when the loss function is the most restrictive as in the compilation problem, when only the global phase of the unitary is not defined. When the loss function is more permissive, such as in state preparation, further steps usually need to be taken to eliminate all redundant gates.
 
