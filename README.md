@@ -47,4 +47,4 @@ Output:
 ![image](https://user-images.githubusercontent.com/13020565/165085291-f566108b-66bf-4dc8-a9c9-dcd771ea64b8.png)
 
 ## More features
-For further examples we encourage to explore a [tutorial notebook](https://github.com/idnm/cpflow/blob/master/CPFlow_tutorial.ipynb) interactively. For motivation and background see the original paper link_to_paper.
+For further examples we encourage to explore a [tutorial notebook](https://github.com/idnm/cpflow/blob/master/tutorial/CPFlow_tutorial.ipynb) interactively. For motivation and background see the original paper link_to_paper.
