@@ -5,7 +5,7 @@ CPFlow uses variational synthesis to find quantum circuits consisting of CNOTs+a
 
 Indirectly the circuits can also be optimized for CNOT depth and even T count or T depth in some cases. Typical loss functions L(U) correspond to a compilation and a state preparation problem, but arbitrary well-defined loss functions can be handled as well. The cornerstone objective is to obtain as short circtuis as possible, possibly at the cost of a longer search time.
 
-CPFlow implements the synthesis algorithms  described in https://arxiv.org/abs/2205.01121. It is distributed under the MIT licence.
+CPFlow implements the synthesis algorithms  described in https://arxiv.org/abs/2205.01121. Notebook organizing various plots and circuits presented in the paper resides [here](https://github.com/idnm/cpflow/blob/master/paper/peppar.ipynb).
 
 ## Installation
 `CPFlow` is available via `pip`.  It is highly recommended to install the package in a new virtual environment.
