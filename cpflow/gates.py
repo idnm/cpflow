@@ -2,7 +2,7 @@
 
 import jax.numpy as jnp
 from qiskit import QuantumCircuit
-from qiskit.circuit.library import RXGate, RYGate, RZGate, CPhaseGate, CZGate, CXGate
+from qiskit.circuit.library import RXGate, RYGate, RZGate, CPhaseGate, CZGate, CXGate, RZXGate
 from qiskit.quantum_info import Operator
 
 # Single-qubit pauli gates.
@@ -58,6 +58,15 @@ def cp_mat(a):
     return control0+control1
 
 
+def rzx_mat(a):
+    """R_ZX rotation matrix."""
+
+    control0 = jnp.kron(jnp.array([[1, 0], [0, 0]]), rx_mat(a))
+    control1 = jnp.kron(jnp.array([[0, 0], [0, 1]]), rx_mat(-a))
+
+    return control0+control1
+
+
 class Gate:
     def __init__(self, name, num_qubits, qiskit_gate, jax_matrix):
         self.name = name
@@ -78,6 +87,8 @@ class Gate:
             'cx': [2, CXGate, cx_mat],
             'cz': [2, CZGate, cz_mat],
             'cp': [2, CPhaseGate, cp_mat],
+
+            'rzx': [2, RZXGate, rzx_mat]
         }
         if name not in gate_dict.keys():
             raise TypeError(f"Gate '{name}' not implemented.")
@@ -91,6 +102,8 @@ rz_gate = Gate.from_name('rz')
 cx_gate = Gate.from_name('cx')
 cz_gate = Gate.from_name('cz')
 cp_gate = Gate.from_name('cp')
+
+rzx_gate = Gate.from_name('rzx')
 
 # Toffoli gates from qiskit
 qc = QuantumCircuit(3)
