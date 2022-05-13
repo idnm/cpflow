@@ -35,30 +35,49 @@ class EntanglingBlock:
 
     def __init__(self, entangling_gate_name, rotation_gates, angles):
         self.entangling_gate_name = entangling_gate_name
-        self.angles = angles
         self.rotation_gates = rotation_gates
+        self.angles = angles
 
-        self.num_angles = EntanglingBlock.get_num_angles(entangling_gate_name, rotation_gates)
         self.entangling_gate = Gate.from_name(self.entangling_gate_name)
-        self._up_angles = self.angles[::2]
-        self._down_angles = self.angles[1::2][:len(self._up_angles)]
-        if self.entangling_gate_name == 'cp':
-            self._cp_angle = self.angles[-1]
+        self.num_entangling_angles = self.entangling_gate.num_angles
+        self.num_angles = self.num_entangling_angles+2*len(rotation_gates)
+
+        self._entangling_angles = angles[:self.num_entangling_angles]
+        self._up_angles = self.angles[self.num_entangling_angles::2]
+        self._down_angles = self.angles[self.num_entangling_angles+1::2]
+
+
+    @staticmethod
+    def apply_entangling_gate(gate_func, angles, to=None):
+        if len(angles) == 0:
+            if to == 'qs':
+                return gate_func()
+            else:
+                return gate_func
+        elif len(angles) == 1:
+            return gate_func(angles[0])
+        else:
+            return gate_func(angles)
 
     def circuit(self):
         """Quantum circuit in `qiskit` corresponding to our block."""
 
+        # convert from JAX array to numpy array if applicable.
+        entangling_angles = np.array(self._entangling_angles)
+        up_angles = np.array(self._up_angles)
+        down_angles = np.array(self._down_angles)
+
         qc = QuantumCircuit(2)
 
         # Apply entangling gate
-        if self.entangling_gate_name in ['cx', 'cz']:
-            qc.append(self.entangling_gate.qiskit_gate(), [0, 1])
-        elif self.entangling_gate_name == 'cp':
-            qc.append(self.entangling_gate.qiskit_gate(np.array([self._cp_angle])[0]), [0, 1])
+        gate_instance = EntanglingBlock.apply_entangling_gate(
+            self.entangling_gate.qiskit_gate,
+            entangling_angles,
+            to='qs')
+
+        qc.append(gate_instance, [0, 1])
 
         # Apply single-qubit gates.
-        up_angles = np.array(self._up_angles)  # convert from JAX array to numpy array if applicable.
-        down_angles = np.array(self._down_angles)
         for xyz, angle0, angle1 in zip(self.rotation_gates, up_angles, down_angles):
             gate = Gate.from_name('r'+xyz)
             qc.append(gate.qiskit_gate(angle0), [0])
@@ -69,10 +88,10 @@ class EntanglingBlock:
     def unitary(self):
         """2x2 unitary of the block."""
 
-        if self.entangling_gate_name in ['cx', 'cz']:
-            entagling_matrix = self.entangling_gate.jax_matrix
-        elif self.entangling_gate_name == 'cp':
-            entagling_matrix = self.entangling_gate.jax_matrix(self.angles[-1])
+        entagling_matrix = EntanglingBlock.apply_entangling_gate(
+            self.entangling_gate.jax_matrix,
+            self._entangling_angles
+        )
 
         u = entagling_matrix
         for xyz, angle0, angle1 in zip(self.rotation_gates, self._up_angles, self._down_angles):

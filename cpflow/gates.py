@@ -68,9 +68,10 @@ def rzx_mat(a):
 
 
 class Gate:
-    def __init__(self, name, num_qubits, qiskit_gate, jax_matrix):
+    def __init__(self, name, num_qubits, num_angles, qiskit_gate, jax_matrix):
         self.name = name
         self.num_qubits = num_qubits
+        self.num_angles = num_angles
         self.qiskit_gate = qiskit_gate
         self.jax_matrix = jax_matrix
 
@@ -80,15 +81,15 @@ class Gate:
     @classmethod
     def from_name(cls, name):
         gate_dict = {
-            'rx': [1, RXGate, rx_mat],
-            'ry': [1, RYGate, ry_mat],
-            'rz': [1, RZGate, rz_mat],
+            'rx': [1, 1, RXGate, rx_mat],
+            'ry': [1, 1, RYGate, ry_mat],
+            'rz': [1, 1, RZGate, rz_mat],
 
-            'cx': [2, CXGate, cx_mat],
-            'cz': [2, CZGate, cz_mat],
-            'cp': [2, CPhaseGate, cp_mat],
+            'cx': [2, 0, CXGate, cx_mat],
+            'cz': [2, 0, CZGate, cz_mat],
+            'cp': [2, 1, CPhaseGate, cp_mat],
 
-            'rzx': [2, RZXGate, rzx_mat]
+            'rzx': [2, 1, RZXGate, rzx_mat]
         }
         if name not in gate_dict.keys():
             raise TypeError(f"Gate '{name}' not implemented.")
