@@ -29,22 +29,26 @@ class EntanglingBlock:
         num_angles: total number of angles (parameters) in a block.
     """
 
-    @staticmethod
-    def get_num_angles(entangling_gate_name, rotation_gates):
-        return 2*len(rotation_gates) + (entangling_gate_name == 'cp')
-
-    def __init__(self, entangling_gate_name, rotation_gates, angles):
+    def __init__(self, entangling_gate_name, rotation_gates):
         self.entangling_gate_name = entangling_gate_name
         self.rotation_gates = rotation_gates
-        self.angles = angles
 
         self.entangling_gate = Gate.from_name(self.entangling_gate_name)
         self.num_entangling_angles = self.entangling_gate.num_angles
         self.num_angles = self.num_entangling_angles+2*len(rotation_gates)
 
-        self._entangling_angles = angles[:self.num_entangling_angles]
-        self._up_angles = self.angles[self.num_entangling_angles::2]
-        self._down_angles = self.angles[self.num_entangling_angles+1::2]
+    @staticmethod
+    def split_angles(num_entangling_angles, angles, as_numpy=False):
+        entangling_angles = angles[:num_entangling_angles]
+        up_angles = angles[num_entangling_angles::2]
+        down_angles = angles[num_entangling_angles+1::2]
+
+        if as_numpy:
+            entangling_angles = np.array(entangling_angles)
+            up_angles = np.array(up_angles)
+            down_angles = np.array(down_angles)
+
+        return entangling_angles, up_angles, down_angles
 
 
     @staticmethod
@@ -59,13 +63,18 @@ class EntanglingBlock:
         else:
             return gate_func(angles)
 
-    def circuit(self):
+    def circuit(self, angles=None):
         """Quantum circuit in `qiskit` corresponding to our block."""
 
-        # convert from JAX array to numpy array if applicable.
-        entangling_angles = np.array(self._entangling_angles)
-        up_angles = np.array(self._up_angles)
-        down_angles = np.array(self._down_angles)
+        if angles is None:
+            angles = [Parameter(f'a{i}') for i in range(self.num_angles)]
+        else:
+            assert len(angles) == self.num_angles, f'Provided angles do not match required number {self.num_angles}.'
+
+        entangling_angles, up_angles, down_angles = EntanglingBlock.split_angles(
+            self.num_entangling_angles,
+            angles,
+            as_numpy=True)
 
         qc = QuantumCircuit(2)
 
@@ -85,16 +94,20 @@ class EntanglingBlock:
 
         return qc
 
-    def unitary(self):
+    def unitary(self, angles):
         """2x2 unitary of the block."""
+
+        entangling_angles, up_angles, down_angles = EntanglingBlock.split_angles(
+            self.num_entangling_angles,
+            angles)
 
         entagling_matrix = EntanglingBlock.apply_entangling_gate(
             self.entangling_gate.jax_matrix,
-            self._entangling_angles
+            entangling_angles
         )
 
         u = entagling_matrix
-        for xyz, angle0, angle1 in zip(self.rotation_gates, self._up_angles, self._down_angles):
+        for xyz, angle0, angle1 in zip(self.rotation_gates, up_angles, down_angles):
             gate = Gate.from_name('r'+xyz)
             u = jnp.kron(gate.jax_matrix(angle0), gate.jax_matrix(angle1)) @ u
 
