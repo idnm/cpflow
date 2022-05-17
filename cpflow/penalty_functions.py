@@ -1,6 +1,7 @@
 """Penalty function and regularization."""
 
 import jax.numpy as jnp
+from cpflow.trigonometric_utils import bracket_angle
 
 
 def cp_penalty_trig(a, height):
@@ -41,7 +42,7 @@ def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
     return left(a)
 
 
-def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
+def penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
     a = a % (2 * jnp.pi)
 
     segments = [a <= plato_0,
@@ -71,49 +72,22 @@ def cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2):
     return jnp.piecewise(a, segments, functions)
 
 
-def cp_penalty_L1(a):
+def penalty_L1(a):
     """L1 penalty"""
+    a = bracket_angle(a)
     return jnp.abs(a)
 
 
-def make_regularization_function(options):
+def default_cp_regularization_function(a):
+    ymax = 2
+    xmax = jnp.pi / 2
+    plato_0 = 0.05
+    plato_1 = 0.05
+    plato_2 = 0.05
 
-    if options.function == 'linear':
-        ymax = options.ymax
-        xmax = options.xmax
-        plato_0 = options.plato_0
-        plato_1 = options.plato_1
-        plato_2 = options.plato_2
-
-        penalty_func = lambda a: cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2)
-
-    elif options.function == 'L1':
-        penalty_func = lambda a: cp_penalty_L1(a)
-
-    else:
-        print('penalty function not supported')
-        print(options['func'])
-
-    return penalty_func
+    return cp_penalty_linear(a, xmax, ymax, plato_0, plato_1, plato_2)
 
 
-# To be deprecated.
-def construct_penalty_function(penalty_options):
-    cp_mask = penalty_options['cp_mask']
-    r = penalty_options['r']
 
-    if penalty_options['function'] == 'linear':
-        ymax = penalty_options['ymax']
-        xmax = penalty_options['xmax']
-        plato = penalty_options['plato']
 
-        penalty_func = lambda angs: r * cp_penalty_linear(angs*cp_mask, ymax, xmax, plato).sum()
 
-    elif penalty_options['function'] == 'L1':
-        penalty_func = lambda angs: r * cp_penalty_L1(angs*cp_mask).sum()
-
-    else:
-        print('penalty function not supported')
-        print(penalty_options['func'])
-
-    return penalty_func

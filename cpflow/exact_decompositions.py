@@ -21,7 +21,7 @@ except ImportError:
     print('You might also need to install the Rust compiler https://www.rust-lang.org/tools/install .')
 
 from cpflow.circuit_assembly import qiskit_circ_to_jax_unitary
-from cpflow.cp_utils import constrained_function
+from cpflow.regularization import constrained_function
 from cpflow.matrix_utils import *
 from cpflow.optimization import mynimize_repeated
 from cpflow.trigonometric_utils import *
@@ -39,11 +39,12 @@ def check_loss(circuit, unitary_loss_func, threshold_loss=1e-5):
         raise ValueError(f'Circuit loss {loss} is above threshold {threshold_loss}.')
 
 
-def cp_to_cz_circuit(circuit, cp_threshold=0.2):
+def decompose_2q_in_circuit(circuit, entangling_gate_name, regularization_options):
+    angle_threshold = 0.001
     new_data = []
     for gate, qargs, cargs in circuit.data:
-        if gate.name == 'cp':
-            new_gate = cp_to_cz_gate(gate, cp_threshold)
+        if gate.name == entangling_gate_name:
+            new_gate = regularization_options.gate_decomposer(gate, angle_threshold)
         else:
             new_gate = gate
 
@@ -51,7 +52,7 @@ def cp_to_cz_circuit(circuit, cp_threshold=0.2):
 
     new_circuit = circuit.copy()
     new_circuit.data = new_data
-    new_circuit = new_circuit.decompose(gates_to_decompose=['id', 'cp_trans'])
+    new_circuit = new_circuit.decompose(gates_to_decompose=['id', '2q_trans'])
 
     check_approximation(circuit, new_circuit, loss=1e-5)
 
@@ -69,7 +70,7 @@ def cp_to_cz_gate(gate, cp_threshold):
         qc = QuantumCircuit(2)
         qc.cp(cp_angle, 0, 1)
         qc = transpile(qc, basis_gates=['cz', 'rz', 'rx'], optimization_level=3)
-        gate = qc.to_gate(label='cp_trans')
+        gate = qc.to_gate(label='2q_trans')
 
     return gate
 
@@ -190,12 +191,18 @@ def convert_to_ZXZ(circuit):
     return qc.decompose('zxz')
 
 
+def refine_circuit(circuit, entangling_gate_name, regularization_options):
+    qc = decompose_2q_in_circuit(circuit, entangling_gate_name, regularization_options)
+    qc = convert_to_ZXZ(qc)
+
+    return qc
+
+
 def reduce_angles(circuit, unitary_loss_func, reduce_threshold=1e-5, cp_threshold=0.01):
 
     qc = circuit.copy()
-    qc = cp_to_cz_circuit(qc, cp_threshold=cp_threshold)
-
-    qc = convert_to_ZXZ(qc)
+    # qc = refine_circuit(qc, cp_threshold=cp_threshold)
+    # qc = convert_to_ZXZ(qc)
 
     u, angles, wires = qiskit_circ_to_jax_unitary(qc)
     loss_f = lambda angs: unitary_loss_func(u(angs))
@@ -363,66 +370,6 @@ def lasso_angles(loss_function, angles, eps=1e-5, threshold_loss=1e-6):
     assert res['loss'][best_i] <= threshold_loss, 'L1 regularization was not successful.'
 
     return best_angs
-
-
-def project_circuit(circuit, threshold):
-    """Replaces gates with parameters numerically close to refernce values by these values."""
-    new_data = circuit.data.copy()
-    projected_data = [(project_gate(gate, threshold), qargs, cargs) for gate, qargs, cargs in new_data]
-    new_data = []
-    for gate, qargs, cargs in projected_data:
-        if type(gate) is list:
-            for g in gate:
-                new_data.append((g, qargs, cargs))
-        else:
-            new_data.append((gate, qargs, cargs))
-
-    new_circuit = circuit.copy()
-    new_circuit.data = new_data
-
-    check_approximation(circuit, new_circuit)
-
-    return new_circuit
-
-
-rx_projections = {
-    0: IGate(),
-    jnp.pi: XGate(),
-    -jnp.pi: XGate(),
-    jnp.pi / 2: [HGate(), SGate(), HGate()],
-    -jnp.pi / 2: [HGate(), SGate().inverse(), HGate()],
-    jnp.pi / 4: [HGate(), TGate(), HGate()],
-    -jnp.pi / 4: [HGate(), TGate().inverse(), HGate()],
-    3 * jnp.pi / 4: [XGate(), HGate(), TGate().inverse(), HGate()],
-    -3 * jnp.pi / 4: [XGate(), HGate(), TGate(), HGate()]}
-
-rz_projections = {
-    0: IGate(),
-    jnp.pi: ZGate(),
-    -jnp.pi: ZGate(),
-    jnp.pi / 2: SGate(),
-    -jnp.pi / 2: SGate().inverse(),
-    jnp.pi / 4: TGate(),
-    -jnp.pi / 4: TGate().inverse()
-}
-
-
-def project_gate(gate, threshold):
-    """Projects 'rx' or 'ry' if their parameters are below `threshold` distance away from predefined reference values."""
-
-    if gate.name == 'rx':
-        projections = rx_projections
-    elif gate.name == 'rz':
-        projections = rz_projections
-    else:
-        return gate
-
-    angle = gate.params[0]
-    for special_angle, special_gate in projections.items():
-        if jnp.abs(angle - special_angle) < threshold:
-            return special_gate
-
-    return gate
 
 
 def remove_zero_rgates(circuit):

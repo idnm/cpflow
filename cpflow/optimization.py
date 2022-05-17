@@ -7,7 +7,7 @@ import optax
 from jax import jit, value_and_grad, hessian, jvp, grad
 
 from cpflow.matrix_utils import *
-from cpflow.penalty import *
+from cpflow.penalty_functions import *
 from cpflow.trigonometric_utils import *
 
 

@@ -6,8 +6,9 @@ import numpy as np
 from jax import random, jit, ops, vmap
 
 from cpflow.optimization import mynimize
-from cpflow.penalty import *
+from cpflow.penalty_functions import *
 from cpflow.trigonometric_utils import random_angles
+from cpflow.trigonometric_utils import bracket_angle
 
 
 def random_cp_angles(num_angles, cp_mask, cp_dist='uniform', key=random.PRNGKey(0)):
@@ -43,44 +44,36 @@ def random_cp_angles(num_angles, cp_mask, cp_dist='uniform', key=random.PRNGKey(
 
 
 @partial(jit, static_argnums=(1,))
-def cz_value(a, threshold=1e-2):
+def cz_value(a, threshold):
     """Returns 0 if CP-angle is near zero, 1 if it is near pi and 2 else."""
     t = threshold
     a = a % (2 * jnp.pi)
     return jnp.piecewise(a, [a < t, jnp.abs(a - 2 * jnp.pi) < t, jnp.abs(a - jnp.pi) < t], [0, 0, 1, 2])
-    # if a < t or jnp.abs(a - 2 * jnp.pi) < t:
-    #     return 0
-    # elif jnp.abs(a - jnp.pi) < t:
-    #     return 1
-    # else:
-    #     return 2
 
 
-def count_cz(angles, threshold=0.2):
-    """
-    Args:
-        angles: angles corresponding to cp gates.
-        threshold: to judge if angle is close to 0 or pi or not.
-    returns:
-        The number of CZ gates in the circuit, omitting CP gates with angles below the threshold."""
-    cz = vmap(lambda a: cz_value(a, threshold=threshold))(angles).sum()
-    return int(cz)
+@partial(jit, static_argnums=(1,))
+def parametric_2q_value(a, threshold):
+    a = bracket_angle(a)
+    return jnp.piecewise(a, [jnp.abs(a)<threshold], [0, 1])
 
 
-def project_cp_angle(a, threshold=0.2):
+def project_cp_angle(a, threshold):
     a = a % (2 * jnp.pi)
     if jnp.abs(a - jnp.pi) < threshold:
-        return jnp.pi
+        return True, jnp.pi
     elif jnp.abs(a) < threshold or jnp.abs(a - 2 * jnp.pi) < threshold:
-        return 0
+        return True, 0
     else:
-        return a
+        return False, a
 
 
 def insert_params(params, insertion_params, insertion_indices, jax_numpy=True):
     """Replaces params array at positions specified by indices by insertion_params.
     Example: params=[0,1,2,3], insertion_params=[-1,-2,-4], indices=[0,2,4] gives [-1,  0, -2,  1, -4,  2,  3]
     params and insertion_params must be jnp.arrays, indices must be list."""
+
+    if len(insertion_indices) == 0:
+        return params
 
     total_params = len(params) + len(insertion_params)
     params_indices = [i for i in range(total_params) if i not in insertion_indices]
@@ -108,7 +101,7 @@ def constrained_function(f, fixed_params, indices, jax_numpy=True):
     return cf
 
 
-def convert_cp_to_cz(anz, angles, threshold=0.2):
+def convert_cp_to_cz(anz, angles, threshold):
     """Takes cp ansatz and converts it to a cz/mixed cp-cz ansatz by rounding off angles in CP gates close to Id or CZ.
 
     Args:
@@ -126,7 +119,6 @@ def convert_cp_to_cz(anz, angles, threshold=0.2):
     mask = anz.cp_mask
     cp_indices = jnp.where(mask == 1)[0]
 
-    # print('old version', angles[mask == 1])
     cp_angles = angles[jnp.where(mask == 1)]
 
     projected_cp_angles = jnp.array([project_cp_angle(a, threshold) for a in cp_angles])
@@ -141,7 +133,7 @@ def convert_cp_to_cz(anz, angles, threshold=0.2):
             free_angles]
 
 
-def evaluate_cp_result(res, cp_mask, threshold=0.2):
+def evaluate_raw_result(res, count_func, entanglging_mask, threshold):
     """Find best cz count, fidelity and angles from learning history.
 
     Args:
@@ -159,28 +151,27 @@ def evaluate_cp_result(res, cp_mask, threshold=0.2):
 
     loss = res['loss'][best_i]
     angles = res['params'][best_i]
-    cz = count_cz(angles * cp_mask, threshold=threshold)
+    gate_count = vmap(lambda a: count_func(a, threshold=threshold))(angles[jnp.array(entanglging_mask) == 1]).sum()
 
-    return cz, loss, angles
+    return int(gate_count), loss, angles
 
 
-def filter_cp_results(
+def filter_raw_results(
         res_list,
-        cp_mask,
-        threshold_cz_count,
+        entangling_mask,
+        count_func,
+        threshold_2q_count,
         threshold_loss,
-        threshold_cp=0.2,
-        disable_tqdm=False):
+        threshold_angle):
 
     """ Select learning histories that have cz count and discrepancy below threshold values.
 
     Args:
         res_list: list of learning results.
-        cp_mask: mask specifying cp angles in the ansatz.
-        threshold_cz_count: max number of cz gates to accept.
+        entangling_mask: mask specifying cp angles in the ansatz.
+        threshold_2q_count: max number of cz gates to accept.
         threshold_loss: max discrepancy with the target unitary to accept.
-        threshold_cp: threshold value for projecting cp angles.
-        disable_tqdm: whether display progress bar or not.
+        threshold_angle: threshold value for projecting cp angles.
     Returns: OUTDATED
         list of tuples with data for selected results (cz, loss, i):
         cz: number of cz gates in the result.
@@ -189,20 +180,49 @@ def filter_cp_results(
     """
 
     selected_results = []
-    # for i, res in tqdm(enumerate(res_list), disable=disable_tqdm):
     for i, res in enumerate(res_list):
-        cz, loss, angles = evaluate_cp_result(res, cp_mask, threshold=threshold_cp)
-        cz_success = cz <= threshold_cz_count
+        num_2q_gates, loss, angles = evaluate_raw_result(res, count_func, entangling_mask, threshold_angle)
+        gate_count_success = num_2q_gates <= threshold_2q_count
         loss_success = loss <= threshold_loss
-        if cz_success and loss_success:
-            selected_results.append([cz, res])
+        if gate_count_success and loss_success:
+            selected_results.append([num_2q_gates, res])
 
     selected_results.sort(key=lambda x: x[0])
 
     return selected_results
 
 
-def verify_cp_result(res, anz, unitary_loss_func, options, keep_history=False):
+def project_angle(a, regularization_options):
+    projector_func = regularization_options.angle_projector
+    threshold = regularization_options.angle_threshold
+    return projector_func(a, threshold)
+
+
+def project_angles(angles, anz, regularization_options):
+    entangling_indices = [j for j in range(len(angles)) if anz.entangling_mask[j]]
+    projected_angles = []
+    projection_indices = []
+    for i, a in enumerate(angles):
+        if i in entangling_indices:
+            is_projected, new_angle = project_angle(a, regularization_options)
+            if is_projected:
+                projected_angles.append(new_angle)
+                projection_indices.append(i)
+    return projected_angles, projection_indices
+
+
+def project_ansatz(anz, angles, regularization_options):
+    """Projects an ansatz according to the regularization options."""
+
+    projected_angles, projection_indices = project_angles(angles, anz, regularization_options)
+    free_angles = jnp.array([a for i, a in enumerate(angles) if i not in projection_indices])
+
+    return [constrained_function(anz.circuit, projected_angles, projection_indices),
+            constrained_function(anz.unitary, projected_angles, projection_indices),
+            free_angles]
+
+
+def verify_result(res, anz, unitary_loss_func, options, regularization_options, keep_history=False):
     """ Takes a cp ansatz, projects it to cz/mixed ansatz and verifies if nearly-exact compilation is possible.
 
     Args:
@@ -222,8 +242,13 @@ def verify_cp_result(res, anz, unitary_loss_func, options, keep_history=False):
     but mixed ansatz is not yet implemented.
     """
 
-    num_cz_gates, loss, angles = evaluate_cp_result(res, anz.cp_mask, threshold=options.threshold_cp)
-    circ, u, free_angles = convert_cp_to_cz(anz, angles, threshold=options.threshold_cp)
+    num_2q_gates, loss, angles = evaluate_raw_result(
+        res,
+        regularization_options.count_func,
+        anz.entangling_mask,
+        regularization_options.angle_threshold
+    )
+    circ, u, free_angles = project_ansatz(anz, angles, regularization_options)
 
     refined_result = mynimize(
         lambda angs: unitary_loss_func(u(angs)),
@@ -242,6 +267,7 @@ def verify_cp_result(res, anz, unitary_loss_func, options, keep_history=False):
     best_loss = loss_history[best_i]
 
     if not keep_history:
-        return best_loss <= options.target_loss, num_cz_gates, circ, u, best_angs
+        return best_loss <= options.target_loss, num_2q_gates, circ, u, best_angs
     else:
-        return best_loss <= options.target_loss, num_cz_gates, circ, u, best_angs, angles_history, loss_history
+        return best_loss <= options.target_loss, num_2q_gates, circ, u, best_angs, angles_history, loss_history
+

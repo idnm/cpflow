@@ -13,10 +13,10 @@ from qiskit.circuit import Parameter
 from tqdm.auto import tqdm
 
 from cpflow.circuit_assembly import *
-from cpflow.cp_utils import random_cp_angles, filter_cp_results, verify_cp_result
-from cpflow.exact_decompositions import refine, cp_to_cz_circuit, convert_to_ZXZ, gates_count, gates_depth
+from cpflow.regularization import *
+from cpflow.exact_decompositions import *
 from cpflow.optimization import *
-from cpflow.penalty import *
+from cpflow.penalty_functions import *
 from cpflow.topology import *
 
 
@@ -155,11 +155,6 @@ def build_unitary(num_qubits, entangling_gate_name, rotation_gates, placements, 
         u = apply_gate_to_tensor(gate, u, [i])
 
     # Sequence of layers wrapped in fori_loop.
-    print('layers_angles:', layers_angles)
-    print('num_layers:', num_layers)
-    print('layer_depth:', layer_depth)
-    print('num_block_angles:', num_block_angles)
-
     layers_angles = layers_angles.reshape(num_layers, layer_depth, num_block_angles)
 
     def apply_layer(i, u, layer, layers_angles):
@@ -218,11 +213,6 @@ class Ansatz:
         num_entangling_angles_in_block = EntanglingBlock(self.entangling_gate_name, self.rotation_gates).num_entangling_angles
         entangling_angles = split_angles(sample_angles, self.num_qubits, self.num_block_angles, num_entangling_angles_in_block)['entangling angles']
         self.entangling_mask = jnp.array([1 if a in entangling_angles else 0 for a in sample_angles])
-
-        # if self.entangling_gate_name == 'cp':
-        #     sample_angles = jnp.arange(self.num_angles)
-        #     cp_angles = split_angles(sample_angles, self.num_qubits, self.num_block_angles)['cp angles']
-        #     self.cp_mask = jnp.array([1 if a in cp_angles else 0 for a in sample_angles])
 
         self.unitary = lambda angles: build_unitary(
             self.num_qubits,
@@ -288,8 +278,8 @@ class Decomposition:
         label: name of the decomposition.
         loss: value of the `unitary_loss_func`.
         type: 'Approximate` for raw decompositions, sometimes can be impoved to `Rational` or `Clifford+T` by the `refine` method.
-        cz_count: total number of CZ gates.
-        cz_depth: circuit depth with respect to CZ gates.
+        gate_count_2q: total number of CZ gates.
+        gate_depth_2q: circuit depth with respect to CZ gates.
         t_count: for Clifford+T `type` total number of T and T dagger gates.
         t_depth: for Clifford+T `type` circuit depth with respect to T and T dagger gates.
 
@@ -307,8 +297,8 @@ class Decomposition:
         self.loss = self.unitary_loss_func(self.unitary)
         self.type = type
 
-        self.cz_count = gates_count(['cz'], self.circuit)
-        self.cz_depth = gates_depth(['cz'], self.circuit)
+        self.gate_count_2q = gates_count(['cz'], self.circuit)
+        self.gate_depth_2q = gates_depth(['cz'], self.circuit)
 
         self.t_count = None
         self.t_depth = None
@@ -319,11 +309,9 @@ class Decomposition:
         self._decomposer = None
 
     @classmethod
-    def _from_cp_circuit(cls, unitary_loss_func, u_func, circ_func, angles, label):
+    def _from_verified_result(cls, unitary_loss_func, u_func, circ_func, angles, entangling_gate_name, regularization_options, label):
         qc = circ_func(angles)
-        qc = cp_to_cz_circuit(qc, cp_threshold=1e-6)
-        qc = convert_to_ZXZ(qc)
-
+        qc = refine_circuit(qc, entangling_gate_name, regularization_options)
         d = cls(unitary_loss_func, qc, label=label)
         d._cp_data = [u_func, circ_func, angles]
 
@@ -358,7 +346,7 @@ class Decomposition:
         return f'Refined to {refine_type}'
 
     def __repr__(self):
-        description = f"< {self.label}| {self.type} | loss: {self.loss}  | CZ count: {self.cz_count} | CZ depth: {self.cz_depth}  >"
+        description = f"< {self.label}| {self.type} | loss: {self.loss}  | CZ count: {self.gate_count_2q} | CZ depth: {self.gate_depth_2q}  >"
         if self.type == 'Clifford+T':
             description = description[:-1]+f'| T count: {self.t_count} | T depth: {self.t_depth} >'
         return description
@@ -366,12 +354,18 @@ class Decomposition:
 
 @dataclass
 class RegularizationOptions:
-    function: str = 'linear'
-    ymax: float = 2
-    xmax: float = jnp.pi / 2
-    plato_0: float = 0.05
-    plato_1: float = 0.05
-    plato_2: float = 0.05
+    regularization_func: callable
+    count_func: callable
+    angle_projector: callable
+    gate_decomposer: callable
+    angle_threshold: float = 0.2
+
+
+regularization_options_cp = RegularizationOptions(
+    default_cp_regularization_function,
+    cz_value,
+    project_cp_angle,
+    cp_to_cz_gate)
 
 
 @dataclass
@@ -383,10 +377,9 @@ class BasicOptions:
         method (str): optimization method, currently only 'adam' is well tested.
         learning_rate (str): learning rate for the optimizer.
         num_gd_iterations (int): number of optimizer updates at the raw sampling stage.
-        cp_distribution (str): 'uniform' for uniform initialization of CP angles, '0' for zero initialization.
+        entangling_angles_distribution (str): 'uniform' for uniform initialization of CP angles, '0' for zero initialization.
         entry_loss (float): acceptable loss to deem a CP template as prospective.
         target_loss (float): threshold value of loss to consider a CZ circuit to be a valid decomposition.
-        threshold_cp (float): project CP gates to identity or CZ if CP angle is within `threshold_cp` radian away.
         learning_rate_at_verification (float): learning rate to use at the verification of CZ circuits.
         num_gd_iterations_at_verification (int): number of optimizer updates at the verification of CZ circuits.
         random_seed (int): seed controlling sampling of the initial angles and hyperparameters (in adaptive routine).
@@ -396,10 +389,9 @@ class BasicOptions:
     method: str = 'adam'
     learning_rate: float = 0.1
     num_gd_iterations: int = 2000
-    cp_distribution: str = 'uniform'
+    entangling_angles_distribution: str = 'uniform'
     entry_loss: float = 1e-3
     target_loss: float = 1e-6
-    threshold_cp: float = 0.2
     learning_rate_at_verification: float = 0.01
     num_gd_iterations_at_verification: int = 5000
     random_seed: int = 0
@@ -411,57 +403,57 @@ class StaticOptions(BasicOptions):
     """ Options for static synthesis.
 
     Attributes:
-        num_cp_gates (int): total number of CP gates in the template circuit.
+        num_entangling_blocks (int): total number of CP gates in the template circuit.
         r (float): regularization weight.
-        accepted_num_cz_gates (int): verify prospective decompositions if their CZ count is below.
+        accepted_num_2q_gates (int): verify prospective decompositions if their CZ count is below.
 
     """
-    num_cp_gates: int = -1
+    num_entangling_blocks: int = -1
     r: float = 0.00055
-    accepted_num_cz_gates: int = -1
+    accepted_num_2q_gates: int = -1
 
     def __post_init__(self):
-        if self.num_cp_gates == -1:
-            raise TypeError("Missing required argument 'num_cp_gates'")
-        if self.accepted_num_cz_gates == -1:
-            raise TypeError("Missing required argument 'accepted_num_cz_gates'")
+        if self.num_entangling_blocks == -1:
+            raise TypeError("Missing required argument 'num_entangling_blocks'")
+        if self.accepted_num_2q_gates == -1:
+            raise TypeError("Missing required argument 'accepted_num_2q_gates'")
 
 
 @dataclass
 class AdaptiveOptions(BasicOptions):
     """ Options for adaptive synthesis.
 
-    min_num_cp_gates (int): lower bound on the number of CP gates in templates.
-    max_num_cp_gates (int): upper bound on the number of CP gates in templates.
+    min_num_entangling_blocks (int): lower bound on the number of CP gates in templates.
+    max_num_entangling_blocks (int): upper bound on the number of CP gates in templates.
     r_mean (flaot): mean value for the regularization weight.
     r_variance (float): variance for the regularization weight (lognormal distribution).
     max_evals (int): how many hyperparameter configurations to evaluate.
-    target_num_cz_gates (int): desired number of CZ gates in the final  decomposition.
-    stop_if_target_reached (bool): continue or stop if `target_num_cz_gates` has been reached.
+    target_num_2q_gates (int): desired number of CZ gates in the final  decomposition.
+    stop_if_target_reached (bool): continue or stop if `target_num_2q_gates` has been reached.
     keep_logs (bool): whether to keep extensive logs with raw evaluations.
     """
-    min_num_cp_gates: int = -1
-    max_num_cp_gates: int = -1
+    min_num_entangling_blocks: int = -1
+    max_num_entangling_blocks: int = -1
     r_mean: float = 0.00055
     r_variance: float = 0.5
     max_evals: int = 100
-    target_num_cz_gates: int = 0
+    target_num_2q_gates: int = 0
     stop_if_target_reached: bool = False
     keep_logs: bool = False
 
     def __post_init__(self):
-        if self.min_num_cp_gates == -1:
-            raise TypeError("Missing required argument 'min_num_cp_gates'")
-        if self.max_num_cp_gates == -1:
-            raise TypeError("Missing required argument 'max_num_cp_gates'")
+        if self.min_num_entangling_blocks == -1:
+            raise TypeError("Missing required argument 'min_num_entangling_blocks'")
+        if self.max_num_entangling_blocks == -1:
+            raise TypeError("Missing required argument 'max_num_entangling_blocks'")
 
-    def get_static(self, num_cp_gates, r):
+    def get_static(self, num_2q_gates, r):
         default_static_dict = asdict(BasicOptions())
         options_dict = asdict(self)
         basic_dict = {key: value for key, value in options_dict.items() if key in default_static_dict}
-        basic_dict['num_cp_gates'] = num_cp_gates
+        basic_dict['num_entangling_blocks'] = num_2q_gates
         basic_dict['r'] = r
-        basic_dict['accepted_num_cz_gates'] = None
+        basic_dict['accepted_num_2q_gates'] = None
         return StaticOptions(**basic_dict)
 
 
@@ -480,7 +472,7 @@ class Results:
     Methods:
         save(): save results to location specified by `save_to`.
         load(path): load results from the path (staticmethod).
-        best_hyperparameters(): list all pairs [num_cp_gates, r] tried in adaptive decomposition in order of increasing score.
+        best_hyperparameters(): list all pairs [num_entangling_blocks, r] tried in adaptive decomposition in order of increasing score.
         plot_trials(): visualize trials on a 2d scatter plot.
     """
 
@@ -508,17 +500,17 @@ class Results:
         return results
 
     def best_hyperparameters(self):
-        """Returns list of pairs [num_cp_gates, r] ordered by increasing score."""
+        """Returns list of pairs [num_entangling_blocks, r] ordered by increasing score."""
 
         results = self.trials.results
         results = sorted(results, key=lambda res: res['loss'])
-        hyperparams = [[res['num_cp_gates'], res['r']] for res in results]
+        hyperparams = [[res['num_entangling_blocks'], res['r']] for res in results]
         return hyperparams
 
     def plot_trials(self):
         results = self.trials.results
 
-        num_list = jnp.array([res['num_cp_gates'] for res in results])
+        num_list = jnp.array([res['num_entangling_blocks'] for res in results])
         r_list = jnp.array([res['r'] for res in results])
         loss_list = jnp.array([res['loss'] for res in results])
 
@@ -551,15 +543,23 @@ class Synthesize:
         target_unitary: if provided `unitary_loss_function` is set to Hilbert-Schmidt distance to the `target_unitary`.
         target_state: if provided `unitary_loss_function` is set to 1-overlap squared with the `target_state`.
         label:  reminder about what is synthesised, e.g. '3q Toffoli on linear topology'.
-        cp_regularization_func: function determining penalty cost for cp-angles.
+        regularization_func: function determining penalty cost for cp-angles.
 
     Methods:
         static(options): synthesis with a fixed CP template and regularization weight.
         adaptive(options): synthesis with CP template length and regularization weight optimized by hyperopt.
     """
 
-    def __init__(self, layer, unitary_loss_func=None, target_unitary=None, label=None, cp_regularization_func=None):
+    def __init__(
+            self,
+            entanglging_gate_name,
+            layer,
+            unitary_loss_func=None,
+            target_unitary=None,
+            label=None,
+            regularization_options=regularization_options_cp):
 
+        self.entanglging_gate_name = entanglging_gate_name
         self.layer = layer
         self.num_qubits = num_qubits_from_layer(self.layer)
 
@@ -572,10 +572,7 @@ class Synthesize:
             self.unitary_loss_func = lambda u: cost_HST(u, self.target_unitary)
 
         self.label = label
-        if cp_regularization_func:
-            self.cp_regularization_func = cp_regularization_func
-        else:
-            self.cp_regularization_func = make_regularization_function(RegularizationOptions)
+        self.regularization_options = regularization_options
 
     @staticmethod
     def _generate_initial_angles(key, num_angles, cp_mask, cp_dist='uniform', batch_size=1):
@@ -594,49 +591,59 @@ class Synthesize:
         plt.yscale('log')
         plt.legend()
 
-    def _generate_raw(self, options, initial_angles_array=None, keep_history=False):
+    def _generate_ansatz(self, static_options):
+        anz = Ansatz(
+            self.num_qubits,
+            self.entanglging_gate_name,
+            fill_layers(self.layer, static_options.num_entangling_blocks),
+            static_options.rotation_gates)
+        return anz
 
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates), options.rotation_gates)
+    def _generate_raw(self, static_options, initial_angles_array=None, keep_history=False):
+
+        anz = Synthesize._generate_ansatz(self, static_options)
         loss_func = lambda angles: self.unitary_loss_func(anz.unitary(angles))
 
-        def regularization_func(angs):
-            return options.r*vmap(self.cp_regularization_func)(angs*anz.cp_mask).sum()
+        def regulator(angs):
+            reg_weight = static_options.r
+            reg_func = self.regularization_options.regularization_func
+            reg_angles = angs * anz.entangling_mask
+            return reg_weight * vmap(reg_func)(reg_angles).sum()
 
-        key = random.PRNGKey(options.random_seed)
+        key = random.PRNGKey(static_options.random_seed)
         if initial_angles_array is None:
             initial_angles_array = Synthesize._generate_initial_angles(
                 key,
                 anz.num_angles,
-                anz.cp_mask,
-                cp_dist=options.cp_distribution,
-                batch_size=options.num_samples)
+                anz.entangling_mask,
+                cp_dist=static_options.entangling_angles_distribution,
+                batch_size=static_options.num_samples)
 
         raw_results = mynimize_repeated(
             loss_func,
             anz.num_angles,
-            method=options.method,
-            learning_rate=options.learning_rate,
-            num_iterations=options.num_gd_iterations,
+            method=static_options.method,
+            learning_rate=static_options.learning_rate,
+            num_iterations=static_options.num_gd_iterations,
             initial_params_batch=initial_angles_array,
-            regularization_func=regularization_func,
+            regularization_func=regulator,
             u_func=anz.unitary,  # For 'adam' this won't be used, but it will e.g. for 'natural adam'.
             keep_history=keep_history
         )
 
         return raw_results
 
-    def _evaluate_raw(self, raw_results, options, disable_tqdm=False):
+    def _evaluate_raw(self, raw_results, static_options):
 
-        # options = Decompose.updated_options(Decompose.default_static_options, options)
-        anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates), options.rotation_gates)
+        anz = Synthesize._generate_ansatz(self, static_options)
 
-        below_entry_loss_results = filter_cp_results(
+        below_entry_loss_results = filter_raw_results(
             raw_results,
-            anz.cp_mask,
+            anz.entangling_mask,
+            self.regularization_options.count_func,
             float('inf'),  # At this stage we only filter by convergence, not by the number of gates.
-            options.entry_loss,
-            threshold_cp=options.threshold_cp,
-            disable_tqdm=disable_tqdm
+            static_options.entry_loss,
+            self.regularization_options.angle_threshold
         )
 
         return below_entry_loss_results
@@ -660,12 +667,15 @@ class Synthesize:
 
     def _make_decomposition(self, u_func, circ_func, best_angs, static_options=None, adaptive_options=None, circuit=None):
         if circuit is None:
-            circuit = Decomposition._from_cp_circuit(
+            circuit = Decomposition._from_verified_result(
                 self.unitary_loss_func,
                 u_func,
                 circ_func,
                 best_angs,
-                self.label)
+                self.entanglging_gate_name,
+                self.regularization_options,
+                self.label,
+                )
 
         d = circuit
         d._static_options = static_options
@@ -673,11 +683,33 @@ class Synthesize:
         d._decomposer = self
         return d
 
-    def static(self, options, save_results=True, save_to=''):
+    def _verify_result(self, res, static_options, adaptive_options=None):
+        anz = Synthesize._generate_ansatz(self, static_options)
+        success, num_2q_gates, circ, u, best_angles = verify_result(
+            res,
+            anz,
+            self.unitary_loss_func,
+            static_options,
+            self.regularization_options,
+            keep_history=False)
+
+        if success:
+            new_decomposition = Synthesize._make_decomposition(self, u, circ, best_angles,
+                                                               static_options=static_options,
+                                                               adaptive_options=adaptive_options)
+        else:
+            new_decomposition = None
+
+        return success, new_decomposition
+
+    def _print_decomposer(self):
+        print(f"\nStarting decomposer '{self.label}' with entangling gate '{self.entanglging_gate_name}' and layer {self.layer} ")
+
+    def static(self, static_options, save_results=True, save_to=''):
         """ Unitary synthesis with a fixed CP template and regularization weight.
 
         Args:
-            options: instance of `StaticOptions`.
+            static_options: instance of `StaticOptions`.
             save_results: whether to save results on disk or not.
             save_to: if provided overwrites default saving path.
 
@@ -685,40 +717,33 @@ class Synthesize:
             results: instance of `Results` class.
         """
 
+        Synthesize._print_decomposer(self)
         results = Synthesize._initialize_results(self, save_results, save_to)
 
         print('\nStarting decomposition routine with the following options:')
-        print('\n', options)
+        print('\n', static_options)
 
         print('\nComputing raw results...')
-        raw_results = Synthesize._generate_raw(self, options)
+        raw_results = Synthesize._generate_raw(self, static_options)
 
         print('\nSelecting prospective results...')
-        raw = Synthesize._evaluate_raw(self, raw_results, options)
+        raw = Synthesize._evaluate_raw(self, raw_results, static_options)
         prospective_results = raw
-        prospective_results = [res for res in prospective_results if res[0] <= options.accepted_num_cz_gates]
-        successful_results = []
+        prospective_results = [res for res in prospective_results if res[0] <= static_options.accepted_num_2q_gates]
 
+        successful_results = []
         if prospective_results:
             print(f'\nFound {len(prospective_results)}. Verifying...')
 
-            anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, options.num_cp_gates), options.rotation_gates)
-            for num_cz_gates, res in tqdm(prospective_results):
-
-                success, num_cz_gates, circ, u, best_angs = verify_cp_result(
-                    res,
-                    anz,
-                    self.unitary_loss_func,
-                    options,
-                    keep_history=False)
-
+            for num_2q_gates, res in tqdm(prospective_results):
+                success, new_decomposition = Synthesize._verify_result(self, res, static_options)
                 if success:
-                    new_decomposition = Synthesize._make_decomposition(self, u, circ, best_angs, static_options=options)
                     successful_results.append(new_decomposition)
 
             if successful_results:
-                print(f'\n{len(successful_results)} successful. cz counts are:')
-                print(sorted([d.cz_count for d in successful_results]))
+                successful_results = sorted(successful_results, key=lambda d: d.gate_count_2q)
+                print(f'\n{len(successful_results)} successful. 2q counts are:')
+                print([d.gate_count_2q for d in successful_results])
                 results.decompositions = list(results.decompositions)+successful_results
                 if save_results:
                     results.save()
@@ -752,9 +777,9 @@ class Synthesize:
                 random_seed: seed to be used for generating random initial angles and setting hyperopt state.
                 search_params: params subject to hyperopt optimization."""
 
-            num_cp_gates, r = search_params
-            tqdm.write(f'\nnum_cp_gates: {num_cp_gates}, r: {r}')
-            static_options = options.get_static(num_cp_gates, r)
+            num_2q_blocks, r = search_params
+            tqdm.write(f'\nnum_entangling_blocks: {num_2q_blocks}, r: {r}')
+            static_options = options.get_static(num_2q_blocks, r)
             static_options.random_seed = random_seed
 
             raw_results = Synthesize._generate_raw(self, static_options)
@@ -762,27 +787,26 @@ class Synthesize:
             evaluated_results = Synthesize._evaluate_raw(
                 self,
                 raw_results,
-                static_options,
-                disable_tqdm=True,
+                static_options
             )
 
-            cz_counts = [res[0] for res in evaluated_results]
+            counts_2q_gates = [res[0] for res in evaluated_results]
 
             # Score is defined as the weighted sum of cz counts of all successful results.
             # For convenience it is normalized on the number of samples and presented in log scale.
 
-            score = 2 ** (-jnp.array(cz_counts, dtype=jnp.float32))
+            score = 2 ** (-jnp.array(counts_2q_gates, dtype=jnp.float32))
             score = (score.sum() / options.num_samples)
             score = jnp.log2(score)
 
-            tqdm.write(f'score: {-score}, cz counts of prospective results: {cz_counts}')
+            tqdm.write(f'score: {-score}, cz counts of prospective results: {counts_2q_gates}')
 
             return_dict = {
                 'loss': -score,
                 'status': STATUS_OK,
                 'random_seed': random_seed,
-                'cz_counts': cz_counts,
-                'num_cp_gates': num_cp_gates,
+                'cz_counts': counts_2q_gates,
+                'num_entangling_blocks': num_2q_blocks,
                 'r': r,
                 'layer': self.layer,
                 'prospective_decompositions': evaluated_results}
@@ -801,7 +825,7 @@ class Synthesize:
         # Defining the hyperparameter search space.
         space = [
             scope.int(
-                hp.quniform('num_cp_gates', options.min_num_cp_gates, options.max_num_cp_gates,
+                hp.quniform('num_entangling_blocks', options.min_num_entangling_blocks, options.max_num_entangling_blocks,
                             1)),
             hp.lognormal('r', jnp.log(options.r_mean), options.r_variance)
         ]
@@ -821,7 +845,7 @@ class Synthesize:
 
         # Creating scoreboard variable that keeps track of the best current cz count.
         if results.decompositions:
-            scoreboard = set([d.cz_count for d in results.decompositions])
+            scoreboard = set([d.gate_count_2q for d in results.decompositions])
             scoreboard = sorted(list(scoreboard))
         else:
             scoreboard = [theoretical_lower_bound(self.num_qubits)]
@@ -851,44 +875,37 @@ class Synthesize:
             results.trials = trials
             results.save()
 
-            current_best_cz = scoreboard[0]
+            current_best_2q_count = scoreboard[0]
 
             last_result = trials.results[-1]
-            num_cp_gates = last_result['num_cp_gates']
+            num_2q_gates = last_result['num_entangling_blocks']
             r = last_result['r']
             successful_results = last_result['prospective_decompositions']
             if not options.keep_logs:
                 last_result.pop('prospective_decompositions')
 
-            results_to_verify = [[num_cp_gates, res] for cz, res in successful_results if cz < current_best_cz]
+            results_to_verify = [[num_2q_gates, res] for count, res in successful_results if count < current_best_2q_count]
 
             if len(results_to_verify):
                 tqdm.write(
-                    f'\nFound {len(results_to_verify)} decompositions potentially improving the current best count {current_best_cz}, verifying...')
+                    f'\nFound {len(results_to_verify)} decompositions potentially improving the current best count {current_best_2q_count}, verifying...')
             else:
                 tqdm.write(
-                    f'\nFound no decompositions potentially improving the current best count {current_best_cz}.')
+                    f'\nFound no decompositions potentially improving the current best count {current_best_2q_count}.')
 
-            for num_cp_gates, res in results_to_verify:
-                anz = Ansatz(self.num_qubits, 'cp', fill_layers(self.layer, num_cp_gates), options.rotation_gates)
-
-                success, num_cz_gates, circ, u, best_angs = verify_cp_result(
+            for num_2q_gates, res in results_to_verify:
+                success, new_decomposition = Synthesize._verify_result(
+                    self,
                     res,
-                    anz,
-                    self.unitary_loss_func,
-                    options.get_static(None, None))
+                    options.get_static(num_2q_gates, r),
+                    adaptive_options=options)
+                if success:
+                    successful_results.append(new_decomposition)
+
 
                 if success:
-                    tqdm.write(f'\nFound a new decomposition with {num_cz_gates} gates.')
-
-                    scoreboard.insert(0, num_cz_gates)
-                    new_decomposition = Synthesize._make_decomposition(
-                        self,
-                        u,
-                        circ,
-                        best_angs,
-                        adaptive_options=options,
-                        static_options=options.get_static(num_cp_gates, r))
+                    tqdm.write(f'\nFound a new decomposition with {new_decomposition.gate_count_2q} gates.')
+                    scoreboard.insert(0, new_decomposition.gate_count_2q)
                     results.decompositions = list(results.decompositions) + [new_decomposition]
                     results.save()
                     break
@@ -896,7 +913,7 @@ class Synthesize:
                 if results_to_verify:
                     tqdm.write('\nNone of prospective decompositions passed.')
 
-            if options.stop_if_target_reached and scoreboard[0] <= options.target_num_cz_gates:
+            if options.stop_if_target_reached and scoreboard[0] <= options.target_num_2q_gates:
                 tqdm.write('\nTarget number of gates reached.')
                 break
 
