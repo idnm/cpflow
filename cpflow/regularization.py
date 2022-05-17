@@ -52,6 +52,12 @@ def cz_value(a, threshold):
 
 
 @partial(jit, static_argnums=(1,))
+def parametric_value(a, threshold):
+    a = bracket_angle(a)
+    return jnp.piecewise(a, [jnp.abs(a) < threshold], [0, 1])
+
+
+@partial(jit, static_argnums=(1,))
 def parametric_2q_value(a, threshold):
     a = bracket_angle(a)
     return jnp.piecewise(a, [jnp.abs(a)<threshold], [0, 1])
@@ -65,6 +71,13 @@ def project_cp_angle(a, threshold):
         return True, 0
     else:
         return False, a
+
+
+def project_parametric_angle(a, threshold):
+    if jnp.abs(bracket_angle(a)) < threshold:
+        return True, 0
+    else:
+        return False, 1
 
 
 def insert_params(params, insertion_params, insertion_indices, jax_numpy=True):

@@ -75,6 +75,15 @@ def cp_to_cz_gate(gate, cp_threshold):
     return gate
 
 
+def parametric_2q_decomposer(gate, angle_threshold):
+    angle = gate.params[0]
+    if jnp.abs(angle) <= angle_threshold:
+        qc = QuantumCircuit(2)
+        gate = qc.to_gate(label='id')
+
+    return gate
+
+
 def reduce_all_1q_angles(loss_func, initial_angles, wires, threshold=1e-5):
     if len(initial_angles) == 0:
         return initial_angles
@@ -201,7 +210,7 @@ def refine_circuit(circuit, entangling_gate_name, regularization_options):
 def reduce_angles(circuit, unitary_loss_func, reduce_threshold=1e-5, cp_threshold=0.01):
 
     qc = circuit.copy()
-    # qc = refine_circuit(qc, cp_threshold=cp_threshold)
+    # qc = refine_circuit(qc, angle_threshold=angle_threshold)
     # qc = convert_to_ZXZ(qc)
 
     u, angles, wires = qiskit_circ_to_jax_unitary(qc)

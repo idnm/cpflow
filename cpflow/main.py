@@ -287,18 +287,19 @@ class Decomposition:
         refine(): attempts to simplify 1q angles in the circuit, represent them as rational multiples of pi and/or translate to the Clifford+T basis.
     """
 
-    def __init__(self, unitary_loss_func, circuit, label='', type='Approximate'):
+    def __init__(self, unitary_loss_func, circuit, entangling_gate_name, label='', type='Approximate'):
 
         self.unitary_loss_func = unitary_loss_func
         self.circuit = circuit
+        self.entangling_gate_name = entangling_gate_name
         self.unitary = Operator(self.circuit.reverse_bits()).data
         self.label = label
 
         self.loss = self.unitary_loss_func(self.unitary)
         self.type = type
 
-        self.gate_count_2q = gates_count(['cz'], self.circuit)
-        self.gate_depth_2q = gates_depth(['cz'], self.circuit)
+        self.gate_count_2q = gates_count([entangling_gate_name], self.circuit)
+        self.gate_depth_2q = gates_depth([entangling_gate_name], self.circuit)
 
         self.t_count = None
         self.t_depth = None
@@ -312,7 +313,7 @@ class Decomposition:
     def _from_verified_result(cls, unitary_loss_func, u_func, circ_func, angles, entangling_gate_name, regularization_options, label):
         qc = circ_func(angles)
         qc = refine_circuit(qc, entangling_gate_name, regularization_options)
-        d = cls(unitary_loss_func, qc, label=label)
+        d = cls(unitary_loss_func, qc, entangling_gate_name, label=label)
         d._cp_data = [u_func, circ_func, angles]
 
         return d
@@ -346,7 +347,7 @@ class Decomposition:
         return f'Refined to {refine_type}'
 
     def __repr__(self):
-        description = f"< {self.label}| {self.type} | loss: {self.loss}  | CZ count: {self.gate_count_2q} | CZ depth: {self.gate_depth_2q}  >"
+        description = f"< {self.label}| {self.type} | loss: {self.loss}  | 2q count: {self.gate_count_2q} | 2q depth: {self.gate_depth_2q}  >"
         if self.type == 'Clifford+T':
             description = description[:-1]+f'| T count: {self.t_count} | T depth: {self.t_depth} >'
         return description
@@ -366,6 +367,13 @@ regularization_options_cp = RegularizationOptions(
     cz_value,
     project_cp_angle,
     cp_to_cz_gate)
+
+regularization_options_parametric = RegularizationOptions(
+    penalty_L1,
+    parametric_value,
+    project_parametric_angle,
+    parametric_2q_decomposer)
+
 
 
 @dataclass
