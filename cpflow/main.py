@@ -287,19 +287,19 @@ class Decomposition:
         refine(): attempts to simplify 1q angles in the circuit, represent them as rational multiples of pi and/or translate to the Clifford+T basis.
     """
 
-    def __init__(self, unitary_loss_func, circuit, entangling_gate_name, label='', type='Approximate'):
+    def __init__(self, unitary_loss_func, circuit, name_2q_gate, label='', type='Approximate'):
 
         self.unitary_loss_func = unitary_loss_func
         self.circuit = circuit
-        self.entangling_gate_name = entangling_gate_name
+        self.name_2q_gate = name_2q_gate
         self.unitary = Operator(self.circuit.reverse_bits()).data
         self.label = label
 
         self.loss = self.unitary_loss_func(self.unitary)
         self.type = type
 
-        self.gate_count_2q = gates_count([entangling_gate_name], self.circuit)
-        self.gate_depth_2q = gates_depth([entangling_gate_name], self.circuit)
+        self.gate_count_2q = gates_count([name_2q_gate], self.circuit)
+        self.gate_depth_2q = gates_depth([name_2q_gate], self.circuit)
 
         self.t_count = None
         self.t_depth = None
@@ -313,7 +313,7 @@ class Decomposition:
     def _from_verified_result(cls, unitary_loss_func, u_func, circ_func, angles, entangling_gate_name, regularization_options, label):
         qc = circ_func(angles)
         qc = refine_circuit(qc, entangling_gate_name, regularization_options)
-        d = cls(unitary_loss_func, qc, entangling_gate_name, label=label)
+        d = cls(unitary_loss_func, qc, regularization_options.name_2q_gate, label=label)
         d._cp_data = [u_func, circ_func, angles]
 
         return d
@@ -359,21 +359,33 @@ class RegularizationOptions:
     count_func: callable
     angle_projector: callable
     gate_decomposer: callable
+    name_2q_gate: str
     angle_threshold: float = 0.2
 
+    @classmethod
+    def cp_default(cls):
+        return cls(
+            default_cp_regularization_function,
+            cz_value,
+            project_cp_angle,
+            cp_to_cz_gate,
+            'cz')
 
-regularization_options_cp = RegularizationOptions(
-    default_cp_regularization_function,
-    cz_value,
-    project_cp_angle,
-    cp_to_cz_gate)
+    @classmethod
+    def parametric_2q(cls, name_2q_gate):
+        return cls(
+            penalty_L1,
+            parametric_value,
+            project_parametric_angle,
+            parametric_2q_decomposer,
+            name_2q_gate)
 
-regularization_options_parametric = RegularizationOptions(
-    penalty_L1,
-    parametric_value,
-    project_parametric_angle,
-    parametric_2q_decomposer)
-
+    @classmethod
+    def default_for_gate(cls, name_2q_gate):
+        if name_2q_gate == 'cp':
+            return cls.cp_default()
+        else:
+            return cls.parametric_2q(name_2q_gate)
 
 
 @dataclass
@@ -565,7 +577,7 @@ class Synthesize:
             unitary_loss_func=None,
             target_unitary=None,
             label=None,
-            regularization_options=regularization_options_cp):
+            regularization_options=None):
 
         self.entanglging_gate_name = entanglging_gate_name
         self.layer = layer
@@ -580,7 +592,11 @@ class Synthesize:
             self.unitary_loss_func = lambda u: cost_HST(u, self.target_unitary)
 
         self.label = label
-        self.regularization_options = regularization_options
+        if regularization_options is not None:
+            self.regularization_options = regularization_options
+        else:
+            self.regularization_options = RegularizationOptions.default_for_gate(self.entanglging_gate_name)
+
 
     @staticmethod
     def _generate_initial_angles(key, num_angles, cp_mask, cp_dist='uniform', batch_size=1):
