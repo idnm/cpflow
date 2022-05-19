@@ -69,7 +69,7 @@ def rzx_mat(a):
 def rxx_mat(a):
     """R_ZX rotation matrix."""
 
-    return jnp.cos(a)*jnp.identity(4)-1j*jnp.sin(a) * jnp.kron(x_mat, x_mat)
+    return jnp.cos(a/2)*jnp.identity(4)-1j*jnp.sin(a/2) * jnp.kron(x_mat, x_mat)
 
 
 class Gate:
