@@ -6,7 +6,7 @@
 %Control: page (0) single
 %Control: year (1) truncated
 %Control: production of eprint (0) enabled
-\begin{thebibliography}{51}%
+\begin{thebibliography}{53}%
 \makeatletter
 \providecommand \@ifxundefined [1]{%
  \@ifx{#1\undefined}
@@ -424,6 +424,23 @@
   }\href {http://arxiv.org/abs/2201.07448} {\  (\bibinfo {year} {2022})},\
   \Eprint {https://arxiv.org/abs/2201.07448} {arXiv:2201.07448} \BibitemShut
   {NoStop}%
+\bibitem [{\citenamefont {Anschuetz}(2021)}]{Anschuetz2021}%
+  \BibitemOpen
+  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {E.~R.}\ \bibnamefont
+  {Anschuetz}},\ }\bibfield  {title} {\bibinfo {title} {{Critical Points in
+  Quantum Generative Models}},\ }\href {https://arxiv.org/abs/2109.06957v3} {\
+  (\bibinfo {year} {2021})},\ \Eprint {https://arxiv.org/abs/2109.06957}
+  {arXiv:2109.06957} \BibitemShut {NoStop}%
+\bibitem [{\citenamefont {Anschuetz}\ and\ \citenamefont
+  {Kiani}(2022)}]{Anschuetz2022}%
+  \BibitemOpen
+  \bibfield  {author} {\bibinfo {author} {\bibfnamefont {E.~R.}\ \bibnamefont
+  {Anschuetz}}\ and\ \bibinfo {author} {\bibfnamefont {B.~T.}\ \bibnamefont
+  {Kiani}},\ }\bibfield  {title} {\bibinfo {title} {{Beyond Barren Plateaus:
+  Quantum Variational Algorithms Are Swamped With Traps}},\ }\href
+  {http://arxiv.org/abs/2205.05786/} {\ ,\ \bibinfo {pages} {1} (\bibinfo
+  {year} {2022})},\ \Eprint {https://arxiv.org/abs/2205.05786}
+  {arXiv:2205.05786} \BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Wierichs}\ \emph {et~al.}(2020)\citenamefont
   {Wierichs}, \citenamefont {Gogolin},\ and\ \citenamefont
   {Kastoryano}}]{Wierichs2020}%
@@ -611,7 +628,7 @@
   with Josephson charge qubits}},\ \href {https://epub.uni-regensburg.de/1511/}
   {Ph.D. thesis},\ \bibinfo  {school} {Universit{\"a}t Regensburg} (\bibinfo
   {year} {2002})\BibitemShut {NoStop}%
-\bibitem [{\citenamefont {Nakanishi}\ \emph {et~al.}(2020)\citenamefont
+\bibitem [{\citenamefont {Nakanishi}\ \emph {et~al.}(2019)\citenamefont
   {Nakanishi}, \citenamefont {Fujii},\ and\ \citenamefont
   {Todo}}]{Nakanishi2020}%
   \BibitemOpen
@@ -622,7 +639,7 @@
   quantum-classical hybrid algorithms}},\ }\href
   {https://doi.org/10.1103/PhysRevResearch.2.043158} {\bibfield  {journal}
   {\bibinfo  {journal} {Physical Review Research}\ }\textbf {\bibinfo {volume}
-  {2}},\ \bibinfo {pages} {1} (\bibinfo {year} {2020})},\ \Eprint
+  {2}},\ \bibinfo {pages} {1} (\bibinfo {year} {2019})},\ \Eprint
   {https://arxiv.org/abs/1903.12166} {arXiv:1903.12166} \BibitemShut {NoStop}%
 \bibitem [{\citenamefont {Alwin~Zulehner}\ and\ \citenamefont
   {Wille}(2017)}]{ibmqx}%
