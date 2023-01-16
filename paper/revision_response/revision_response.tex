@@ -1,0 +1,67 @@
+\documentclass[amsfonts, amssymb, aps, nofootinbib]{revtex4-2}
+\raggedbottom
+\usepackage[T1]{fontenc}
+\usepackage{tgtermes}
+\usepackage{amsmath}
+\usepackage{empheq}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[braket, qm]{qcircuit}
+\usepackage{braket}
+\usepackage{hyperref}
+\usepackage{placeins}
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage{tikz}
+\hypersetup{
+	colorlinks   = true, %Colours links instead of ugly boxes
+	urlcolor     = blue, %Colour for external hyperlinks
+	linkcolor    = blue, %Colour of internal links
+	citecolor   = red %Colour of citations
+}
+
+\newcommand{\CZ}{\textsf{CZ }}
+\newcommand{\CX}{\textsf{CNOT }}
+\newcommand{\CP}{\textsf{CP }}
+\newcommand{\T}{\textsf{T }}
+\newcommand{\tgate}[1]{\textcolor{blue}{#1}}
+\newcommand{\cx}[1]{C${}^{#1}$X}
+\newcommand{\cz}[1]{C${}^{#1}$Z}
+\newcommand{\package}[1]{\textrm {#1 }}
+\newcommand{\cpflow}{\package{CPFlow}}
+\newcommand{\static}{\textsc{static }}
+\newcommand{\adaptive}{\textsc{adaptive }}
+\newcommand{\param}[1]{\texttt{#1}}
+\newcommand{\teal}[1]{{\color{Teal} #1}}
+
+\newcommand{\comment}[1]{\textcolor{red}{#1}}
+
+\begin{document}
+\section{Reviewer 1}
+\begin{enumerate}
+	\item Add references.
+
+	Symmetries: \cite{Barkoutsos2018}, \cite{Lyu2020}, \cite{Coyle2020}, \cite{Bravyi2020}, \cite{Lyu2022}
+	
+	Circuit optimization: \cite{Cincio2021}, \cite{Huang2022b}, \cite{Du2022}, \cite{Chivilikhin2020}, \cite{Wang2021}, \cite{Franken2020}
+	\item Circuit design is fixed. Why not add layer-by-layer?
+	\item Explain the score function for Bayesian search. Log.
+	\item Why high success rate for small number of CZ gates and fall onward?
+
+\end{enumerate}
+\section{Reviewer 2}
+\begin{enumerate}
+	\item Are compiled Toffoli gates exact?
+	\item Differentiate between the approximate compilation and re-routing
+	\item Approximation errors? 10e-4?
+\end{enumerate}
+
+\section{Major changes}
+\begin{enumerate}
+	\item Local minimums histogram
+\end{enumerate}
+\section{Minor changes}
+
+\bibliography{/home/idnm/Dropbox/hep/Sheets/library.bib, bibfile.bib}
+\end{document}
